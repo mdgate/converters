@@ -1,0 +1,35 @@
+{
+  "name": "@mdgate/core",
+  "version": "0.1.1",
+  "description": "mdgate converter registry: create(), Converter contract, ConvertError",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-package.ts",
+    "prepublishOnly": "bun run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mdgate",
+    "markdown",
+    "converter"
+  ]
+}
