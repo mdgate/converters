@@ -1254,13 +1254,33 @@ function mulMat(a: number[], b: number[]): number[] {
     a[0]! * b[1]! + a[1]! * b[3]!,
     a[2]! * b[0]! + a[3]! * b[2]!,
     a[2]! * b[1]! + a[3]! * b[3]!,
-    a[4]! * b[0]! + a[5]! * b[2]!,
-    a[4]! * b[1]! + a[5]! * b[3]!,
+    a[4]! * b[0]! + a[5]! * b[2]! + b[4]!,
+    a[4]! * b[1]! + a[5]! * b[3]! + b[5]!,
   ];
 }
 
 function applyMat(m: number[], x: number, y: number): [number, number] {
   return [x * m[0]! + y * m[2]! + m[4]!, x * m[1]! + y * m[3]! + m[5]!];
+}
+
+/** Concatenate a text-space translation: T = [1 0 0 1 tx ty] × T. */
+function translateTextMatrix(m: number[], tx: number, ty: number): number[] {
+  return [
+    m[0]!,
+    m[1]!,
+    m[2]!,
+    m[3]!,
+    m[4]! + tx * m[0]! + ty * m[2]!,
+    m[5]! + tx * m[1]! + ty * m[3]!,
+  ];
+}
+
+function matrixScale(m: number[]): number {
+  return Math.max(Math.hypot(m[0]!, m[1]!), Math.hypot(m[2]!, m[3]!));
+}
+
+function pageAdvanceX(widthTs: number, textMat: number[], currentCtm: number[]): number {
+  return Math.abs(widthTs * (textMat[0]! * currentCtm[0]! + textMat[1]! * currentCtm[2]!));
 }
 
 function loadPageFonts(doc: PdfDocument, page: PdfDict): Map<string, FontInfo> {
@@ -1376,6 +1396,7 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
     if (!font || artifact > 0) return;
     const decoded = decodeFontBytes(font, raw);
     countDecoded(stats, decoded);
+    const rendered = Math.abs(fontSize) * matrixScale(mulMat(tm, ctm));
     let buf = '';
     let startX: number | undefined;
     let startY = 0;
@@ -1390,10 +1411,10 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
         text: buf,
         x: startX,
         y: startY,
-        width: widthAcc,
-        height: Math.abs(fontSize),
+        width: pageAdvanceX(widthAcc, tm, ctm),
+        height: rendered,
         font: font!.name,
-        fontSize: Math.abs(fontSize),
+        fontSize: rendered,
         page: pageNo,
         isBold: font!.bold,
         isItalic: font!.italic,
@@ -1416,7 +1437,7 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
       }
       buf += ch;
       widthAcc += w;
-      tm = [tm[0]!, tm[1]!, tm[2]!, tm[3]!, tm[4]! + w, tm[5]!];
+      tm = translateTextMatrix(tm, w, 0);
     }
     flush();
   };
@@ -1424,7 +1445,7 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
   const applyTjAdjust = (n: number): void => {
     if (!font) return;
     const dx = (-n / 1000) * fontSize * hscale;
-    tm = [tm[0]!, tm[1]!, tm[2]!, tm[3]!, tm[4]! + dx, tm[5]!];
+    tm = translateTextMatrix(tm, dx, 0);
   };
 
   const lastNum = (n: number): number => {
@@ -1462,21 +1483,19 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
       fontSize = lastNum(1);
       font = fonts.get(fname);
     } else if (op === 'Td' && args.length >= 2) {
-      const tx = lastNum(2);
-      const ty = lastNum(1);
-      tlm = [tlm[0]!, tlm[1]!, tlm[2]!, tlm[3]!, tlm[4]! + tx, tlm[5]! + ty];
+      tlm = translateTextMatrix(tlm, lastNum(2), lastNum(1));
       tm = tlm.slice();
     } else if (op === 'TD' && args.length >= 2) {
       const tx = lastNum(2);
       const ty = lastNum(1);
       leading = -ty;
-      tlm = [tlm[0]!, tlm[1]!, tlm[2]!, tlm[3]!, tlm[4]! + tx, tlm[5]! + ty];
+      tlm = translateTextMatrix(tlm, tx, ty);
       tm = tlm.slice();
     } else if (op === 'Tm' && args.length >= 6) {
       tm = args.slice(-6).map((a) => (typeof a === 'number' ? a : 0));
       tlm = tm.slice();
     } else if (op === 'T*') {
-      tlm = [tlm[0]!, tlm[1]!, tlm[2]!, tlm[3]!, tlm[4]!, tlm[5]! - leading];
+      tlm = translateTextMatrix(tlm, 0, -leading);
       tm = tlm.slice();
     } else if (op === 'Tc' && args.length >= 1) {
       charSpace = lastNum(1);
@@ -1491,7 +1510,7 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
     } else if (op === 'Tj' || op === "'" || op === '"') {
       hadTextOps = true;
       if (op === "'") {
-        tlm = [tlm[0]!, tlm[1]!, tlm[2]!, tlm[3]!, tlm[4]!, tlm[5]! - leading];
+        tlm = translateTextMatrix(tlm, 0, -leading);
         tm = tlm.slice();
       }
       const raw = args[args.length - 1];
