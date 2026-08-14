@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/pdf",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "mdgate PDF converter",
   "type": "module",
   "license": "MIT",

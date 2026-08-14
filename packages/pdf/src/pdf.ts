@@ -22,6 +22,7 @@ export function toMarkdownFromPdf(bytes: Uint8Array): string {
   const items: TextItem[] = [];
   const strokeLines: StrokeLine[] = [];
   const pageRects: PdfRect[] = [];
+  const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   let pagesWithTextOps = 0;
   let pagesWithImages = 0;
   for (let i = 0; i < pages.length; i += 1) {
@@ -31,6 +32,8 @@ export function toMarkdownFromPdf(bytes: Uint8Array): string {
     items.push(...extracted.items);
     strokeLines.push(...extracted.lines);
     pageRects.push(...extracted.rects);
+    stats.mapped += extracted.stats.mapped;
+    stats.unmapped += extracted.stats.unmapped;
   }
 
   const pdfType = classifyPdf(pages.length, pagesWithTextOps, pagesWithImages);
@@ -46,6 +49,14 @@ export function toMarkdownFromPdf(bytes: Uint8Array): string {
       `PDF has no extractable text (${pdfType}, ${pages.length} pages): OCR is required`,
     );
   }
+
+  const total = stats.mapped + stats.unmapped;
+  if (isMostlyUndecodable(stats)) {
+    throw ConvertError.unsupported(
+      `PDF text is not decodable (${stats.unmapped} of ${total} character codes have no Unicode mapping)`,
+    );
+  }
+
   return markdown.endsWith('\n') ? markdown : `${markdown}\n`;
 }
 
@@ -770,6 +781,8 @@ interface FontInfo {
   /** 1 for simple fonts; 2 for Type0 / Identity-H CID fonts. */
   codeByteLength: 1 | 2;
   isCid: boolean;
+  /** PDF FontDescriptor /Flags bit 3 — custom encodings are common here. */
+  symbolic: boolean;
 }
 
 function isBoldFontName(name: string): boolean {
@@ -813,6 +826,7 @@ function emptyFont(): FontInfo {
     unitsScale: 0.001,
     codeByteLength: 1,
     isCid: false,
+    symbolic: false,
   };
 }
 
@@ -878,7 +892,19 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
     const fm = dictGet(doc, d, '/FontMatrix');
     if (Array.isArray(fm) && typeof fm[0] === 'number') unitsScale = fm[0];
   }
-  return { name, bold, italic, widths, defaultWidth, cmap, unitsScale, codeByteLength, isCid };
+  const symbolic = (flags & 0x4) !== 0;
+  return {
+    name,
+    bold,
+    italic,
+    widths,
+    defaultWidth,
+    cmap,
+    unitsScale,
+    codeByteLength,
+    isCid,
+    symbolic,
+  };
 }
 
 function applyTrueTypeFallback(
@@ -1086,6 +1112,72 @@ function stripInvisibles(text: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Decode quality (mapped vs custom-encoding fallback)
+// ---------------------------------------------------------------------------
+
+interface DecodeStats {
+  mapped: number;
+  unmapped: number;
+}
+
+interface DecodedChar {
+  ch: string;
+  code: number;
+  mapped: boolean;
+}
+
+/** Ignore a couple of ornaments; fail when at least half the real codes are lost. */
+const UNMAPPED_FAIL_MIN = 8;
+
+function isMostlyUndecodable(stats: DecodeStats): boolean {
+  const total = stats.mapped + stats.unmapped;
+  return stats.unmapped >= UNMAPPED_FAIL_MIN && stats.unmapped * 2 >= total;
+}
+
+function normalizeFontName(name: string): string {
+  const plus = name.lastIndexOf('+');
+  const bare = plus >= 0 ? name.slice(plus + 1) : name;
+  return bare.toLowerCase().replace(/[\s_-]+/g, '');
+}
+
+function isCjkFontName(name: string): boolean {
+  const n = normalizeFontName(name);
+  return /simsun|nsimsun|simhei|simkai|simfang|fangsong|kaiti|heiti|songti|mingliu|pmingliu|msmincho|mspmincho|msgothic|mspgothic|meiryo|yugothic|yumincho|hiragino|gothicbbb|stsong|stheiti|stkaiti|stfangsong|stxihei|pingfang|heitisc|heititc|songtisc|songtitc|kaitisc|notosanscjk|notoserifcjk|sourcehan|wenquanyi|adobesong|adobehei|adobekai|adobefang|gbsn|gkai|hygothic|batang|dotum|gulim|malgun|nanum|applegothic|applemyungjo/.test(
+    n,
+  );
+}
+
+function isStandardLatinFont(name: string): boolean {
+  const n = normalizeFontName(name);
+  return /^(helvetica|times|timesnewroman|courier|couriernew|symbol|zapfdingbats|arial|calibri|cambria|georgia|verdana|tahoma|trebuchet|trebuchetms|consolas|menlo|monaco|comicsans|comicsansms|impact|palatino|garamond|bookman|minion|myriad|futura|gillsans|optima|baskerville|roboto|notosans|notoserif|opensans|lato|montserrat|inter|sourcesans|sourceserif|ubuntu|dejavu|liberation|freesans|freeserif|freemono|segoe|segoeui|candara|constantia|corbel|franklingothic)/.test(
+    n,
+  );
+}
+
+/** ASCII 32–126 fallback is only trusted for standard Latin encodings. */
+function isSafeAsciiFallback(font: FontInfo, code: number): boolean {
+  if (code < 32 || code > 126) return false;
+  if (isCjkFontName(font.name)) return false;
+  if (isStandardLatinFont(font.name)) return true;
+  if (font.symbolic) return false;
+  return true;
+}
+
+function isStatIgnored(ch: string, code: number): boolean {
+  if (code === 0) return true;
+  if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') return true;
+  return code === 32 || code === 9 || code === 10 || code === 13;
+}
+
+function countDecoded(stats: DecodeStats, decoded: DecodedChar[]): void {
+  for (const { ch, code, mapped } of decoded) {
+    if (isStatIgnored(ch, code)) continue;
+    if (mapped && ch.length > 0) stats.mapped += 1;
+    else stats.unmapped += 1;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Content stream extraction
 // ---------------------------------------------------------------------------
 
@@ -1126,6 +1218,7 @@ interface PageExtract {
   rects: PdfRect[];
   hadTextOps: boolean;
   hadImage: boolean;
+  stats: DecodeStats;
 }
 
 type Token = { k: 'v'; v: PdfValue } | { k: 'op'; v: string };
@@ -1182,18 +1275,28 @@ function loadPageFonts(doc: PdfDocument, page: PdfDict): Map<string, FontInfo> {
   return fonts;
 }
 
-function decodeOneByte(font: FontInfo, raw: Uint8Array): { ch: string; code: number }[] {
-  const out: { ch: string; code: number }[] = [];
+function decodeOneByte(font: FontInfo, raw: Uint8Array): DecodedChar[] {
+  const out: DecodedChar[] = [];
   for (const code of raw) {
-    const mapped = font.cmap.get(code);
-    const ch =
-      mapped !== undefined ? mapped : code >= 32 && code < 127 ? String.fromCharCode(code) : '';
-    out.push({ ch: stripInvisibles(ch), code });
+    const fromCmap = font.cmap.get(code);
+    if (fromCmap !== undefined) {
+      out.push({ ch: stripInvisibles(fromCmap), code, mapped: true });
+      continue;
+    }
+    if (code >= 32 && code < 127) {
+      out.push({
+        ch: String.fromCharCode(code),
+        code,
+        mapped: isSafeAsciiFallback(font, code),
+      });
+      continue;
+    }
+    out.push({ ch: '', code, mapped: false });
   }
   return out;
 }
 
-function decodeFontBytes(font: FontInfo, raw: Uint8Array): { ch: string; code: number }[] {
+function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
   if (font.codeByteLength !== 2) return decodeOneByte(font, raw);
 
   // Odd-length strings sometimes mean the producer emitted 1-byte codes on a Type0 font.
@@ -1202,27 +1305,27 @@ function decodeFontBytes(font: FontInfo, raw: Uint8Array): { ch: string; code: n
     if (single.length > 0) return single;
   }
 
-  const out: { ch: string; code: number }[] = [];
+  const out: DecodedChar[] = [];
   const passthrough = font.isCid && font.cmap.size === 0;
   for (let i = 0; i + 1 < raw.length; i += 2) {
     const code = ((raw[i]! << 8) | raw[i + 1]!) >>> 0;
-    const mapped = font.cmap.get(code);
-    if (mapped !== undefined) {
-      out.push({ ch: stripInvisibles(mapped), code });
+    const fromCmap = font.cmap.get(code);
+    if (fromCmap !== undefined) {
+      out.push({ ch: stripInvisibles(fromCmap), code, mapped: true });
       continue;
     }
     if (passthrough && code >= 0x20) {
       try {
         const ch = String.fromCodePoint(code);
         if (ch !== '\uFFFD' && (ch === '\t' || ch === '\n' || !/[\p{Cc}\p{Cf}]/u.test(ch))) {
-          out.push({ ch: stripInvisibles(ch), code });
+          out.push({ ch: stripInvisibles(ch), code, mapped: true });
           continue;
         }
       } catch {
         // Invalid code point.
       }
     }
-    out.push({ ch: '', code });
+    out.push({ ch: '', code, mapped: false });
   }
   return out;
 }
@@ -1266,11 +1369,13 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
   let artifact = 0;
   let hadTextOps = false;
   let hadImage = false;
+  const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   const args: PdfValue[] = [];
 
   const emitText = (raw: Uint8Array): void => {
     if (!font || artifact > 0) return;
     const decoded = decodeFontBytes(font, raw);
+    countDecoded(stats, decoded);
     let buf = '';
     let startX: number | undefined;
     let startY = 0;
@@ -1483,7 +1588,7 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
   }
 
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
-  return { items, lines, rects, hadTextOps, hadImage };
+  return { items, lines, rects, hadTextOps, hadImage, stats };
 }
 
 function pathAsRect(path: [number, number][], page: number): PdfRect | undefined {
