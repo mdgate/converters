@@ -6,6 +6,7 @@
       "name": "converters",
       "devDependencies": {
         "@biomejs/biome": "^2.2.4",
+        "@mdgate/ai": "workspace:*",
         "@mdgate/converters": "workspace:*",
         "@mdgate/core": "workspace:*",
         "@mdgate/office": "workspace:*",
@@ -16,9 +17,16 @@
         "vitest": "^3.0.0",
       },
     },
+    "packages/ai": {
+      "name": "@mdgate/ai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.1",
+      },
+    },
     "packages/converters": {
       "name": "@mdgate/converters",
-      "version": "0.1.0",
+      "version": "0.1.3",
       "dependencies": {
         "@mdgate/core": "workspace:*",
         "@mdgate/office": "workspace:*",
@@ -27,11 +35,11 @@
     },
     "packages/core": {
       "name": "@mdgate/core",
-      "version": "0.1.0",
+      "version": "0.1.1",
     },
     "packages/office": {
       "name": "@mdgate/office",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@mdgate/core": "workspace:*",
         "@mdgate/utils": "workspace:*",
@@ -39,7 +47,7 @@
     },
     "packages/pdf": {
       "name": "@mdgate/pdf",
-      "version": "0.1.0",
+      "version": "0.1.3",
       "dependencies": {
         "@mdgate/core": "workspace:*",
         "@mdgate/utils": "workspace:*",
@@ -47,7 +55,7 @@
     },
     "packages/utils": {
       "name": "@mdgate/utils",
-      "version": "0.1.0",
+      "version": "0.1.1",
     },
   },
   "packages": {
@@ -122,6 +130,8 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.2", "", { "os": "win32", "cpu": "x64" }, "sha512-5ebpxr3nWMzrL/rnUI755Jkuee0bHL/Gq0WTF9lvcpv73wAp5eu8MfBUgWK9bhWvZjj7yX8etf/8tI8Ney695g=="],
 
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
+
+    "@mdgate/ai": ["@mdgate/ai@workspace:packages/ai"],
 
     "@mdgate/converters": ["@mdgate/converters@workspace:packages/converters"],
 

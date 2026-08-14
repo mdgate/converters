@@ -1,5 +1,10 @@
-import type { Converter, ConvertHint } from './converter.js';
+import type { Ai } from './ai.js';
+import type { Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
+
+export type CreateOptions = {
+  ai?: Ai;
+};
 
 /**
  * Compose registered converters into one `convert` function.
@@ -7,6 +12,7 @@ import { ConvertError } from './error.js';
  */
 export function create(
   converters: readonly Converter[],
+  options?: CreateOptions,
 ): (bytes: Uint8Array, hint?: ConvertHint) => Promise<string> {
   return async (bytes, hint) => {
     if (!(bytes instanceof Uint8Array)) {
@@ -31,7 +37,9 @@ export function create(
       );
     }
 
-    const result = await best.convert(bytes, hint);
+    const convertOptions: ConvertOptions | undefined =
+      options?.ai === undefined ? hint : { ...hint, ai: options.ai };
+    const result = await best.convert(bytes, convertOptions);
     return result.markdown;
   };
 }

@@ -1,6 +1,13 @@
+import type { Ai } from './ai.js';
+
 export type ConvertHint = {
   /** Filename or extension used only for sniffing, never read from disk. */
   path?: string;
+};
+
+/** Per-conversion input. `create` merges its `{ ai }` into this object. */
+export type ConvertOptions = ConvertHint & {
+  ai?: Ai;
 };
 
 export type ConvertResult = {
@@ -14,5 +21,5 @@ export type ConvertResult = {
 export interface Converter {
   readonly id: string;
   sniff(bytes: Uint8Array, hint?: ConvertHint): number;
-  convert(bytes: Uint8Array, hint?: ConvertHint): ConvertResult | Promise<ConvertResult>;
+  convert(bytes: Uint8Array, options?: ConvertOptions): ConvertResult | Promise<ConvertResult>;
 }

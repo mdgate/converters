@@ -41,11 +41,26 @@ const convert = create([pdf()]);
 const markdown = await convert(bytes);
 ```
 
+Optional vision (no default provider — you pass the endpoint):
+
+```ts
+import { ai } from '@mdgate/ai';
+
+const convert = create([pdf()], {
+  ai: ai({
+    baseURL: 'https://api.example.com/v1',
+    apiKey: process.env.MY_KEY!,
+    model: 'my-vision-model',
+  }),
+});
+```
+
 ## Packages
 
 | Package | Role |
 |---|---|
 | `@mdgate/converters` | Bundle: `toMarkdown`, `all()`, re-exports |
-| `@mdgate/core` | `create()`, `Converter`, `ConvertError` |
+| `@mdgate/core` | `create()`, `Converter`, `ConvertError`, `Ai` |
 | `@mdgate/office` | doc/docx/ppt/pptx/xls/xlsx/odf/rtf/epub/csv |
 | `@mdgate/pdf` | PDF |
+| `@mdgate/ai` | Optional `ai({ baseURL, apiKey, model }).readImage` |

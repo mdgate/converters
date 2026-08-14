@@ -7,16 +7,17 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run --filter @mdgate/core --filter @mdgate/utils build && bun run --filter @mdgate/office --filter @mdgate/pdf build && bun run --filter @mdgate/converters build",
+    "build": "bun run --filter @mdgate/core --filter @mdgate/utils build && bun run --filter @mdgate/office --filter @mdgate/pdf --filter @mdgate/ai build && bun run --filter @mdgate/converters build",
     "test": "vitest run",
     "test:parity": "bun test/parity.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "pack:check": "npm pack --workspaces --dry-run",
-    "publish:all": "npm publish -w @mdgate/utils && npm publish -w @mdgate/core && npm publish -w @mdgate/office && npm publish -w @mdgate/pdf && npm publish -w @mdgate/converters"
+    "publish:all": "npm publish -w @mdgate/utils && npm publish -w @mdgate/core && npm publish -w @mdgate/office && npm publish -w @mdgate/pdf && npm publish -w @mdgate/ai && npm publish -w @mdgate/converters"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
+    "@mdgate/ai": "workspace:*",
     "@mdgate/converters": "workspace:*",
     "@mdgate/core": "workspace:*",
     "@mdgate/office": "workspace:*",

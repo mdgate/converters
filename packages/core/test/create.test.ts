@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Converter, create } from '../src/index.js';
+import { type Ai, type Converter, create } from '../src/index.js';
 
 function stub(id: string, score: number, markdown: string): Converter {
   return {
@@ -44,5 +44,26 @@ describe('create', () => {
     await expect(convert(new TextEncoder().encode('a,b\n'), { path: 'notes.csv' })).resolves.toBe(
       'csv',
     );
+  });
+
+  it('passes create-time ai to convert and leaves it unset otherwise', async () => {
+    const vision: Ai = { readImage: async () => 'from-ai' };
+    let seen: Ai | undefined;
+    const converter: Converter = {
+      id: 'x',
+      sniff: () => 1,
+      convert(_bytes, options) {
+        seen = options?.ai;
+        return { markdown: 'ok' };
+      },
+    };
+
+    const without = create([converter]);
+    await without(new Uint8Array([1]));
+    expect(seen).toBeUndefined();
+
+    const withAi = create([converter], { ai: vision });
+    await withAi(new Uint8Array([1]), { path: 'scan.pdf' });
+    expect(seen).toBe(vision);
   });
 });

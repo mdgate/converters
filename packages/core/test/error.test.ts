@@ -10,5 +10,6 @@ describe('ConvertError codes', () => {
     expect(ConvertError.resourceLimit('max_entry_bytes', '').code).toBe('resourceLimit');
     expect(ConvertError.missingPart('').code).toBe('missingPart');
     expect(ConvertError.io(new Error('nope')).code).toBe('io');
+    expect(ConvertError.ai('no model').code).toBe('ai');
   });
 });

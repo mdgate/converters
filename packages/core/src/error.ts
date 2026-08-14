@@ -5,7 +5,8 @@ export type ConvertErrorCode =
   | 'encrypted'
   | 'resourceLimit'
   | 'missingPart'
-  | 'io';
+  | 'io'
+  | 'ai';
 
 /**
  * Why a conversion could not produce a useful result.
@@ -66,6 +67,10 @@ export class ConvertError extends Error {
   static io(err: unknown): ConvertError {
     const msg = err instanceof Error ? err.message : String(err);
     return new ConvertError('io', `io error: ${msg}`);
+  }
+
+  static ai(detail: string): ConvertError {
+    return new ConvertError('ai', `ai error: ${detail}`, { detail });
   }
 
   /** Fixed safety limits hard-fail in every context, including optional parts. */
