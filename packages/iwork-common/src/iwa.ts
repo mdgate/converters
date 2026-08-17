@@ -11,11 +11,14 @@ export interface IwaObject {
 
 /**
  * Parse one `.iwa` component into archived objects.
- * Layout: repeated { chunkType=0, u24le length, snappy block }, each block a
- * sequence of { varint ArchiveInfoLen, ArchiveInfo, payloads… }.
+ * Layout: repeated { chunkType=0, u24le length, snappy block }. Decompressed
+ * chunks form one stream of { varint ArchiveInfoLen, ArchiveInfo, payloads… };
+ * ArchiveInfo records routinely span the 64 KiB snappy block boundary.
  */
 export function parseIwa(bytes: Uint8Array): IwaObject[] {
   const objects: IwaObject[] = [];
+  const plains: Uint8Array[] = [];
+  let total = 0;
   let offset = 0;
   while (offset + 4 <= bytes.length) {
     const chunkType = bytes[offset]!;
@@ -29,10 +32,31 @@ export function parseIwa(bytes: Uint8Array): IwaObject[] {
     offset += chunkLen;
     if (chunkType !== 0) continue;
     const plain = snappyDecode(chunk);
-    parseIwaPlain(plain, objects);
+    total += plain.length;
+    if (total > MAX_IWA_PLAIN) {
+      throw ConvertError.resourceLimit(
+        'max_entry_bytes',
+        `IWA stream exceeds ${MAX_IWA_PLAIN} decompressed bytes`,
+      );
+    }
+    plains.push(plain);
   }
+  if (plains.length === 0) return objects;
+  if (plains.length === 1) {
+    parseIwaPlain(plains[0]!, objects);
+    return objects;
+  }
+  const joined = new Uint8Array(total);
+  let o = 0;
+  for (const part of plains) {
+    joined.set(part, o);
+    o += part.length;
+  }
+  parseIwaPlain(joined, objects);
   return objects;
 }
+
+const MAX_IWA_PLAIN = 64 * 1024 * 1024;
 
 function parseIwaPlain(plain: Uint8Array, objects: IwaObject[]): void {
   let i = 0;

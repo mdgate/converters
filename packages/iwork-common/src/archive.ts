@@ -1,5 +1,6 @@
 import { Package } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
+import { warn } from '@mdgate/utils';
 import { type IwaObject, parseIwa } from './iwa.js';
 import { fieldBytes, type ProtoField, readReference, readReferences } from './protobuf.js';
 import { type IWorkKind, TYPE } from './types.js';
@@ -105,8 +106,9 @@ function loadIwaParts(pkg: Package, objects: Map<number, IwaObject>): void {
     try {
       parsed = parseIwa(part);
     } catch (e) {
-      if (e instanceof ConvertError && e.code === 'encrypted') throw e;
-      throw ConvertError.malformedPart(name, e instanceof Error ? e.message : String(e));
+      if (e instanceof ConvertError && (e.code === 'encrypted' || e.isFatal())) throw e;
+      warn(`skipping unreadable IWA ${name}: ${e instanceof Error ? e.message : String(e)}`);
+      continue;
     }
     for (const obj of parsed) {
       if (!objects.has(obj.id)) objects.set(obj.id, obj);

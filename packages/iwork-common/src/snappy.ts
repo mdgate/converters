@@ -106,11 +106,16 @@ function emitLiteral(out: number[], bytes: Uint8Array): void {
   for (let i = 0; i < bytes.length; i += 1) out.push(bytes[i]!);
 }
 
+/**
+ * Protobuf / Snappy unsigned varint. Up to 10 bytes (64-bit). Values above
+ * 2^53 are returned as an imprecise number; callers that only need the
+ * consumed width still advance correctly.
+ */
 export function readVarint(bytes: Uint8Array, offset: number): [number, number] {
   let result = 0;
   let shift = 0;
   let i = offset;
-  while (i < bytes.length && shift <= 35) {
+  while (i < bytes.length && shift <= 63) {
     const b = bytes[i]!;
     i += 1;
     result += (b & 0x7f) * 2 ** shift;
