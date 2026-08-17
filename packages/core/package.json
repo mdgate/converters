@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "mdgate converter registry: create(), Converter contract, ConvertError",
   "type": "module",
   "license": "MIT",
