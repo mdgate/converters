@@ -2,7 +2,8 @@
 //! Markdown directly — there is no document model. This port extracts
 //! positioned text and converts it with the same error contract.
 
-import { ConvertError, type ConvertImage } from '@mdgate/core';
+import { ConvertError } from '@mdgate/core';
+import type { ConvertImage } from '@mdgate/image';
 import { InflateLimitError, inflateRaw, inflateZlib } from '@mdgate/utils';
 import { xObjectToImage } from './images.js';
 import { MAX_ENTRY_BYTES } from './limits.js';

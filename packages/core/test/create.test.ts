@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Converter, type ConvertImage, create } from '../src/index.js';
+import { type Converter, create } from '../src/index.js';
 
 function stub(id: string, score: number, markdown: string): Converter {
   return {
@@ -46,9 +46,9 @@ describe('create', () => {
     );
   });
 
-  it('passes a registered image plugin and leaves it unset otherwise', async () => {
-    const convertImage: ConvertImage = async () => 'from-image';
-    let seen: ConvertImage | undefined;
+  it('passes a registered capability by kind and leaves it unset otherwise', async () => {
+    const convertImage = async () => 'from-image';
+    let seen: unknown;
     const converter: Converter = {
       id: 'x',
       sniff: () => 1,

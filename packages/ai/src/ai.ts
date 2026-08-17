@@ -1,4 +1,5 @@
-import { ConvertError, type ConvertImage, type ImageInput, type ImageMime } from '@mdgate/core';
+import { ConvertError } from '@mdgate/core';
+import type { ConvertImage, ImageInput, ImageMime } from '@mdgate/image';
 
 export type AiConfig = {
   baseURL: string;

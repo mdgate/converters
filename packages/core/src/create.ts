@@ -1,21 +1,26 @@
 import type { Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
-import type { ImagePlugin } from './media.js';
 
-export type Plugin = Converter | ImagePlugin;
+/** A non-format plugin, e.g. `image()`. `create` puts `convert` on options[`kind`]. */
+export type Capability = {
+  readonly kind: string;
+  readonly convert: (...args: never[]) => unknown;
+};
+
+export type Plugin = Converter | Capability;
 
 /**
  * Compose registered plugins into one `convert` function.
- * Format converters compete by `sniff`; `image()` is handed to the winner.
+ * Format converters compete by `sniff`; capabilities are passed through to the winner.
  */
 export function create(
   plugins: readonly Plugin[],
 ): (bytes: Uint8Array, hint?: ConvertHint) => Promise<string> {
   const converters: Converter[] = [];
-  let image: ImagePlugin['convert'] | undefined;
+  const capabilities: Record<string, unknown> = {};
   for (const plugin of plugins) {
-    if (isImagePlugin(plugin)) {
-      image = plugin.convert;
+    if (isCapability(plugin)) {
+      capabilities[plugin.kind] = plugin.convert;
       continue;
     }
     converters.push(plugin);
@@ -45,12 +50,12 @@ export function create(
     }
 
     const convertOptions: ConvertOptions | undefined =
-      image === undefined ? hint : { ...hint, image };
+      Object.keys(capabilities).length === 0 ? hint : { ...hint, ...capabilities };
     const result = await best.convert(bytes, convertOptions);
     return result.markdown;
   };
 }
 
-function isImagePlugin(plugin: Plugin): plugin is ImagePlugin {
-  return (plugin as ImagePlugin).kind === 'image';
+function isCapability(plugin: Plugin): plugin is Capability {
+  return 'kind' in plugin && !('sniff' in plugin);
 }

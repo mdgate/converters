@@ -1,13 +1,11 @@
-import type { ConvertImage } from './media.js';
-
 export type ConvertHint = {
   /** Filename or extension used only for sniffing, never read from disk. */
   path?: string;
 };
 
-/** Per-conversion input. `create` merges its `{ image }` into this object. */
+/** Per-conversion input. `create` merges capability plugins by `kind`. */
 export type ConvertOptions = ConvertHint & {
-  image?: ConvertImage;
+  [key: string]: unknown;
 };
 
 export type ConvertResult = {

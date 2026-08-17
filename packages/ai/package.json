@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/ai",
   "version": "0.1.0",
-  "description": "Optional image-to-markdown helper for mdgate: image: ai({ baseURL, apiKey, model })",
+  "description": "Optional AI helper for mdgate: ai({ baseURL, apiKey, model }).convertImage",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
@@ -22,7 +22,8 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.1.1"
+    "@mdgate/core": "0.1.2",
+    "@mdgate/image": "0.1.0"
   },
   "publishConfig": {
     "access": "public"

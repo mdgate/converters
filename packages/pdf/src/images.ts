@@ -1,4 +1,4 @@
-import type { ImageMime } from '@mdgate/core';
+import type { ImageMime } from '@mdgate/image';
 
 export type RawPdfImage = {
   width: number;
