@@ -1,4 +1,4 @@
-import { create } from '@mdgate/core';
+import { create, image } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
 import { xObjectToImage } from '../src/images.js';
 import { pdf } from '../src/index.js';
@@ -99,12 +99,13 @@ describe('pdf image handoff', () => {
 
   it('sends each distinct image through image and skips duplicates', async () => {
     const seen: Array<{ mime: string; bytes: number[] }> = [];
-    const convert = create([pdf()], {
-      image: async ({ bytes, mime }) => {
+    const convert = create([
+      pdf(),
+      image(async ({ bytes, mime }) => {
         seen.push({ mime, bytes: [...bytes] });
         return `IMG-${bytes[bytes.length - 1]}`;
-      },
-    });
+      }),
+    ]);
 
     const once = await convert(jpegPdf({}));
     expect(seen).toHaveLength(1);

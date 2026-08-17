@@ -5,11 +5,12 @@ export type {
   ConvertImage,
   ConvertOptions,
   ConvertResult,
-  CreateOptions,
   ImageInput,
   ImageMime,
+  ImagePlugin,
+  Plugin,
 } from '@mdgate/core';
-export { ConvertError, create } from '@mdgate/core';
+export { ConvertError, create, image } from '@mdgate/core';
 export { office } from '@mdgate/office';
 export { pdf } from '@mdgate/pdf';
 export { all } from './all.js';

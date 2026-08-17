@@ -9,3 +9,13 @@ export type ImageInput = {
 
 /** Convert an image the format converter cannot handle into markdown. */
 export type ConvertImage = (image: ImageInput) => Promise<string>;
+
+export type ImagePlugin = {
+  readonly kind: 'image';
+  readonly convert: ConvertImage;
+};
+
+/** Register an image-to-markdown function with `create([pdf(), image(fn)])`. */
+export function image(convert: ConvertImage): ImagePlugin {
+  return { kind: 'image', convert };
+}

@@ -1,19 +1,26 @@
 import type { Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
-import type { ConvertImage } from './media.js';
+import type { ImagePlugin } from './media.js';
 
-export type CreateOptions = {
-  image?: ConvertImage;
-};
+export type Plugin = Converter | ImagePlugin;
 
 /**
- * Compose registered converters into one `convert` function.
- * Highest `sniff` score wins; ties keep the first registered converter.
+ * Compose registered plugins into one `convert` function.
+ * Format converters compete by `sniff`; `image()` is handed to the winner.
  */
 export function create(
-  converters: readonly Converter[],
-  options?: CreateOptions,
+  plugins: readonly Plugin[],
 ): (bytes: Uint8Array, hint?: ConvertHint) => Promise<string> {
+  const converters: Converter[] = [];
+  let image: ImagePlugin['convert'] | undefined;
+  for (const plugin of plugins) {
+    if (isImagePlugin(plugin)) {
+      image = plugin.convert;
+      continue;
+    }
+    converters.push(plugin);
+  }
+
   return async (bytes, hint) => {
     if (!(bytes instanceof Uint8Array)) {
       throw ConvertError.unsupported('input must be a Uint8Array');
@@ -38,8 +45,12 @@ export function create(
     }
 
     const convertOptions: ConvertOptions | undefined =
-      options?.image === undefined ? hint : { ...hint, image: options.image };
+      image === undefined ? hint : { ...hint, image };
     const result = await best.convert(bytes, convertOptions);
     return result.markdown;
   };
+}
+
+function isImagePlugin(plugin: Plugin): plugin is ImagePlugin {
+  return (plugin as ImagePlugin).kind === 'image';
 }

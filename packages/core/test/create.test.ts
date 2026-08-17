@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Converter, type ConvertImage, create } from '../src/index.js';
+import { type Converter, type ConvertImage, create, image } from '../src/index.js';
 
 function stub(id: string, score: number, markdown: string): Converter {
   return {
@@ -46,8 +46,8 @@ describe('create', () => {
     );
   });
 
-  it('passes create-time image converter and leaves it unset otherwise', async () => {
-    const image: ConvertImage = async () => 'from-image';
+  it('passes a registered image plugin and leaves it unset otherwise', async () => {
+    const convertImage: ConvertImage = async () => 'from-image';
     let seen: ConvertImage | undefined;
     const converter: Converter = {
       id: 'x',
@@ -62,8 +62,8 @@ describe('create', () => {
     await without(new Uint8Array([1]));
     expect(seen).toBeUndefined();
 
-    const withImage = create([converter], { image });
+    const withImage = create([converter, image(convertImage)]);
     await withImage(new Uint8Array([1]), { path: 'scan.pdf' });
-    expect(seen).toBe(image);
+    expect(seen).toBe(convertImage);
   });
 });
