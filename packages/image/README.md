@@ -1,6 +1,6 @@
 # @mdgate/image
 
-Registers an image-to-markdown function with `create()`. The function can be `@mdgate/ai`, Apple OCR, or anything else that returns markdown.
+Converter for JPEG, PNG, and WebP. Pass any `(input) => markdown` function — `@mdgate/ai`, Apple OCR, or your own.
 
 ```ts
 import { create } from '@mdgate/core';

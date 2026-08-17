@@ -1,5 +1,4 @@
 import type { Converter, ConvertHint, ConvertOptions, ConvertResult } from '@mdgate/core';
-import type { ConvertImage } from '@mdgate/image';
 import { toMarkdownFromPdf } from './pdf.js';
 import { extensionOf, hasPdfMagic } from './sniff.js';
 
@@ -14,10 +13,8 @@ export function pdf(_options: PdfOptions = {}): Converter {
       return 0;
     },
     convert(bytes: Uint8Array, options?: ConvertOptions): ConvertResult | Promise<ConvertResult> {
-      if (typeof options?.image === 'function') {
-        return toMarkdownFromPdf(bytes, options.image as ConvertImage).then((markdown) => ({
-          markdown,
-        }));
+      if (options?.convert !== undefined) {
+        return toMarkdownFromPdf(bytes, options.convert).then((markdown) => ({ markdown }));
       }
       return { markdown: toMarkdownFromPdf(bytes) };
     },

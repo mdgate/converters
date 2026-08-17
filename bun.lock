@@ -60,7 +60,6 @@
       "version": "0.1.4",
       "dependencies": {
         "@mdgate/core": "0.1.2",
-        "@mdgate/image": "0.1.0",
         "@mdgate/utils": "0.1.1",
       },
     },

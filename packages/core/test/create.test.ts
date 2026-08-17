@@ -46,24 +46,46 @@ describe('create', () => {
     );
   });
 
-  it('passes a registered capability by kind and leaves it unset otherwise', async () => {
-    const convertImage = async () => 'from-image';
-    let seen: unknown;
-    const converter: Converter = {
-      id: 'x',
-      sniff: () => 1,
-      convert(_bytes, options) {
-        seen = options?.image;
-        return { markdown: 'ok' };
+  it('lets a converter send leftover bytes back through the same pool', async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff]);
+    const seen: string[] = [];
+    const convert = create([
+      {
+        id: 'outer',
+        sniff: (bytes) => (bytes[0] === 1 ? 2 : 0),
+        async convert(_bytes, options) {
+          const inner = await options!.convert!(jpeg, { path: 'x.jpg' });
+          return { markdown: `outer+${inner}` };
+        },
       },
-    };
+      {
+        id: 'inner',
+        sniff: (bytes) => (bytes[0] === 0xff ? 2 : 0),
+        convert() {
+          seen.push('inner');
+          return { markdown: 'leaf' };
+        },
+      },
+    ]);
+    await expect(convert(new Uint8Array([1]))).resolves.toBe('outer+leaf');
+    expect(seen).toEqual(['inner']);
+  });
 
-    const without = create([converter]);
-    await without(new Uint8Array([1]));
-    expect(seen).toBeUndefined();
-
-    const withImage = create([converter, { kind: 'image', convert: convertImage }]);
-    await withImage(new Uint8Array([1]), { path: 'scan.pdf' });
-    expect(seen).toBe(convertImage);
+  it('stops nested conversion after one hop', async () => {
+    const convert = create([
+      {
+        id: 'loop',
+        sniff: () => 2,
+        async convert(bytes, options) {
+          const next = new Uint8Array(bytes);
+          next[0] = (next[0] ?? 0) + 1;
+          return { markdown: await options!.convert!(next) };
+        },
+      },
+    ]);
+    await expect(convert(new Uint8Array([0]))).rejects.toMatchObject({
+      name: 'ConvertError',
+      code: 'unsupported',
+    });
   });
 });

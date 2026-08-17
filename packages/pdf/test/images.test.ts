@@ -91,11 +91,14 @@ function rawRgbPdf(): Uint8Array {
 }
 
 describe('pdf image handoff', () => {
-  it('does not convert images when image is not registered', () => {
+  it('does not convert images when image is not registered', async () => {
     expect(() => toMarkdownFromPdf(jpegPdf({}))).toThrow(/OCR is required/);
     const md = toMarkdownFromPdf(jpegPdf({ withText: true }));
     expect(md).toContain('Hello');
     expect(md).not.toContain('IMG');
+    const convert = create([pdf()]);
+    await expect(convert(jpegPdf({}))).rejects.toMatchObject({ code: 'unsupported' });
+    await expect(convert(jpegPdf({ withText: true }))).resolves.toContain('Hello');
   });
 
   it('sends each distinct image through image and skips duplicates', async () => {
@@ -126,17 +129,22 @@ describe('pdf image handoff', () => {
   });
 
   it('keeps extracted text and inserts converted images', async () => {
-    const md = await toMarkdownFromPdf(jpegPdf({ withText: true }), async () => 'PICTURE');
+    const convert = create([pdf(), image(async () => 'PICTURE')]);
+    const md = await convert(jpegPdf({ withText: true }));
     expect(md).toContain('Hello');
     expect(md).toContain('PICTURE');
   });
 
-  it('encodes unfiltered RGB images as PNG', async () => {
-    const md = await toMarkdownFromPdf(rawRgbPdf(), async ({ bytes, mime }) => {
-      expect(mime).toBe('image/png');
-      expect([...bytes.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-      return 'RED';
-    });
+  it('encodes unfiltered RGB images as PNG and routes them through the pool', async () => {
+    const convert = create([
+      pdf(),
+      image(async ({ bytes, mime }) => {
+        expect(mime).toBe('image/png');
+        expect([...bytes.slice(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        return 'RED';
+      }),
+    ]);
+    const md = await convert(rawRgbPdf());
     expect(md).toContain('RED');
   });
 });

@@ -2,8 +2,7 @@
 //! Markdown directly — there is no document model. This port extracts
 //! positioned text and converts it with the same error contract.
 
-import { ConvertError } from '@mdgate/core';
-import type { ConvertImage } from '@mdgate/image';
+import { type Convert, ConvertError } from '@mdgate/core';
 import { InflateLimitError, inflateRaw, inflateZlib } from '@mdgate/utils';
 import { xObjectToImage } from './images.js';
 import { MAX_ENTRY_BYTES } from './limits.js';
@@ -11,16 +10,12 @@ import { warn } from './log.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
 
-/** Convert PDF bytes to Markdown. Matches `anydoc::formats::pdf::to_markdown`. */
 export function toMarkdownFromPdf(bytes: Uint8Array): string;
-export function toMarkdownFromPdf(bytes: Uint8Array, image: ConvertImage): Promise<string>;
-export function toMarkdownFromPdf(
-  bytes: Uint8Array,
-  image?: ConvertImage,
-): string | Promise<string> {
-  const extracted = extractPdf(bytes, image !== undefined);
-  if (image === undefined) return finishPdf(extracted, []);
-  return convertUniqueImages(extracted.images, image).then((blocks) =>
+export function toMarkdownFromPdf(bytes: Uint8Array, convert: Convert): Promise<string>;
+export function toMarkdownFromPdf(bytes: Uint8Array, convert?: Convert): string | Promise<string> {
+  const extracted = extractPdf(bytes, convert !== undefined);
+  if (convert === undefined) return finishPdf(extracted, []);
+  return convertUniqueImages(extracted.images, convert).then((blocks) =>
     finishPdf(extracted, blocks),
   );
 }
@@ -95,7 +90,7 @@ function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
 
 async function convertUniqueImages(
   images: PlacedImage[],
-  convertImage: ConvertImage,
+  convert: Convert,
 ): Promise<MarkdownBlock[]> {
   const first = new Map<string, PlacedImage>();
   for (const img of images) {
@@ -104,9 +99,16 @@ async function convertUniqueImages(
   const blocks: MarkdownBlock[] = [];
   await Promise.all(
     [...first.values()].map(async (img) => {
-      const markdown = (
-        await convertImage({ bytes: img.bytes, mime: img.mime, page: img.page })
-      ).trim();
+      const ext = img.mime === 'image/jpeg' ? 'jpg' : img.mime === 'image/webp' ? 'webp' : 'png';
+      let markdown: string;
+      try {
+        markdown = (
+          await convert(img.bytes, { path: `page-${img.page}.${ext}`, page: img.page })
+        ).trim();
+      } catch (err) {
+        if (err instanceof ConvertError && err.code === 'unsupported') return;
+        throw err;
+      }
       if (markdown.length === 0) return;
       blocks.push({
         page: img.page,

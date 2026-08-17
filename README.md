@@ -67,5 +67,5 @@ const convert = create([
 | `@mdgate/core` | `create()`, `Converter`, `ConvertError` |
 | `@mdgate/office` | doc/docx/ppt/pptx/xls/xlsx/odf/rtf/epub/csv |
 | `@mdgate/pdf` | PDF |
-| `@mdgate/image` | `image(fn)` plugin for `create()` |
+| `@mdgate/image` | jpeg/png/webp |
 | `@mdgate/ai` | Optional `image(ai({ baseURL, apiKey, model }).convertImage)` |

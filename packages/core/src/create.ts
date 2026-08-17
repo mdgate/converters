@@ -1,32 +1,17 @@
-import type { Converter, ConvertHint, ConvertOptions } from './converter.js';
+import type { Convert, Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
 
-/** A non-format plugin, e.g. `image()`. `create` puts `convert` on options[`kind`]. */
-export type Capability = {
-  readonly kind: string;
-  readonly convert: (...args: never[]) => unknown;
-};
+const MAX_DEPTH = 1;
 
-export type Plugin = Converter | Capability;
-
-/**
- * Compose registered plugins into one `convert` function.
- * Format converters compete by `sniff`; capabilities are passed through to the winner.
- */
-export function create(
-  plugins: readonly Plugin[],
-): (bytes: Uint8Array, hint?: ConvertHint) => Promise<string> {
-  const converters: Converter[] = [];
-  const capabilities: Record<string, unknown> = {};
-  for (const plugin of plugins) {
-    if (isCapability(plugin)) {
-      capabilities[plugin.kind] = plugin.convert;
-      continue;
+export function create(converters: readonly Converter[]): Convert {
+  const run = async (
+    bytes: Uint8Array,
+    hint: ConvertHint | undefined,
+    depth: number,
+  ): Promise<string> => {
+    if (depth > MAX_DEPTH) {
+      throw ConvertError.unsupported('nested conversion limit');
     }
-    converters.push(plugin);
-  }
-
-  return async (bytes, hint) => {
     if (!(bytes instanceof Uint8Array)) {
       throw ConvertError.unsupported('input must be a Uint8Array');
     }
@@ -49,13 +34,13 @@ export function create(
       );
     }
 
-    const convertOptions: ConvertOptions | undefined =
-      Object.keys(capabilities).length === 0 ? hint : { ...hint, ...capabilities };
-    const result = await best.convert(bytes, convertOptions);
+    const options: ConvertOptions = {
+      ...hint,
+      convert: (inner, innerHint) => run(inner, innerHint, depth + 1),
+    };
+    const result = await best.convert(bytes, options);
     return result.markdown;
   };
-}
 
-function isCapability(plugin: Plugin): plugin is Capability {
-  return 'kind' in plugin && !('sniff' in plugin);
+  return (bytes, hint) => run(bytes, hint, 0);
 }
