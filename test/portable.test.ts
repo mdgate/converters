@@ -17,7 +17,30 @@ function walkTs(dir: string, out: string[]): void {
 describe('portable runtime', () => {
   it('library sources do not import node builtins', () => {
     const hits: string[] = [];
-    for (const name of ['core', 'utils', 'office', 'pdf', 'ai', 'image', 'converters']) {
+    for (const name of [
+      'core',
+      'utils',
+      'containers',
+      'document',
+      'office-common',
+      'iwork-common',
+      'csv',
+      'docx',
+      'doc',
+      'rtf',
+      'xlsx',
+      'pptx',
+      'ppt',
+      'odf',
+      'pages',
+      'numbers',
+      'keynote',
+      'epub',
+      'pdf',
+      'ai',
+      'image',
+      'converters',
+    ]) {
       const files: string[] = [];
       walkTs(join(PACKAGES, name, 'src'), files);
       for (const file of files) {

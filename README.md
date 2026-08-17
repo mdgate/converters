@@ -19,7 +19,7 @@ Or exactly the formats you need — one package per format, nothing else comes a
 ```bash
 npm i @mdgate/docx
 npm i @mdgate/pdf
-npm i @mdgate/xlsx
+npm i @mdgate/pages
 ```
 
 ## Usage
@@ -88,6 +88,9 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/xlsx` | xlsx, xlsm, xlsb, xls |
 | `@mdgate/csv` | csv |
 | `@mdgate/odf` | odt, ods, odp |
+| `@mdgate/pages` | pages |
+| `@mdgate/numbers` | numbers |
+| `@mdgate/keynote` | key |
 | `@mdgate/epub` | epub |
 | `@mdgate/pdf` | pdf |
 | `@mdgate/image` | jpeg/png/webp via a vision callback |
@@ -101,6 +104,7 @@ Contract and shared layers:
 | `@mdgate/document` | Shared document model + Markdown renderer |
 | `@mdgate/containers` | Internal: ZIP/OPC, OLE (CFB), XML parsing |
 | `@mdgate/office-common` | Internal: shared office-format semantics |
+| `@mdgate/iwork-common` | Internal: Apple iWork IWA / Snappy / protobuf helpers |
 | `@mdgate/utils` | Internal: text, byte, inflate, encoding helpers |
 
 ## Write your own converter

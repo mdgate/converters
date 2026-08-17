@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/converters",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Official mdgate converter bundle",
   "type": "module",
   "license": "MIT",
@@ -28,7 +28,10 @@
     "@mdgate/docx": "0.1.0",
     "@mdgate/epub": "0.1.0",
     "@mdgate/image": "0.1.1",
+    "@mdgate/keynote": "0.1.0",
+    "@mdgate/numbers": "0.1.0",
     "@mdgate/odf": "0.1.0",
+    "@mdgate/pages": "0.1.0",
     "@mdgate/pdf": "0.1.6",
     "@mdgate/ppt": "0.1.0",
     "@mdgate/pptx": "0.1.0",
@@ -54,6 +57,9 @@
     "rtf",
     "odt",
     "epub",
-    "csv"
+    "csv",
+    "pages",
+    "numbers",
+    "keynote"
   ]
 }
