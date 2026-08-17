@@ -7,27 +7,42 @@
       "devDependencies": {
         "@biomejs/biome": "^2.2.4",
         "@mdgate/ai": "workspace:*",
+        "@mdgate/audio": "workspace:*",
         "@mdgate/containers": "workspace:*",
         "@mdgate/converters": "workspace:*",
         "@mdgate/core": "workspace:*",
         "@mdgate/csv": "workspace:*",
+        "@mdgate/data": "workspace:*",
         "@mdgate/doc": "workspace:*",
         "@mdgate/document": "workspace:*",
         "@mdgate/docx": "workspace:*",
+        "@mdgate/email": "workspace:*",
         "@mdgate/epub": "workspace:*",
+        "@mdgate/fb2": "workspace:*",
+        "@mdgate/html": "workspace:*",
+        "@mdgate/hwp": "workspace:*",
         "@mdgate/image": "workspace:*",
+        "@mdgate/ipynb": "workspace:*",
         "@mdgate/iwork-common": "workspace:*",
         "@mdgate/keynote": "workspace:*",
+        "@mdgate/latex": "workspace:*",
+        "@mdgate/mobi": "workspace:*",
         "@mdgate/numbers": "workspace:*",
         "@mdgate/odf": "workspace:*",
         "@mdgate/office-common": "workspace:*",
+        "@mdgate/onenote": "workspace:*",
         "@mdgate/pages": "workspace:*",
         "@mdgate/pdf": "workspace:*",
         "@mdgate/ppt": "workspace:*",
         "@mdgate/pptx": "workspace:*",
         "@mdgate/rtf": "workspace:*",
+        "@mdgate/subtitle": "workspace:*",
+        "@mdgate/text": "workspace:*",
         "@mdgate/utils": "workspace:*",
+        "@mdgate/visio": "workspace:*",
+        "@mdgate/wps": "workspace:*",
         "@mdgate/xlsx": "workspace:*",
+        "@mdgate/zip": "workspace:*",
         "@types/node": "^20.17.0",
         "typescript": "^5.8.0",
         "vitest": "^3.0.0",
@@ -52,6 +67,13 @@
         "@mdgate/image": "0.1.0",
       },
     },
+    "packages/audio": {
+      "name": "@mdgate/audio",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+      },
+    },
     "packages/containers": {
       "name": "@mdgate/containers",
       "version": "0.1.0",
@@ -62,23 +84,38 @@
     },
     "packages/converters": {
       "name": "@mdgate/converters",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
+        "@mdgate/audio": "0.1.0",
         "@mdgate/core": "0.1.3",
         "@mdgate/csv": "0.1.0",
+        "@mdgate/data": "0.1.0",
         "@mdgate/doc": "0.1.0",
         "@mdgate/docx": "0.1.0",
+        "@mdgate/email": "0.1.0",
         "@mdgate/epub": "0.1.0",
+        "@mdgate/fb2": "0.1.0",
+        "@mdgate/html": "0.1.0",
+        "@mdgate/hwp": "0.1.0",
         "@mdgate/image": "0.1.1",
+        "@mdgate/ipynb": "0.1.0",
         "@mdgate/keynote": "0.1.0",
+        "@mdgate/latex": "0.1.0",
+        "@mdgate/mobi": "0.1.0",
         "@mdgate/numbers": "0.1.0",
         "@mdgate/odf": "0.1.0",
+        "@mdgate/onenote": "0.1.0",
         "@mdgate/pages": "0.1.0",
         "@mdgate/pdf": "0.1.6",
         "@mdgate/ppt": "0.1.0",
         "@mdgate/pptx": "0.1.0",
         "@mdgate/rtf": "0.1.0",
+        "@mdgate/subtitle": "0.1.0",
+        "@mdgate/text": "0.1.0",
+        "@mdgate/visio": "0.1.0",
+        "@mdgate/wps": "0.1.0",
         "@mdgate/xlsx": "0.1.0",
+        "@mdgate/zip": "0.1.0",
       },
     },
     "packages/core": {
@@ -87,6 +124,15 @@
     },
     "packages/csv": {
       "name": "@mdgate/csv",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/data": {
+      "name": "@mdgate/data",
       "version": "0.1.0",
       "dependencies": {
         "@mdgate/core": "0.1.3",
@@ -124,8 +170,41 @@
         "@mdgate/utils": "0.1.2",
       },
     },
+    "packages/email": {
+      "name": "@mdgate/email",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/html": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
     "packages/epub": {
       "name": "@mdgate/epub",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/html": "0.1.0",
+        "@mdgate/office-common": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/fb2": {
+      "name": "@mdgate/fb2",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/html": {
+      "name": "@mdgate/html",
       "version": "0.1.0",
       "dependencies": {
         "@mdgate/containers": "0.1.0",
@@ -135,11 +214,31 @@
         "@mdgate/utils": "0.1.2",
       },
     },
+    "packages/hwp": {
+      "name": "@mdgate/hwp",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
     "packages/image": {
       "name": "@mdgate/image",
       "version": "0.1.1",
       "dependencies": {
         "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+      },
+    },
+    "packages/ipynb": {
+      "name": "@mdgate/ipynb",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
       },
     },
     "packages/iwork-common": {
@@ -159,6 +258,26 @@
         "@mdgate/core": "0.1.3",
         "@mdgate/document": "0.1.0",
         "@mdgate/iwork-common": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/latex": {
+      "name": "@mdgate/latex",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/mobi": {
+      "name": "@mdgate/mobi",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/html": "0.1.0",
         "@mdgate/utils": "0.1.2",
       },
     },
@@ -185,6 +304,16 @@
     },
     "packages/office-common": {
       "name": "@mdgate/office-common",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/onenote": {
+      "name": "@mdgate/onenote",
       "version": "0.1.0",
       "dependencies": {
         "@mdgate/containers": "0.1.0",
@@ -243,12 +372,66 @@
         "@mdgate/utils": "0.1.2",
       },
     },
+    "packages/subtitle": {
+      "name": "@mdgate/subtitle",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/text": {
+      "name": "@mdgate/text",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
     "packages/utils": {
       "name": "@mdgate/utils",
       "version": "0.1.2",
     },
+    "packages/visio": {
+      "name": "@mdgate/visio",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/office-common": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/wps": {
+      "name": "@mdgate/wps",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/doc": "0.1.0",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/docx": "0.1.0",
+        "@mdgate/ppt": "0.1.0",
+        "@mdgate/pptx": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+        "@mdgate/xlsx": "0.1.0",
+      },
+    },
     "packages/xlsx": {
       "name": "@mdgate/xlsx",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/zip": {
+      "name": "@mdgate/zip",
       "version": "0.1.0",
       "dependencies": {
         "@mdgate/containers": "0.1.0",
@@ -409,6 +592,8 @@
 
     "@mdgate/ai": ["@mdgate/ai@workspace:packages/ai"],
 
+    "@mdgate/audio": ["@mdgate/audio@workspace:packages/audio"],
+
     "@mdgate/containers": ["@mdgate/containers@workspace:packages/containers"],
 
     "@mdgate/converters": ["@mdgate/converters@workspace:packages/converters"],
@@ -416,6 +601,8 @@
     "@mdgate/core": ["@mdgate/core@workspace:packages/core"],
 
     "@mdgate/csv": ["@mdgate/csv@workspace:packages/csv"],
+
+    "@mdgate/data": ["@mdgate/data@workspace:packages/data"],
 
     "@mdgate/demo": ["@mdgate/demo@workspace:apps/demo"],
 
@@ -425,19 +612,35 @@
 
     "@mdgate/docx": ["@mdgate/docx@workspace:packages/docx"],
 
+    "@mdgate/email": ["@mdgate/email@workspace:packages/email"],
+
     "@mdgate/epub": ["@mdgate/epub@workspace:packages/epub"],
 
+    "@mdgate/fb2": ["@mdgate/fb2@workspace:packages/fb2"],
+
+    "@mdgate/html": ["@mdgate/html@workspace:packages/html"],
+
+    "@mdgate/hwp": ["@mdgate/hwp@workspace:packages/hwp"],
+
     "@mdgate/image": ["@mdgate/image@workspace:packages/image"],
+
+    "@mdgate/ipynb": ["@mdgate/ipynb@workspace:packages/ipynb"],
 
     "@mdgate/iwork-common": ["@mdgate/iwork-common@workspace:packages/iwork-common"],
 
     "@mdgate/keynote": ["@mdgate/keynote@workspace:packages/keynote"],
+
+    "@mdgate/latex": ["@mdgate/latex@workspace:packages/latex"],
+
+    "@mdgate/mobi": ["@mdgate/mobi@workspace:packages/mobi"],
 
     "@mdgate/numbers": ["@mdgate/numbers@workspace:packages/numbers"],
 
     "@mdgate/odf": ["@mdgate/odf@workspace:packages/odf"],
 
     "@mdgate/office-common": ["@mdgate/office-common@workspace:packages/office-common"],
+
+    "@mdgate/onenote": ["@mdgate/onenote@workspace:packages/onenote"],
 
     "@mdgate/pages": ["@mdgate/pages@workspace:packages/pages"],
 
@@ -449,9 +652,19 @@
 
     "@mdgate/rtf": ["@mdgate/rtf@workspace:packages/rtf"],
 
+    "@mdgate/subtitle": ["@mdgate/subtitle@workspace:packages/subtitle"],
+
+    "@mdgate/text": ["@mdgate/text@workspace:packages/text"],
+
     "@mdgate/utils": ["@mdgate/utils@workspace:packages/utils"],
 
+    "@mdgate/visio": ["@mdgate/visio@workspace:packages/visio"],
+
+    "@mdgate/wps": ["@mdgate/wps@workspace:packages/wps"],
+
     "@mdgate/xlsx": ["@mdgate/xlsx@workspace:packages/xlsx"],
+
+    "@mdgate/zip": ["@mdgate/zip@workspace:packages/zip"],
 
     "@napi-rs/lzma-linux-x64-gnu": ["@napi-rs/lzma-linux-x64-gnu@1.5.1", "", { "os": "linux", "cpu": "x64" }, "sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ=="],
 

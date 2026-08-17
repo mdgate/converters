@@ -5,9 +5,34 @@ const SAMPLE_RTF = String.raw`{\rtf1\ansi\deff0{\fonttbl{\f0 Times New Roman;}}
 
 const SAMPLE_CSV = `format,family,notes
 docx,office,WordprocessingML
-xlsx,office,workbook
+html,web,saved pages
+eml,mail,RFC 822
+ipynb,notebook,Jupyter
 pdf,pdf,text-based pages
-epub,office,EPUB 2 and 3
+`;
+
+const SAMPLE_HTML = `<!doctype html>
+<html lang="en">
+  <body>
+    <h1>mdgate</h1>
+    <p>Turn <strong>any file</strong> into <em>GitHub-Flavored Markdown</em>.</p>
+    <ul>
+      <li>Office, iWork, and OpenDocument</li>
+      <li>HTML, email, and notebooks</li>
+      <li>Ebooks, LaTeX, and ZIP archives</li>
+    </ul>
+  </body>
+</html>
+`;
+
+const SAMPLE_EML = `From: demo@mdgate.dev
+To: you@example.com
+Subject: Any file to Markdown
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+mdgate converts office files, HTML, email, and notebooks
+in the browser. Nothing is uploaded.
 `;
 
 export function sampleRtf(): Uint8Array {
@@ -16,6 +41,14 @@ export function sampleRtf(): Uint8Array {
 
 export function sampleCsv(): Uint8Array {
   return new TextEncoder().encode(SAMPLE_CSV);
+}
+
+export function sampleHtml(): Uint8Array {
+  return new TextEncoder().encode(SAMPLE_HTML);
+}
+
+export function sampleEml(): Uint8Array {
+  return new TextEncoder().encode(SAMPLE_EML);
 }
 
 export async function sampleDocx(): Promise<Uint8Array> {

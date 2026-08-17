@@ -1,9 +1,9 @@
 # @mdgate/odf
 
-Convert OpenDocument text, spreadsheets, and presentations to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
+Convert OpenDocument text, spreadsheets, presentations, and drawings to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
 browsers. No native addons.
 
-Handles: `.odt`, `.ods`, `.odp`
+Handles: `.odt`, `.ods`, `.odp`, `.odg`, templates (`.ott`, `.ots`, `.otp`, `.otg`), and flat XML (`.fodt`, `.fods`, `.fodp`, `.fodg`)
 
 ## Usage
 

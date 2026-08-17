@@ -16,6 +16,16 @@ export {
   MAX_XML_DEPTH,
   MAX_XML_NODES,
 } from './limits.js';
+export {
+  type MimeHeader,
+  type MimePart,
+  mimeAttachments,
+  mimeHeader,
+  mimeTextHtml,
+  mimeTextPlain,
+  parseMime,
+  walkMimeParts,
+} from './mime.js';
 export { decodeFragment, resolve, type Target } from './path.js';
 export {
   type Relationship,

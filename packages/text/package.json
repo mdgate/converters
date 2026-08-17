@@ -1,0 +1,40 @@
+{
+  "name": "@mdgate/text",
+  "version": "0.1.0",
+  "description": "mdgate plain text, markdown, and source converter",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
+  ],
+  "scripts": {
+    "build": "bun ../../scripts/build-package.ts",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "@mdgate/core": "0.1.3",
+    "@mdgate/document": "0.1.0",
+    "@mdgate/utils": "0.1.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mdgate",
+    "markdown",
+    "text"
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/ai",
   "version": "0.1.0",
-  "description": "Optional AI helper for mdgate: ai({ baseURL, apiKey, model }).convertImage",
+  "description": "Optional AI helper for mdgate: ai({ baseURL, apiKey, model }).convertImage / convertAudio",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,

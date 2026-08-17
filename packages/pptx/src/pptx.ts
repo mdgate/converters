@@ -4,7 +4,7 @@ import { documentToMarkdown } from '@mdgate/document';
 import { fileExtension } from '@mdgate/utils';
 import { parse } from './internal/index.js';
 
-const EXTS = new Set(['pptx', 'pptm', 'ppsx', 'ppsm']);
+const EXTS = new Set(['pptx', 'pptm', 'ppsx', 'ppsm', 'potx', 'potm']);
 
 export function pptx(): Converter {
   return {

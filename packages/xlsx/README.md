@@ -3,7 +3,7 @@
 Convert Excel workbooks to Markdown tables. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
 browsers. No native addons.
 
-Handles: `.xlsx`, `.xlsm`, `.xlsb`, `.xls`
+Handles: `.xlsx`, `.xlsm`, `.xlsb`, `.xls`, `.xltx`, `.xltm`, `.xlt`
 
 ## Usage
 

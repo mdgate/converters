@@ -1,4 +1,12 @@
-export type ImageMime = 'image/jpeg' | 'image/png' | 'image/webp';
+export type ImageMime =
+  | 'image/jpeg'
+  | 'image/png'
+  | 'image/webp'
+  | 'image/gif'
+  | 'image/tiff'
+  | 'image/heic'
+  | 'image/bmp'
+  | 'image/svg+xml';
 
 export type ImageInput = {
   bytes: Uint8Array;

@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>mdgate — any document to Markdown</title>
+    <title>mdgate — any file to Markdown</title>
     <meta
       name="description"
-      content="Convert Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, CSV, and PDF to GitHub-Flavored Markdown, entirely in your browser."
+      content="Convert office documents, HTML, email, notebooks, ebooks, and more to GitHub-Flavored Markdown, entirely in your browser."
     />
     <meta property="og:title" content="mdgate" />
     <meta
       property="og:description"
-      content="Open-source TypeScript converters that turn office documents into clean GitHub-Flavored Markdown. This page runs them locally: files never leave your machine."
+      content="Open-source TypeScript converters that turn almost any file into clean GitHub-Flavored Markdown. This page runs them locally: files never leave your machine."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://demo.mdgate.dev/" />
@@ -35,10 +35,10 @@
 
       <main>
         <section class="band hero">
-          <h1>Any document in.<br /><span class="accent">Markdown out.</span></h1>
+          <h1>Any file in.<br /><span class="accent">Markdown out.</span></h1>
           <p class="lede">
-            Open-source TypeScript converters that turn Word, PowerPoint, Excel,
-            OpenDocument, Apple iWork, RTF, EPUB, CSV, and PDF into
+            Open-source TypeScript converters that turn office documents, HTML,
+            email, notebooks, ebooks, and more into
             <strong>GitHub-Flavored Markdown</strong>. This page runs them in
             your browser: files never leave your machine.
           </p>
@@ -52,13 +52,34 @@
             <li>odt</li>
             <li>ods</li>
             <li>odp</li>
+            <li>odg</li>
             <li>pages</li>
             <li>numbers</li>
             <li>key</li>
+            <li>wps</li>
             <li>rtf</li>
-            <li>epub</li>
-            <li>csv</li>
             <li>pdf</li>
+            <li>html</li>
+            <li>eml</li>
+            <li>msg</li>
+            <li>ipynb</li>
+            <li>md</li>
+            <li>txt</li>
+            <li>csv</li>
+            <li>tsv</li>
+            <li>json</li>
+            <li>xml</li>
+            <li>yaml</li>
+            <li>tex</li>
+            <li>epub</li>
+            <li>fb2</li>
+            <li>mobi</li>
+            <li>hwp</li>
+            <li>vsdx</li>
+            <li>one</li>
+            <li>zip</li>
+            <li>srt</li>
+            <li>svg</li>
           </ul>
           <ul class="badges">
             <li>
@@ -85,10 +106,12 @@
             id="file"
             type="file"
             hidden
-            accept=".doc,.docx,.docm,.odt,.ppt,.pptx,.pptm,.pps,.ppsx,.xls,.xlsx,.xlsm,.xlsb,.ods,.odp,.pages,.numbers,.key,.rtf,.epub,.csv,.pdf"
+            accept=".doc,.docx,.docm,.dot,.dotx,.dotm,.odt,.ott,.fodt,.odg,.otg,.fodg,.ppt,.pptx,.pptm,.pps,.ppsx,.ppsm,.pot,.potx,.potm,.odp,.otp,.fodp,.xls,.xlsx,.xlsm,.xlsb,.xlt,.xltx,.xltm,.ods,.ots,.fods,.csv,.tsv,.tab,.pages,.numbers,.key,.wps,.wpt,.et,.ett,.dps,.dpt,.rtf,.epub,.pdf,.html,.htm,.xhtml,.mhtml,.mht,.eml,.emlx,.msg,.mbox,.ipynb,.md,.markdown,.mdx,.txt,.text,.json,.jsonl,.xml,.yaml,.yml,.tex,.latex,.ltx,.fb2,.mobi,.azw,.azw3,.prc,.hwp,.hwpx,.hwt,.hwtx,.vsd,.vsdx,.vss,.vst,.vssx,.vstx,.one,.onetoc2,.onepkg,.zip,.zipx,.jar,.srt,.vtt,.webvtt,.svg"
           />
           <p class="samples">
-            No document at hand? Try a sample:
+            No file at hand? Try a sample:
+            <button type="button" id="sample-html">page.html</button>
+            <button type="button" id="sample-eml">note.eml</button>
             <button type="button" id="sample-rtf">notes.rtf</button>
             <button type="button" id="sample-csv">report.csv</button>
             <button type="button" id="sample-docx">letter.docx</button>
@@ -112,16 +135,16 @@
           <dl class="facts">
             <dt>One model</dt>
             <dd>
-              <strong>Office formats parse into the same document model</strong>
-              and render through the same Markdown serializer, so headings,
-              nested lists, and merged table cells come out the same from a
-              .doc as from yesterday’s .xlsx.
+              <strong>Every format parses into the same document model</strong>
+              and renders through the same Markdown serializer, so headings,
+              nested lists, and tables come out the same from a .doc, an
+              .eml, or yesterday’s .xlsx.
             </dd>
             <dt>Detection</dt>
             <dd>
               The format is read from the bytes, not the extension, so
               mislabeled files still convert. Pass <code>hint.path</code> only
-              for formats without a signature, such as CSV.
+              for signature-less formats such as CSV, TSV, and plain text.
             </dd>
             <dt>Portable</dt>
             <dd>

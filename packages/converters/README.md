@@ -1,7 +1,6 @@
 # @mdgate/converters
 
-Official mdgate converter bundle: every format converter in one install
-(docx, doc, rtf, pptx, ppt, xlsx, csv, odf, epub, pdf).
+Official mdgate converter bundle: every format converter in one install.
 
 ```ts
 import { toMarkdown } from '@mdgate/converters';
@@ -17,5 +16,41 @@ import { all, create } from '@mdgate/converters';
 const convert = create(all());
 ```
 
+`all()` registers every converter that needs no configuration. `image()` and
+`audio()` need callbacks, so they are exported but not included in `all()`.
+
 Only need one format? Install just that package instead — for example
 `@mdgate/docx` — and call its identical `toMarkdown`.
+
+| Package | Handles |
+|---|---|
+| `@mdgate/converters` | Bundle: every format below, `toMarkdown`, `all()` |
+| `@mdgate/docx` | docx, docm |
+| `@mdgate/doc` | doc (binary Word) |
+| `@mdgate/rtf` | rtf |
+| `@mdgate/pptx` | pptx, pptm, ppsx, ppsm |
+| `@mdgate/ppt` | ppt, pps, pot (binary PowerPoint) |
+| `@mdgate/xlsx` | xlsx, xlsm, xlsb, xls |
+| `@mdgate/csv` | csv |
+| `@mdgate/text` | txt, md, and source files |
+| `@mdgate/data` | json, jsonl, xml, yaml |
+| `@mdgate/subtitle` | srt, vtt, webvtt |
+| `@mdgate/html` | html, htm, xhtml, mhtml, mht |
+| `@mdgate/email` | eml, msg, mbox, emlx |
+| `@mdgate/ipynb` | ipynb (Jupyter) |
+| `@mdgate/odf` | odt, ods, odp |
+| `@mdgate/pages` | pages |
+| `@mdgate/numbers` | numbers |
+| `@mdgate/keynote` | key |
+| `@mdgate/epub` | epub |
+| `@mdgate/pdf` | pdf |
+| `@mdgate/fb2` | fb2, fb2.zip |
+| `@mdgate/mobi` | mobi, azw, azw3, prc |
+| `@mdgate/latex` | tex, latex, ltx |
+| `@mdgate/visio` | vsd, vsdx, vss, vst, vssx, vstx |
+| `@mdgate/onenote` | one, onetoc2, onepkg |
+| `@mdgate/hwp` | hwp, hwpx, hwt, hwtx |
+| `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
+| `@mdgate/zip` | zip, zipx, jar |
+| `@mdgate/image` | jpeg/png/webp/gif/tiff/heic/bmp via a vision callback; svg locally (`svg()` is in `all()`) |
+| `@mdgate/audio` | mp3/wav/m4a/aac/ogg/flac/webm via a transcription callback |

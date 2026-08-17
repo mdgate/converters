@@ -3,7 +3,7 @@
 Convert CSV files to Markdown tables. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
 browsers. No native addons.
 
-Handles: `.csv` (comma, semicolon, or tab separated; UTF-8/UTF-16)
+Handles: `.csv`, `.tsv`, `.tab` (comma, semicolon, or tab separated; UTF-8/UTF-16)
 
 ## Usage
 

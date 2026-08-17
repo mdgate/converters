@@ -4,7 +4,7 @@ import { documentToMarkdown } from '@mdgate/document';
 import { fileExtension } from '@mdgate/utils';
 import { parse } from './internal/index.js';
 
-const EXTS = new Set(['xlsx', 'xlsm', 'xlsb', 'xls']);
+const EXTS = new Set(['xlsx', 'xlsm', 'xlsb', 'xls', 'xltx', 'xltm', 'xlt']);
 
 export function xlsx(): Converter {
   return {

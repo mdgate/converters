@@ -6,6 +6,14 @@ import { describe, expect, it } from 'vitest';
 import { Package } from '../src/archive.js';
 import { detectOleDoc, detectZipDoc } from '../src/detect.js';
 import { MAX_XML_DEPTH } from '../src/limits.js';
+import {
+  mimeAttachments,
+  mimeHeader,
+  mimeTextHtml,
+  mimeTextPlain,
+  parseMime,
+  walkMimeParts,
+} from '../src/mime.js';
 import { resolve } from '../src/path.js';
 import { normalizeOoxmlUri, ns, parseXml } from '../src/xml.js';
 
@@ -115,6 +123,43 @@ describe('detect', () => {
     expect(detectZipDoc(readFileSync(join(FIXTURES, 'csv/sheet.csv')))).toBeUndefined();
   });
 
+  it('classifies odg, vsdx, and hwpx from package bytes', () => {
+    const odg = zipStore({
+      mimetype: 'application/vnd.oasis.opendocument.graphics',
+    });
+    expect(detectZipDoc(odg)).toBe('odg');
+    expect(detectOleDoc(odg)).toBeUndefined();
+
+    const odgTemplate = zipStore({
+      mimetype: 'application/vnd.oasis.opendocument.graphics-template',
+    });
+    expect(detectZipDoc(odgTemplate)).toBe('odg');
+
+    const vsdx = zipStore({
+      '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Override PartName="/visio/document.xml" ContentType="application/vnd.ms-visio.drawing.main+xml"/>
+</Types>`,
+      '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="visio/document.xml"/>
+</Relationships>`,
+      'visio/document.xml': '<VisioDocument/>',
+    });
+    expect(detectZipDoc(vsdx)).toBe('vsdx');
+
+    const hwpx = zipStore({
+      mimetype: 'application/hwp+zip',
+      'Contents/content.hpf': '<hpf/>',
+    });
+    expect(detectZipDoc(hwpx)).toBe('hwpx');
+
+    const hwpxByPart = zipStore({
+      'Contents/content.hpf': '<hpf/>',
+    });
+    expect(detectZipDoc(hwpxByPart)).toBe('hwpx');
+  });
+
   it('reads a zip part with limits', () => {
     const bytes = readFileSync(join(FIXTURES, 'docx/text.docx'));
     const pkg = Package.open(bytes);
@@ -123,3 +168,165 @@ describe('detect', () => {
     expect(xml.firstDescendant(ns.W, 'body')).toBeTruthy();
   });
 });
+
+describe('mime', () => {
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  it('parses text/plain and preserves 8bit bytes', () => {
+    const raw = enc.encode('Content-Type: text/plain; charset=utf-8\r\n\r\ncaf\u00e9\n');
+    const part = parseMime(raw);
+    expect(part.contentType).toBe('text/plain');
+    expect(part.parts).toEqual([]);
+    expect(dec.decode(part.bytes)).toBe('café\n');
+    expect(mimeTextPlain(part)).toBe(part);
+    expect(mimeTextHtml(part)).toBeUndefined();
+  });
+
+  it('decodes quoted-printable and base64 bodies', () => {
+    const qp = parseMime(
+      enc.encode(
+        'Content-Type: text/plain\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nhello=20wo=\r\nrld=21',
+      ),
+    );
+    expect(dec.decode(qp.bytes)).toBe('hello world!');
+
+    const b64 = parseMime(
+      enc.encode(
+        'Content-Type: text/plain\r\nContent-Transfer-Encoding: base64\r\n\r\naGVsbG8gd29ybGQ=\r\n',
+      ),
+    );
+    expect(dec.decode(b64.bytes)).toBe('hello world');
+  });
+
+  it('picks html, plain, and attachments from multipart mail', () => {
+    const raw = enc.encode(
+      [
+        'MIME-Version: 1.0',
+        'Content-Type: multipart/mixed; boundary="mix"',
+        '',
+        '--mix',
+        'Content-Type: multipart/alternative; boundary="alt"',
+        '',
+        '--alt',
+        'Content-Type: text/plain',
+        '',
+        'plain body',
+        '--alt',
+        'Content-Type: text/html',
+        '',
+        '<p>html body</p>',
+        '--alt--',
+        '--mix',
+        'Content-Type: application/pdf; name="note.pdf"',
+        'Content-Disposition: attachment; filename="note.pdf"',
+        'Content-Transfer-Encoding: base64',
+        '',
+        'JVBERg==',
+        '--mix--',
+        '',
+      ].join('\r\n'),
+    );
+    const root = parseMime(raw);
+    expect(root.contentType).toBe('multipart/mixed');
+    expect(walkMimeParts(root).length).toBeGreaterThan(3);
+    expect(dec.decode(mimeTextPlain(root)!.bytes)).toBe('plain body');
+    expect(dec.decode(mimeTextHtml(root)!.bytes)).toBe('<p>html body</p>');
+    const atts = mimeAttachments(root);
+    expect(atts).toHaveLength(1);
+    expect(atts[0]!.filename).toBe('note.pdf');
+    expect(atts[0]!.contentType).toBe('application/pdf');
+    expect(mimeHeader(atts[0]!, 'content-disposition')?.startsWith('attachment')).toBe(true);
+  });
+
+  it('parses an mbox of two messages', () => {
+    const raw = enc.encode(
+      [
+        'From a@b Mon Jan 01 00:00:00 2000',
+        'Content-Type: text/plain',
+        '',
+        'first',
+        'From c@d Mon Jan 01 00:00:01 2000',
+        'Content-Type: text/plain',
+        '',
+        'second',
+        '',
+      ].join('\r\n'),
+    );
+    const root = parseMime(raw);
+    expect(root.contentType).toBe('application/mbox');
+    expect(root.parts).toHaveLength(2);
+    expect(dec.decode(root.parts[0]!.bytes).trim()).toBe('first');
+    expect(dec.decode(root.parts[1]!.bytes).trim()).toBe('second');
+  });
+
+  it('hard-fails on nested multipart bombs', () => {
+    let body = 'Content-Type: text/plain\r\n\r\nx';
+    for (let i = 0; i < 40; i += 1) {
+      const b = `b${i}`;
+      body = `Content-Type: multipart/mixed; boundary=${b}\r\n\r\n--${b}\r\n${body}\r\n--${b}--\r\n`;
+    }
+    try {
+      parseMime(enc.encode(body));
+      throw new Error('expected resourceLimit');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConvertError);
+      expect((err as ConvertError).code).toBe('resourceLimit');
+      expect((err as ConvertError).limit).toBe('max_mime_depth');
+    }
+  });
+});
+
+function zipStore(files: Record<string, string>): Uint8Array {
+  const encoder = new TextEncoder();
+  const locals: Uint8Array[] = [];
+  const centrals: Uint8Array[] = [];
+  let offset = 0;
+  for (const [name, text] of Object.entries(files)) {
+    const nameB = encoder.encode(name);
+    const data = encoder.encode(text);
+    const local = new Uint8Array(30 + nameB.length + data.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameB.length, true);
+    local.set(nameB, 30);
+    local.set(data, 30 + nameB.length);
+    locals.push(local);
+
+    const central = new Uint8Array(46 + nameB.length);
+    const cv = new DataView(central.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameB.length, true);
+    cv.setUint32(42, offset, true);
+    central.set(nameB, 46);
+    centrals.push(central);
+    offset += local.length;
+  }
+  const cdSize = centrals.reduce((n, c) => n + c.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, locals.length, true);
+  ev.setUint16(10, locals.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  const out = new Uint8Array(offset + cdSize + eocd.length);
+  let w = 0;
+  for (const chunk of locals) {
+    out.set(chunk, w);
+    w += chunk.length;
+  }
+  for (const chunk of centrals) {
+    out.set(chunk, w);
+    w += chunk.length;
+  }
+  out.set(eocd, w);
+  return out;
+}

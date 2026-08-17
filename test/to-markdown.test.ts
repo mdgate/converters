@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 describe('toMarkdown', () => {
   it('throws unsupported for unrecognized content and extension', async () => {
     try {
-      await toMarkdown(new TextEncoder().encode('hello'), { path: 'notes.txt' });
+      await toMarkdown(new TextEncoder().encode('hello'), { path: 'notes.bin' });
       throw new Error('expected unsupported');
     } catch (err) {
       expect(err).toBeInstanceOf(ConvertError);

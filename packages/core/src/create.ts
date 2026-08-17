@@ -1,7 +1,8 @@
 import type { Convert, Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
 
-const MAX_DEPTH = 1;
+/** Nested convert hops: zip → eml → docx. */
+const MAX_DEPTH = 3;
 
 export function create(converters: readonly Converter[]): Convert {
   const run = async (

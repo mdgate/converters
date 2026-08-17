@@ -87,13 +87,28 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/ppt` | ppt, pps, pot (binary PowerPoint) |
 | `@mdgate/xlsx` | xlsx, xlsm, xlsb, xls |
 | `@mdgate/csv` | csv |
+| `@mdgate/text` | txt, md, and source files |
+| `@mdgate/data` | json, jsonl, xml, yaml |
+| `@mdgate/subtitle` | srt, vtt, webvtt |
+| `@mdgate/html` | html, htm, xhtml, mhtml, mht |
+| `@mdgate/email` | eml, msg, mbox, emlx |
+| `@mdgate/ipynb` | ipynb (Jupyter) |
 | `@mdgate/odf` | odt, ods, odp |
 | `@mdgate/pages` | pages |
 | `@mdgate/numbers` | numbers |
 | `@mdgate/keynote` | key |
 | `@mdgate/epub` | epub |
 | `@mdgate/pdf` | pdf |
-| `@mdgate/image` | jpeg/png/webp via a vision callback |
+| `@mdgate/fb2` | fb2, fb2.zip |
+| `@mdgate/mobi` | mobi, azw, azw3, prc |
+| `@mdgate/latex` | tex, latex, ltx |
+| `@mdgate/visio` | vsd, vsdx, vss, vst, vssx, vstx |
+| `@mdgate/onenote` | one, onetoc2, onepkg |
+| `@mdgate/hwp` | hwp, hwpx, hwt, hwtx |
+| `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
+| `@mdgate/zip` | zip, zipx, jar |
+| `@mdgate/image` | jpeg/png/webp/gif/tiff/heic/bmp via a vision callback; svg locally (`svg()` is in `all()`) |
+| `@mdgate/audio` | mp3/wav/m4a/aac/ogg/flac/webm via a transcription callback |
 | `@mdgate/ai` | Optional `image(ai({ baseURL, apiKey, model }).convertImage)` |
 
 Contract and shared layers:

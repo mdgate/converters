@@ -3,7 +3,7 @@
 Convert Word documents to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
 browsers. No native addons.
 
-Handles: `.docx`, `.docm`
+Handles: `.docx`, `.docm`, `.dotx`, `.dotm`
 
 ## Usage
 

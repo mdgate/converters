@@ -33,7 +33,7 @@ const PLAIN: Style = { bold: false, italic: false, strike: false, code: false };
 
 export class Ctx {
   readonly styles: OdfStyles;
-  readonly pkg: Package;
+  readonly pkg: Package | undefined;
   readonly assets: AssetSink;
   notes: Note[] = [];
   /** Continuation counters per (list style, depth). */
@@ -44,7 +44,7 @@ export class Ctx {
   readonly headingValues: number[] = Array.from({ length: LIST_LEVELS }, () => 0);
   readonly headingStarted: boolean[] = Array.from({ length: LIST_LEVELS }, () => false);
 
-  constructor(styles: OdfStyles, pkg: Package, assets: AssetSink) {
+  constructor(styles: OdfStyles, pkg: Package | undefined, assets: AssetSink) {
     this.styles = styles;
     this.pkg = pkg;
     this.assets = assets;
@@ -380,8 +380,7 @@ export function walkFrame(frame: Element, ctx: Ctx, out: Inline[], boxes: Block[
   const alt = cleanText(rawAlt.trim());
   const image = frame.firstDescendant(ns.DRAW, 'image');
   if (image !== undefined) {
-    const href = image.attr(ns.XLINK, 'href') ?? '';
-    const source = loadImage(ctx, href);
+    const source = loadImage(ctx, image);
     if (source !== undefined || alt.length > 0) {
       out.push({ type: 'image', alt, source: source ?? { type: 'unavailable' } });
     }
@@ -394,11 +393,25 @@ export function walkFrame(frame: Element, ctx: Ctx, out: Inline[], boxes: Block[
 
 /**
  * Failures degrade (log + `undefined`) per the unified policy; resource-limit
- * errors always propagate.
+ * errors always propagate. Flat ODF embeds pixels in `office:binary-data`.
  */
-function loadImage(ctx: Ctx, href: string): ImageSource | undefined {
+function loadImage(ctx: Ctx, image: Element): ImageSource | undefined {
+  const embedded = image.find(ns.OFFICE, 'binary-data');
+  if (embedded !== undefined) {
+    const bytes = decodeBase64(embedded.text());
+    if (bytes !== undefined && bytes.length > 0) {
+      const origin = `office:binary-data/${ctx.assets.assets.length}`;
+      const id = ctx.assets.add(sniffImageMedia(bytes), origin, bytes);
+      return { type: 'asset', id };
+    }
+  }
+  const href = image.attr(ns.XLINK, 'href') ?? '';
   if (href.length === 0) return undefined;
   if (isAbsoluteUri(href)) return { type: 'external', url: href };
+  if (ctx.pkg === undefined) {
+    warn(`image part ${href} is missing`);
+    return undefined;
+  }
   let target: Target;
   try {
     target = resolve('content.xml', href);
@@ -416,6 +429,43 @@ function loadImage(ctx: Ctx, href: string): ImageSource | undefined {
   }
   warn(`image part ${target.path} is missing`);
   return undefined;
+}
+
+function decodeBase64(raw: string): Uint8Array | undefined {
+  let s = '';
+  for (let i = 0; i < raw.length; i += 1) {
+    const c = raw.charCodeAt(i);
+    if (c === 0x09 || c === 0x0a || c === 0x0d || c === 0x20) continue;
+    s += raw[i]!;
+  }
+  if (s.length === 0) return undefined;
+  try {
+    const bin = atob(s);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return undefined;
+  }
+}
+
+function sniffImageMedia(bytes: Uint8Array): string {
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
+    return 'image/png';
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (bytes.length >= 3 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
+    return 'image/gif';
+  }
+  return 'application/octet-stream';
 }
 
 /**

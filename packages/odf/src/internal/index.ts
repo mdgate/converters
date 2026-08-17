@@ -1,6 +1,6 @@
-/** OpenDocument Text (.odt), Spreadsheet (.ods), and Presentation (.odp). */
+/** OpenDocument packages (odt/ods/odp/odg) and flat XML (fodt/fods/fodp/fodg). */
 
-import { type Element, ns, Package } from '@mdgate/containers';
+import { type Element, ns, Package, parseXml } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import {
   type Block,
@@ -15,6 +15,11 @@ import { parseSpreadsheet, parseTable } from './table.js';
 import { Ctx, parseContainer, walkFrame } from './text.js';
 
 export function parse(bytes: Uint8Array): Document {
+  if (isZipMagic(bytes)) return parsePackage(bytes);
+  return parseFlat(bytes);
+}
+
+function parsePackage(bytes: Uint8Array): Document {
   const pkg = Package.open(bytes);
 
   if (isEncrypted(pkg)) throw ConvertError.encrypted();
@@ -31,29 +36,64 @@ export function parse(bytes: Uint8Array): Document {
     throw ConvertError.malformedPart('content.xml', 'no office:body');
   }
 
+  return finish(body, styles, pkg, 'content.xml');
+}
+
+function parseFlat(bytes: Uint8Array): Document {
+  const tree = parseXml(bytes);
+  const root = tree.find(ns.OFFICE, 'document') ?? tree.find(ns.OFFICE, 'document-content');
+  if (root === undefined) {
+    throw ConvertError.malformed('no office:document');
+  }
+  const body = root.find(ns.OFFICE, 'body');
+  if (body === undefined) {
+    throw ConvertError.malformed('no office:body');
+  }
+
+  const styles = new OdfStyles();
+  styles.collect(tree);
+  return finish(body, styles, undefined, undefined);
+}
+
+function finish(
+  body: Element,
+  styles: OdfStyles,
+  pkg: Package | undefined,
+  part: string | undefined,
+): Document {
   const assets = new AssetSink();
   const ctx = new Ctx(styles, pkg, assets);
+  return { blocks: parseBody(body, ctx, part), notes: ctx.notes, assets: assets.assets };
+}
 
+function parseBody(body: Element, ctx: Ctx, part: string | undefined): Block[] {
   const text = body.find(ns.OFFICE, 'text');
   const sheet = text === undefined ? body.find(ns.OFFICE, 'spreadsheet') : undefined;
   const pres =
     text === undefined && sheet === undefined ? body.find(ns.OFFICE, 'presentation') : undefined;
+  const drawing =
+    text === undefined && sheet === undefined && pres === undefined
+      ? body.find(ns.OFFICE, 'drawing')
+      : undefined;
 
-  let blocks: Block[];
-  if (text !== undefined) {
-    blocks = parseContainer(text, ctx);
-  } else if (sheet !== undefined) {
-    blocks = parseSpreadsheet(sheet, ctx);
-  } else if (pres !== undefined) {
-    blocks = parsePresentation(pres, ctx);
-  } else {
-    throw ConvertError.malformedPart(
-      'content.xml',
-      'no recognized office body (text, spreadsheet, or presentation)',
-    );
-  }
+  if (text !== undefined) return parseContainer(text, ctx);
+  if (sheet !== undefined) return parseSpreadsheet(sheet, ctx);
+  if (pres !== undefined) return parsePages(pres, ctx);
+  if (drawing !== undefined) return parsePages(drawing, ctx);
 
-  return { blocks, notes: ctx.notes, assets: assets.assets };
+  const detail = 'no recognized office body (text, spreadsheet, presentation, or drawing)';
+  if (part !== undefined) throw ConvertError.malformedPart(part, detail);
+  throw ConvertError.malformed(detail);
+}
+
+function isZipMagic(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    bytes[2] === 0x03 &&
+    bytes[3] === 0x04
+  );
 }
 
 /**
@@ -67,9 +107,11 @@ function isEncrypted(pkg: Package): boolean {
   return tree.firstDescendant(ns.MANIFEST, 'encryption-data') !== undefined;
 }
 
-function parsePresentation(pres: Element, ctx: Ctx): Block[] {
+function parsePages(root: Element, ctx: Ctx): Block[] {
+  const pages = root.findAll(ns.DRAW, 'page');
+  const targets = pages.length > 0 ? pages : [root];
   const blocks: Block[] = [];
-  for (const page of pres.findAll(ns.DRAW, 'page')) {
+  for (const page of targets) {
     const title: Block[] = [];
     const body: Block[] = [];
     const notes: Block[] = [];

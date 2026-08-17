@@ -4,7 +4,7 @@ import { documentToMarkdown } from '@mdgate/document';
 import { fileExtension } from '@mdgate/utils';
 import { parse } from './internal/index.js';
 
-const EXTS = new Set(['docx', 'docm']);
+const EXTS = new Set(['docx', 'docm', 'dotx', 'dotm']);
 
 export function docx(): Converter {
   return {

@@ -3,7 +3,7 @@
 Convert PowerPoint presentations to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
 browsers. No native addons.
 
-Handles: `.pptx`, `.pptm`, `.ppsx`, `.ppsm`
+Handles: `.pptx`, `.pptm`, `.ppsx`, `.ppsm`, `.potx`, `.potm`
 
 ## Usage
 

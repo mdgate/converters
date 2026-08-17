@@ -71,19 +71,21 @@ describe('create', () => {
     expect(seen).toEqual(['inner']);
   });
 
-  it('stops nested conversion after one hop', async () => {
+  it('allows three nested hops and refuses a fourth', async () => {
     const convert = create([
       {
-        id: 'loop',
-        sniff: () => 2,
+        id: 'nest',
+        sniff: (bytes) => ((bytes[0] ?? 0) <= 4 ? 2 : 0),
         async convert(bytes, options) {
-          const next = new Uint8Array(bytes);
-          next[0] = (next[0] ?? 0) + 1;
-          return { markdown: await options!.convert!(next) };
+          const n = bytes[0] ?? 0;
+          if (n === 0) return { markdown: 'leaf' };
+          const inner = await options!.convert!(new Uint8Array([n - 1]));
+          return { markdown: `${n}+${inner}` };
         },
       },
     ]);
-    await expect(convert(new Uint8Array([0]))).rejects.toMatchObject({
+    await expect(convert(new Uint8Array([3]))).resolves.toBe('3+2+1+leaf');
+    await expect(convert(new Uint8Array([4]))).rejects.toMatchObject({
       name: 'ConvertError',
       code: 'unsupported',
     });

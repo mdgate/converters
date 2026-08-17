@@ -3,7 +3,7 @@
 Convert legacy binary Word documents to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
 browsers. No native addons.
 
-Handles: `.doc` (binary Word)
+Handles: `.doc`, `.dot` (binary Word)
 
 ## Usage
 

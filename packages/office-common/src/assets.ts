@@ -79,6 +79,9 @@ export function mediaTypeFor(part: string): string {
       return 'image/wmf';
     case 'webp':
       return 'image/webp';
+    case 'heic':
+    case 'heif':
+      return 'image/heic';
     default:
       return 'application/octet-stream';
   }

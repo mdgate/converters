@@ -114,5 +114,48 @@ describe('ai', () => {
       name: 'ConvertError',
       code: 'unsupported',
     });
+    await expect(vision.convertImage({ bytes: png, mime: 'image/svg+xml' })).rejects.toMatchObject({
+      name: 'ConvertError',
+      code: 'unsupported',
+    });
+  });
+
+  it('posts a transcription-style chat request for audio', async () => {
+    let calls = 0;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls += 1;
+      expect(String(input)).toBe('https://api.example.com/v1/chat/completions');
+      expect(init?.method).toBe('POST');
+      const body = JSON.parse(String(init?.body)) as {
+        model: string;
+        messages: Array<{
+          role: string;
+          content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+        }>;
+      };
+      expect(body.model).toBe('vision-x');
+      expect(String(body.messages[0]?.content).toLowerCase()).toContain('transcribe');
+      const parts = body.messages[1]?.content as Array<{
+        type: string;
+        text?: string;
+        image_url?: { url: string };
+      }>;
+      expect(parts[0]?.text?.toLowerCase()).toContain('transcribe');
+      expect(parts[1]?.image_url?.url.startsWith('data:audio/mpeg;base64,')).toBe(true);
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'Hello there' } }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    const helper = ai({
+      baseURL: 'https://api.example.com/v1',
+      apiKey: 'secret',
+      model: 'vision-x',
+    });
+    await expect(
+      helper.convertAudio({ bytes: new Uint8Array([1, 2, 3]), mime: 'audio/mpeg' }),
+    ).resolves.toBe('Hello there\n');
+    expect(calls).toBe(1);
   });
 });

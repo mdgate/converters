@@ -7,9 +7,24 @@ export type AiConfig = {
   model: string;
 };
 
-const MIMES = new Set<ImageMime>(['image/jpeg', 'image/png', 'image/webp']);
+export type AudioInput = {
+  bytes: Uint8Array;
+  mime: string;
+};
 
-const SYSTEM_PROMPT = [
+export type ConvertAudio = (audio: AudioInput) => Promise<string>;
+
+const MIMES = new Set<ImageMime>([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/tiff',
+  'image/heic',
+  'image/bmp',
+]);
+
+const IMAGE_SYSTEM_PROMPT = [
   'You convert a document image into GitHub-Flavored Markdown.',
   'Transcribe all readable text exactly, in reading order.',
   'Preserve structure: headings, paragraphs, lists, tables, block quotes, and code.',
@@ -20,8 +35,18 @@ const SYSTEM_PROMPT = [
   'Do not add a preamble or postscript.',
 ].join(' ');
 
+const AUDIO_SYSTEM_PROMPT = [
+  'You transcribe audio into GitHub-Flavored Markdown.',
+  'Transcribe all spoken words exactly, in listening order.',
+  'Preserve structure when the speaker dictates headings, lists, or paragraphs.',
+  'Do not mention that the source is audio.',
+  'Do not wrap the entire answer in a markdown code fence.',
+  'Do not add a preamble or postscript.',
+].join(' ');
+
 export type Ai = {
   convertImage: ConvertImage;
+  convertAudio: ConvertAudio;
 };
 
 /**
@@ -35,6 +60,7 @@ export function ai(config: AiConfig): Ai {
 
   return {
     convertImage: (image) => runConvertImage({ baseURL, apiKey, model }, image),
+    convertAudio: (audio) => runConvertAudio({ baseURL, apiKey, model }, audio),
   };
 }
 
@@ -51,6 +77,38 @@ async function runConvertImage(config: Required<AiConfig>, image: ImageInput): P
       ? 'Extract the content of this document image as markdown.'
       : `Extract page ${image.page} of this document as markdown.`;
 
+  return completeChat(
+    config,
+    IMAGE_SYSTEM_PROMPT,
+    userText,
+    `data:${image.mime};base64,${bytesToBase64(image.bytes)}`,
+  );
+}
+
+async function runConvertAudio(config: Required<AiConfig>, audio: AudioInput): Promise<string> {
+  if (!(audio.bytes instanceof Uint8Array) || audio.bytes.length === 0) {
+    throw ConvertError.unsupported('audio bytes are required');
+  }
+  const mime = typeof audio.mime === 'string' ? audio.mime.trim() : '';
+  if (mime.length === 0) {
+    throw ConvertError.unsupported('audio mime is required');
+  }
+
+  // Completions only accept text+image parts; send audio as a data URL.
+  return completeChat(
+    config,
+    AUDIO_SYSTEM_PROMPT,
+    'Transcribe this audio as markdown.',
+    `data:${mime};base64,${bytesToBase64(audio.bytes)}`,
+  );
+}
+
+async function completeChat(
+  config: Required<AiConfig>,
+  system: string,
+  userText: string,
+  dataUrl: string,
+): Promise<string> {
   let response: Response;
   try {
     response = await fetch(`${config.baseURL}/chat/completions`, {
@@ -62,15 +120,12 @@ async function runConvertImage(config: Required<AiConfig>, image: ImageInput): P
       body: JSON.stringify({
         model: config.model,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: system },
           {
             role: 'user',
             content: [
               { type: 'text', text: userText },
-              {
-                type: 'image_url',
-                image_url: { url: `data:${image.mime};base64,${bytesToBase64(image.bytes)}` },
-              },
+              { type: 'image_url', image_url: { url: dataUrl } },
             ],
           },
         ],
@@ -144,7 +199,7 @@ function unwrapMarkdown(text: string): string {
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
+  for (let i = 0; i < bytes.length; i += 1) {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
   return btoa(binary);

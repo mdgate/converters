@@ -1,5 +1,5 @@
 import { formatLabel, stemOf } from './format';
-import { sampleCsv, sampleDocx, sampleRtf } from './samples';
+import { sampleCsv, sampleDocx, sampleEml, sampleHtml, sampleRtf } from './samples';
 import type { ConvertRequest, WorkerMessage } from './worker';
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -19,16 +19,19 @@ const resultArrow = $('result-arrow');
 const resultStats = $('result-stats');
 const copyBtn = $<HTMLButtonElement>('copy');
 const downloadBtn = $<HTMLButtonElement>('download');
+const sampleHtmlBtn = $<HTMLButtonElement>('sample-html');
+const sampleEmlBtn = $<HTMLButtonElement>('sample-eml');
 const sampleRtfBtn = $<HTMLButtonElement>('sample-rtf');
 const sampleCsvBtn = $<HTMLButtonElement>('sample-csv');
 const sampleDocxBtn = $<HTMLButtonElement>('sample-docx');
+const sampleButtons = [sampleHtmlBtn, sampleEmlBtn, sampleRtfBtn, sampleCsvBtn, sampleDocxBtn];
 
 let markdown = '';
 let baseName = 'document';
 let seq = 0;
 let ready = false;
 
-const idleTitle = 'Drop a document here';
+const idleTitle = 'Drop a file here';
 const idleHint = 'or <u>browse</u> for one. Conversion happens locally, nothing is uploaded.';
 
 const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
@@ -47,9 +50,7 @@ worker.addEventListener('error', (event) => {
 
 function setBusy(busy: boolean, label?: string): void {
   drop.disabled = busy || !ready;
-  sampleRtfBtn.disabled = busy || !ready;
-  sampleCsvBtn.disabled = busy || !ready;
-  sampleDocxBtn.disabled = busy || !ready;
+  for (const button of sampleButtons) button.disabled = busy || !ready;
   if (busy) {
     dropTitle.textContent = label ?? 'Converting…';
     dropHint.textContent = 'this stays on your machine';
@@ -128,6 +129,8 @@ drop.addEventListener('drop', (event) => {
   if (dropped) void convertFile(dropped);
 });
 
+sampleHtmlBtn.addEventListener('click', () => convert('page.html', sampleHtml()));
+sampleEmlBtn.addEventListener('click', () => convert('note.eml', sampleEml()));
 sampleRtfBtn.addEventListener('click', () => convert('notes.rtf', sampleRtf()));
 sampleCsvBtn.addEventListener('click', () => convert('report.csv', sampleCsv()));
 sampleDocxBtn.addEventListener('click', () => {

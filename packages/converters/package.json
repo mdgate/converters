@@ -22,21 +22,36 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
+    "@mdgate/audio": "0.1.0",
     "@mdgate/core": "0.1.3",
     "@mdgate/csv": "0.1.0",
+    "@mdgate/data": "0.1.0",
     "@mdgate/doc": "0.1.0",
     "@mdgate/docx": "0.1.0",
+    "@mdgate/email": "0.1.0",
     "@mdgate/epub": "0.1.0",
+    "@mdgate/fb2": "0.1.0",
+    "@mdgate/html": "0.1.0",
+    "@mdgate/hwp": "0.1.0",
     "@mdgate/image": "0.1.1",
+    "@mdgate/ipynb": "0.1.0",
     "@mdgate/keynote": "0.1.0",
+    "@mdgate/latex": "0.1.0",
+    "@mdgate/mobi": "0.1.0",
     "@mdgate/numbers": "0.1.0",
     "@mdgate/odf": "0.1.0",
+    "@mdgate/onenote": "0.1.0",
     "@mdgate/pages": "0.1.0",
     "@mdgate/pdf": "0.1.6",
     "@mdgate/ppt": "0.1.0",
     "@mdgate/pptx": "0.1.0",
     "@mdgate/rtf": "0.1.0",
-    "@mdgate/xlsx": "0.1.0"
+    "@mdgate/subtitle": "0.1.0",
+    "@mdgate/text": "0.1.0",
+    "@mdgate/visio": "0.1.0",
+    "@mdgate/wps": "0.1.0",
+    "@mdgate/xlsx": "0.1.0",
+    "@mdgate/zip": "0.1.0"
   },
   "publishConfig": {
     "access": "public"
@@ -60,6 +75,21 @@
     "csv",
     "pages",
     "numbers",
-    "keynote"
+    "keynote",
+    "html",
+    "email",
+    "ipynb",
+    "svg",
+    "fb2",
+    "mobi",
+    "latex",
+    "visio",
+    "onenote",
+    "hwp",
+    "wps",
+    "zip",
+    "text",
+    "json",
+    "srt"
   ]
 }

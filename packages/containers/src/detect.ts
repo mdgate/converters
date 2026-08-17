@@ -17,13 +17,16 @@ export type ZipDocKind =
   | 'odt'
   | 'ods'
   | 'odp'
+  | 'odg'
   | 'epub'
   | 'pages'
   | 'numbers'
-  | 'keynote';
+  | 'keynote'
+  | 'vsdx'
+  | 'hwpx';
 
 /** What an OLE compound file holds. */
-export type OleDocKind = 'doc' | 'ppt' | 'xls';
+export type OleDocKind = 'doc' | 'ppt' | 'xls' | 'vsd' | 'hwp' | 'one';
 
 /**
  * Classify a ZIP-based document container by its content. Returns undefined
@@ -65,6 +68,9 @@ export function detectOleDoc(bytes: Uint8Array): OleDocKind | undefined {
       if (eqIgnoreAsciiCase(name, 'WordDocument')) return 'doc';
       if (eqIgnoreAsciiCase(name, 'PowerPoint Document')) return 'ppt';
       if (eqIgnoreAsciiCase(name, 'Workbook') || eqIgnoreAsciiCase(name, 'Book')) return 'xls';
+      if (eqIgnoreAsciiCase(name, 'VisioDocument')) return 'vsd';
+      if (isHwpStream(name)) return 'hwp';
+      if (isOneNoteStream(name)) return 'one';
     }
   } catch {
     return undefined;
@@ -124,6 +130,8 @@ function detectZip(bytes: Uint8Array): ZipDocKind | undefined {
     ['ppt/presentation.xml', 'pptx'],
     ['xl/workbook.xml', 'xlsx'],
     ['xl/workbook.bin', 'xlsx'],
+    ['visio/document.xml', 'vsdx'],
+    ['Contents/content.hpf', 'hwpx'],
   ] as const) {
     if (pkg.hasPart(part)) return kind;
   }
@@ -216,6 +224,11 @@ function mimetypeKind(mime: string): ZipDocKind | undefined {
       return 'ods';
     case 'application/vnd.oasis.opendocument.presentation':
       return 'odp';
+    case 'application/vnd.oasis.opendocument.graphics':
+      return 'odg';
+    case 'application/hwp+zip':
+    case 'application/vnd.hancom.hwpx':
+      return 'hwpx';
     default:
       return undefined;
   }
@@ -247,6 +260,7 @@ function opcKind(contentType: string): ZipDocKind | undefined {
   if (ct.includes('wordprocessingml')) return 'docx';
   if (ct.includes('presentationml')) return 'pptx';
   if (ct.includes('spreadsheetml') || ct.includes('ms-excel')) return 'xlsx';
+  if (ct.includes('visio') || ct.includes('vnd.ms-visio')) return 'vsdx';
   return undefined;
 }
 
@@ -267,7 +281,21 @@ function opcKindByPath(part: string): ZipDocKind | undefined {
   if (part.startsWith('word/')) return 'docx';
   if (part.startsWith('ppt/')) return 'pptx';
   if (part.startsWith('xl/')) return 'xlsx';
+  if (part.startsWith('visio/')) return 'vsdx';
   return undefined;
+}
+
+function isHwpStream(name: string): boolean {
+  const bare = name.charCodeAt(0) === 5 ? name.slice(1) : name;
+  return (
+    eqIgnoreAsciiCase(name, 'FileHeader') ||
+    eqIgnoreAsciiCase(bare, 'HwpSummaryInformation') ||
+    eqIgnoreAsciiCase(name, 'HWPDocumentInfo')
+  );
+}
+
+function isOneNoteStream(name: string): boolean {
+  return name.length >= 7 && name.slice(0, 7).toLowerCase() === 'onenote';
 }
 
 function eqIgnoreAsciiCase(a: string, b: string): boolean {

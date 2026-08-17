@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/odf",
   "version": "0.1.0",
-  "description": "mdgate OpenDocument converter (odt/ods/odp)",
+  "description": "mdgate OpenDocument converter (odt/ods/odp/odg and flat/templates)",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
@@ -40,6 +40,8 @@
     "odt",
     "ods",
     "odp",
+    "odg",
+    "fodt",
     "opendocument"
   ]
 }
