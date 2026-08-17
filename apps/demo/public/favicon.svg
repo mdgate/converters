@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="mdgate">
+  <title>mdgate</title>
+  <rect width="32" height="32" rx="8" fill="#0f766e"/>
+  <path d="M10 13h12M10 19h12M13 10v12M19 10v12" stroke="#f4f1ea" stroke-width="2.2" stroke-linecap="round"/>
+</svg>
+

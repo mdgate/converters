@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mdgate — any document to Markdown</title>
+    <meta
+      name="description"
+      content="Convert Word, PowerPoint, Excel, OpenDocument, RTF, EPUB, CSV, and PDF to GitHub-Flavored Markdown, entirely in your browser."
+    />
+    <meta property="og:title" content="mdgate" />
+    <meta
+      property="og:description"
+      content="Open-source TypeScript converters that turn office documents into clean GitHub-Flavored Markdown. This page runs them locally: files never leave your machine."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://demo.mdgate.dev/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="top">
+        <a class="lockup" href="./">
+          <img src="/favicon.svg" width="22" height="22" alt="" />
+          <span class="wordmark">mdgate</span>
+        </a>
+        <nav>
+          <a href="#about">About</a>
+          <a href="#install">Install</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="band hero">
+          <h1>Any document in.<br /><span class="accent">Markdown out.</span></h1>
+          <p class="lede">
+            Open-source TypeScript converters that turn Word, PowerPoint, Excel,
+            OpenDocument, RTF, EPUB, CSV, and PDF into
+            <strong>GitHub-Flavored Markdown</strong>. This page runs them in
+            your browser: files never leave your machine.
+          </p>
+          <ul class="formats" aria-label="Supported formats">
+            <li>doc</li>
+            <li>docx</li>
+            <li>ppt</li>
+            <li>pptx</li>
+            <li>xls</li>
+            <li>xlsx</li>
+            <li>odt</li>
+            <li>ods</li>
+            <li>odp</li>
+            <li>rtf</li>
+            <li>epub</li>
+            <li>csv</li>
+            <li>pdf</li>
+          </ul>
+          <ul class="badges">
+            <li>
+              <span class="key">npm</span>
+              <span class="value">@mdgate/converters</span>
+            </li>
+            <li>
+              <span class="key">api</span>
+              <span class="value">mdgate</span>
+            </li>
+            <li>
+              <span class="key">runtime</span>
+              <span class="value">Node · Edge · browser</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="band">
+          <button class="drop" id="drop" type="button" aria-describedby="drop-hint" disabled>
+            <span class="big" id="drop-title">Loading the converter…</span>
+            <span class="small" id="drop-hint">TypeScript converters, compiled once for this page</span>
+          </button>
+          <input
+            id="file"
+            type="file"
+            hidden
+            accept=".doc,.docx,.docm,.odt,.ppt,.pptx,.pptm,.pps,.ppsx,.xls,.xlsx,.xlsm,.xlsb,.ods,.odp,.rtf,.epub,.csv,.pdf"
+          />
+          <p class="samples">
+            No document at hand? Try a sample:
+            <button type="button" id="sample-rtf">notes.rtf</button>
+            <button type="button" id="sample-csv">report.csv</button>
+            <button type="button" id="sample-docx">letter.docx</button>
+          </p>
+        </section>
+
+        <section class="band result" id="result" hidden aria-live="polite">
+          <div class="result-bar">
+            <span class="name" id="result-name"></span>
+            <span class="arrow" id="result-arrow" hidden>→</span>
+            <span id="result-stats"></span>
+            <span class="spacer"></span>
+            <button type="button" id="copy" hidden>Copy</button>
+            <button type="button" id="download" hidden>Download .md</button>
+          </div>
+          <pre class="output" id="output"></pre>
+        </section>
+
+        <section class="band" id="about">
+          <h2>About</h2>
+          <dl class="facts">
+            <dt>One model</dt>
+            <dd>
+              <strong>Office formats parse into the same document model</strong>
+              and render through the same Markdown serializer, so headings,
+              nested lists, and merged table cells come out the same from a
+              .doc as from yesterday’s .xlsx.
+            </dd>
+            <dt>Detection</dt>
+            <dd>
+              The format is read from the bytes, not the extension, so
+              mislabeled files still convert. Pass <code>hint.path</code> only
+              for formats without a signature, such as CSV.
+            </dd>
+            <dt>Portable</dt>
+            <dd>
+              The converters are TypeScript with no Node builtins. The same
+              <code>toMarkdown(bytes)</code> call works in Node, Edge, and this
+              page.
+            </dd>
+            <dt>PDF</dt>
+            <dd>
+              Text-based PDFs convert locally. Scanned or image-only pages need
+              OCR and are reported as unsupported.
+            </dd>
+            <dt>This page</dt>
+            <dd>
+              The converter above is
+              <code>@mdgate/converters</code>, running in a Web Worker. Drop a
+              file into your own app the same way.
+            </dd>
+          </dl>
+        </section>
+
+        <section class="band" id="install">
+          <h2>Install</h2>
+          <dl class="installs">
+            <dt>Local</dt>
+            <dd>
+              <span class="dollar">$</span>
+              <code class="cmd">npm install @mdgate/converters</code>
+            </dd>
+            <dt>Hosted API</dt>
+            <dd>
+              <span class="dollar">$</span>
+              <code class="cmd">npm install mdgate</code>
+            </dd>
+          </dl>
+          <pre class="snippet"><code>import { toMarkdown } from '@mdgate/converters';
+
+const bytes = new Uint8Array(await file.arrayBuffer());
+const markdown = await toMarkdown(bytes, { path: file.name });</code></pre>
+        </section>
+      </main>
+
+      <footer>
+        <span>Local conversion · nothing is uploaded</span>
+        <a href="#install">Get the library</a>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

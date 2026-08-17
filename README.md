@@ -4,6 +4,8 @@ Local document-to-markdown converters. Pass file bytes; get GitHub-Flavored Mark
 
 Works in Node, Edge, and browsers. No native addons.
 
+The in-browser demo is at [demo.mdgate.dev](https://demo.mdgate.dev). From this repo: `bun run dev:demo`.
+
 ## Install
 
 Everything:

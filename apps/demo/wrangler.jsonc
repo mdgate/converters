@@ -1,0 +1,18 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "mdgate-demo",
+  "account_id": "b1a1e79c50cbd7f8b2cfb5b74c5d76db",
+  "compatibility_date": "2026-08-13",
+  "assets": {
+    "directory": "./dist"
+  },
+  "routes": [
+    {
+      "pattern": "demo.mdgate.dev",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
