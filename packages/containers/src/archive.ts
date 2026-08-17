@@ -110,6 +110,11 @@ class ZipArchive {
     return this.byName.get(name);
   }
 
+  /** Part names in central-directory order of first occurrence. */
+  partNames(): string[] {
+    return [...this.byName.keys()];
+  }
+
   readCompressed(entry: ZipEntry): Uint8Array {
     const dv = view(this.bytes);
     const off = entry.headerOffset;
@@ -198,6 +203,11 @@ export class Package {
   /** True when a part exists, without reading (or budget-charging) it. */
   hasPart(name: string): boolean {
     return this.zip.indexForName(trimLeadingSlash(name)) !== undefined;
+  }
+
+  /** Part names present in the archive (no leading slash). */
+  partNames(): string[] {
+    return this.zip.partNames();
   }
 
   requiredPart(name: string): Uint8Array {

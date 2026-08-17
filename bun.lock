@@ -16,8 +16,12 @@
         "@mdgate/docx": "workspace:*",
         "@mdgate/epub": "workspace:*",
         "@mdgate/image": "workspace:*",
+        "@mdgate/iwork-common": "workspace:*",
+        "@mdgate/keynote": "workspace:*",
+        "@mdgate/numbers": "workspace:*",
         "@mdgate/odf": "workspace:*",
         "@mdgate/office-common": "workspace:*",
+        "@mdgate/pages": "workspace:*",
         "@mdgate/pdf": "workspace:*",
         "@mdgate/ppt": "workspace:*",
         "@mdgate/pptx": "workspace:*",
@@ -66,7 +70,10 @@
         "@mdgate/docx": "0.1.0",
         "@mdgate/epub": "0.1.0",
         "@mdgate/image": "0.1.1",
+        "@mdgate/keynote": "0.1.0",
+        "@mdgate/numbers": "0.1.0",
         "@mdgate/odf": "0.1.0",
+        "@mdgate/pages": "0.1.0",
         "@mdgate/pdf": "0.1.6",
         "@mdgate/ppt": "0.1.0",
         "@mdgate/pptx": "0.1.0",
@@ -135,6 +142,36 @@
         "@mdgate/core": "0.1.3",
       },
     },
+    "packages/iwork-common": {
+      "name": "@mdgate/iwork-common",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/containers": "0.1.0",
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/keynote": {
+      "name": "@mdgate/keynote",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/iwork-common": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/numbers": {
+      "name": "@mdgate/numbers",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/iwork-common": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
     "packages/odf": {
       "name": "@mdgate/odf",
       "version": "0.1.0",
@@ -153,6 +190,16 @@
         "@mdgate/containers": "0.1.0",
         "@mdgate/core": "0.1.3",
         "@mdgate/document": "0.1.0",
+        "@mdgate/utils": "0.1.2",
+      },
+    },
+    "packages/pages": {
+      "name": "@mdgate/pages",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mdgate/core": "0.1.3",
+        "@mdgate/document": "0.1.0",
+        "@mdgate/iwork-common": "0.1.0",
         "@mdgate/utils": "0.1.2",
       },
     },
@@ -382,9 +429,17 @@
 
     "@mdgate/image": ["@mdgate/image@workspace:packages/image"],
 
+    "@mdgate/iwork-common": ["@mdgate/iwork-common@workspace:packages/iwork-common"],
+
+    "@mdgate/keynote": ["@mdgate/keynote@workspace:packages/keynote"],
+
+    "@mdgate/numbers": ["@mdgate/numbers@workspace:packages/numbers"],
+
     "@mdgate/odf": ["@mdgate/odf@workspace:packages/odf"],
 
     "@mdgate/office-common": ["@mdgate/office-common@workspace:packages/office-common"],
+
+    "@mdgate/pages": ["@mdgate/pages@workspace:packages/pages"],
 
     "@mdgate/pdf": ["@mdgate/pdf@workspace:packages/pdf"],
 

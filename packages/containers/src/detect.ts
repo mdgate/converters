@@ -10,7 +10,17 @@ const MANIFEST_NS = 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0';
 const SPREADSHEET_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
 /** What a ZIP-based document container holds. */
-export type ZipDocKind = 'docx' | 'pptx' | 'xlsx' | 'odt' | 'ods' | 'odp' | 'epub';
+export type ZipDocKind =
+  | 'docx'
+  | 'pptx'
+  | 'xlsx'
+  | 'odt'
+  | 'ods'
+  | 'odp'
+  | 'epub'
+  | 'pages'
+  | 'numbers'
+  | 'keynote';
 
 /** What an OLE compound file holds. */
 export type OleDocKind = 'doc' | 'ppt' | 'xls';
@@ -133,6 +143,49 @@ function detectZip(bytes: Uint8Array): ZipDocKind | undefined {
   }
 
   if (pkg.hasPart('META-INF/container.xml')) return 'epub';
+
+  const iwork = detectIWorkStructure(pkg);
+  if (iwork !== undefined) return iwork;
+
+  return undefined;
+}
+
+/**
+ * Coarse iWork detection from package layout only. Authoritative kind
+ * classification (Document.iwa message type / fields) lives in
+ * `@mdgate/iwork-common`; converters prefer that for sniff score 2.
+ */
+function detectIWorkStructure(pkg: Package): ZipDocKind | undefined {
+  const names = pkg.partNames();
+  if (names.length === 0) return undefined;
+
+  let hasIwa = false;
+  let hasIndexZip = false;
+  let hasDocumentIwa = false;
+  let keynoteHint = false;
+  let numbersHint = false;
+
+  for (const name of names) {
+    const lower = name.toLowerCase();
+    if (lower.includes('encrypted') || lower.endsWith('.iwae')) return undefined;
+    if (lower.endsWith('.iwa')) {
+      hasIwa = true;
+      if (lower.endsWith('/document.iwa') || lower === 'document.iwa') hasDocumentIwa = true;
+      if (lower.includes('slide') || lower.includes('masterslide')) keynoteHint = true;
+      if (lower.includes('calculationengine') || lower.includes('tables/')) numbersHint = true;
+    }
+    if (lower === 'index.zip') hasIndexZip = true;
+  }
+
+  if (!hasIwa && !hasIndexZip) return undefined;
+  // Nested Index.zip alone is enough to claim iWork; without opening it we
+  // cannot tell which app — leave kind to converters / extension sniff.
+  if (!hasIwa && hasIndexZip) return undefined;
+  if (!hasDocumentIwa && !hasIndexZip && !keynoteHint && !numbersHint) return undefined;
+
+  if (keynoteHint && !numbersHint) return 'keynote';
+  if (numbersHint && !keynoteHint) return 'numbers';
+  if (hasDocumentIwa) return 'pages';
   return undefined;
 }
 

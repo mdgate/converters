@@ -20,6 +20,9 @@ const DETECT_FOLDERS: Record<string, string | undefined> = {
   odp: 'odp',
   ods: 'ods',
   odt: 'odt',
+  pages: 'pages',
+  numbers: 'numbers',
+  keynote: 'keynote',
   pdf: 'pdf',
   ppt: 'ppt',
   pptx: 'pptx',
@@ -39,9 +42,9 @@ const corpus = all.filter((path) => !fixtureRel(path).startsWith('abuse/'));
 const abuse = all.filter((path) => fixtureRel(path).startsWith('abuse/'));
 
 describe('anydoc fixture corpus', () => {
-  it('has 66 fixtures and 58 non-abuse snapshots', () => {
-    expect(all).toHaveLength(66);
-    expect(corpus).toHaveLength(58);
+  it('has 69 fixtures and 61 non-abuse snapshots', () => {
+    expect(all).toHaveLength(69);
+    expect(corpus).toHaveLength(61);
     expect(abuse).toHaveLength(8);
   });
 
