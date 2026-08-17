@@ -10,6 +10,6 @@ import { ai } from '@mdgate/ai';
 
 const convert = create([
   pdf(),
-  image(ai({ baseURL, apiKey, model })),
+  image(ai({ baseURL, apiKey, model }).convertImage),
 ]);
 ```

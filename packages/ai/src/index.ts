@@ -1,2 +1,2 @@
 export type { ConvertImage, ImageInput, ImageMime } from '@mdgate/core';
-export { type AiConfig, ai } from './ai.js';
+export { type Ai, type AiConfig, ai } from './ai.js';

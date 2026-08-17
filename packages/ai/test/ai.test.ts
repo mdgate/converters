@@ -70,7 +70,7 @@ describe('ai', () => {
       apiKey: 'secret',
       model: 'vision-x',
     });
-    await expect(vision({ bytes: png, mime: 'image/png', page: 3 })).resolves.toBe(
+    await expect(vision.convertImage({ bytes: png, mime: 'image/png', page: 3 })).resolves.toBe(
       '# Title\n\nHi\n',
     );
     expect(calls).toBe(1);
@@ -88,12 +88,12 @@ describe('ai', () => {
       apiKey: 'secret',
       model: 'vision-x',
     });
-    await expect(vision({ bytes: png, mime: 'image/png' })).resolves.toBe('Hello\n');
+    await expect(vision.convertImage({ bytes: png, mime: 'image/png' })).resolves.toBe('Hello\n');
 
     globalThis.fetch = (async () =>
       new Response('nope', { status: 401, statusText: 'Unauthorized' })) as typeof fetch;
     try {
-      await vision({ bytes: png, mime: 'image/jpeg' });
+      await vision.convertImage({ bytes: png, mime: 'image/jpeg' });
       throw new Error('expected ConvertError');
     } catch (err) {
       expect(err).toBeInstanceOf(ConvertError);
@@ -108,7 +108,9 @@ describe('ai', () => {
       apiKey: 'secret',
       model: 'vision-x',
     });
-    await expect(vision({ bytes: new Uint8Array(), mime: 'image/png' })).rejects.toMatchObject({
+    await expect(
+      vision.convertImage({ bytes: new Uint8Array(), mime: 'image/png' }),
+    ).rejects.toMatchObject({
       name: 'ConvertError',
       code: 'unsupported',
     });

@@ -19,19 +19,25 @@ const SYSTEM_PROMPT = [
   'Do not add a preamble or postscript.',
 ].join(' ');
 
+export type Ai = {
+  convertImage: ConvertImage;
+};
+
 /**
- * One implementation of `ConvertImage` via an OpenAI-compatible chat/completions endpoint.
+ * OpenAI-compatible vision (and later other media) helpers.
  * `baseURL`, `apiKey`, and `model` are required — there is no default provider.
  */
-export function ai(config: AiConfig): ConvertImage {
+export function ai(config: AiConfig): Ai {
   const baseURL = requireField('baseURL', config.baseURL).replace(/\/+$/, '');
   const apiKey = requireField('apiKey', config.apiKey);
   const model = requireField('model', config.model);
 
-  return (image) => convertImage({ baseURL, apiKey, model }, image);
+  return {
+    convertImage: (image) => runConvertImage({ baseURL, apiKey, model }, image),
+  };
 }
 
-async function convertImage(config: Required<AiConfig>, image: ImageInput): Promise<string> {
+async function runConvertImage(config: Required<AiConfig>, image: ImageInput): Promise<string> {
   if (!(image.bytes instanceof Uint8Array) || image.bytes.length === 0) {
     throw ConvertError.unsupported('image bytes are required');
   }

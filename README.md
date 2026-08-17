@@ -54,7 +54,7 @@ const convert = create([
       baseURL: 'https://api.example.com/v1',
       apiKey: process.env.MY_KEY!,
       model: 'my-vision-model',
-    }),
+    }).convertImage,
   ),
 ]);
 ```
@@ -68,4 +68,4 @@ const convert = create([
 | `@mdgate/office` | doc/docx/ppt/pptx/xls/xlsx/odf/rtf/epub/csv |
 | `@mdgate/pdf` | PDF |
 | `@mdgate/image` | `image(fn)` plugin for `create()` |
-| `@mdgate/ai` | Optional `image(ai({ baseURL, apiKey, model }))` |
+| `@mdgate/ai` | Optional `image(ai({ baseURL, apiKey, model }).convertImage)` |

@@ -15,7 +15,7 @@ const convert = create([
       baseURL: 'https://api.example.com/v1',
       apiKey: process.env.MY_KEY!,
       model: 'my-vision-model',
-    }),
+    }).convertImage,
   ),
 ]);
 ```
