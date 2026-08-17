@@ -2,15 +2,56 @@
 //! Markdown directly — there is no document model. This port extracts
 //! positioned text and converts it with the same error contract.
 
-import { ConvertError } from '@mdgate/core';
+import { ConvertError, type ConvertImage } from '@mdgate/core';
 import { InflateLimitError, inflateRaw, inflateZlib } from '@mdgate/utils';
+import { xObjectToImage } from './images.js';
 import { MAX_ENTRY_BYTES } from './limits.js';
 import { warn } from './log.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
 
 /** Convert PDF bytes to Markdown. Matches `anydoc::formats::pdf::to_markdown`. */
-export function toMarkdownFromPdf(bytes: Uint8Array): string {
+export function toMarkdownFromPdf(bytes: Uint8Array): string;
+export function toMarkdownFromPdf(bytes: Uint8Array, image: ConvertImage): Promise<string>;
+export function toMarkdownFromPdf(
+  bytes: Uint8Array,
+  image?: ConvertImage,
+): string | Promise<string> {
+  const extracted = extractPdf(bytes, image !== undefined);
+  if (image === undefined) return finishPdf(extracted, []);
+  return convertUniqueImages(extracted.images, image).then((blocks) =>
+    finishPdf(extracted, blocks),
+  );
+}
+
+interface ExtractedPdf {
+  items: TextItem[];
+  strokeLines: StrokeLine[];
+  pageRects: PdfRect[];
+  stats: DecodeStats;
+  pageCount: number;
+  pagesWithTextOps: number;
+  pagesWithImages: number;
+  images: PlacedImage[];
+}
+
+interface PlacedImage {
+  key: string;
+  page: number;
+  x: number;
+  y: number;
+  bytes: Uint8Array;
+  mime: 'image/jpeg' | 'image/png' | 'image/webp';
+}
+
+interface MarkdownBlock {
+  page: number;
+  x: number;
+  y: number;
+  markdown: string;
+}
+
+function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
   validatePdfBytes(bytes);
   const doc = parsePdf(bytes);
   if (doc.encrypted) throw ConvertError.encrypted();
@@ -22,38 +63,89 @@ export function toMarkdownFromPdf(bytes: Uint8Array): string {
   const items: TextItem[] = [];
   const strokeLines: StrokeLine[] = [];
   const pageRects: PdfRect[] = [];
+  const images: PlacedImage[] = [];
+  const imageCache = new Map<string, PlacedImage | null>();
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   let pagesWithTextOps = 0;
   let pagesWithImages = 0;
   for (let i = 0; i < pages.length; i += 1) {
-    const extracted = extractPage(doc, pages[i]!, i + 1);
+    const extracted = extractPage(doc, pages[i]!, i + 1, wantImages, imageCache);
     if (extracted.hadTextOps) pagesWithTextOps += 1;
     if (extracted.hadImage) pagesWithImages += 1;
     items.push(...extracted.items);
     strokeLines.push(...extracted.lines);
     pageRects.push(...extracted.rects);
+    images.push(...extracted.images);
     stats.mapped += extracted.stats.mapped;
     stats.unmapped += extracted.stats.unmapped;
   }
 
-  const pdfType = classifyPdf(pages.length, pagesWithTextOps, pagesWithImages);
-  if (pagesWithTextOps < pages.length) {
+  return {
+    items,
+    strokeLines,
+    pageRects,
+    stats,
+    pageCount: pages.length,
+    pagesWithTextOps,
+    pagesWithImages,
+    images,
+  };
+}
+
+async function convertUniqueImages(
+  images: PlacedImage[],
+  convertImage: ConvertImage,
+): Promise<MarkdownBlock[]> {
+  const first = new Map<string, PlacedImage>();
+  for (const img of images) {
+    if (!first.has(img.key)) first.set(img.key, img);
+  }
+  const blocks: MarkdownBlock[] = [];
+  await Promise.all(
+    [...first.values()].map(async (img) => {
+      const markdown = (
+        await convertImage({ bytes: img.bytes, mime: img.mime, page: img.page })
+      ).trim();
+      if (markdown.length === 0) return;
+      blocks.push({
+        page: img.page,
+        x: img.x,
+        y: img.y,
+        markdown: markdown.endsWith('\n') ? markdown : `${markdown}\n`,
+      });
+    }),
+  );
+  return blocks;
+}
+
+function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): string {
+  if (extracted.pagesWithTextOps < extracted.pageCount && imageBlocks.length === 0) {
     warn(
-      `${pages.length - pagesWithTextOps} of ${pages.length} pages need OCR and were not extracted`,
+      `${extracted.pageCount - extracted.pagesWithTextOps} of ${extracted.pageCount} pages need OCR and were not extracted`,
     );
   }
 
-  const markdown = itemsToMarkdown(mergeScriptItems(items), strokeLines, pageRects);
+  const markdown = itemsToMarkdown(
+    mergeScriptItems(extracted.items),
+    extracted.strokeLines,
+    extracted.pageRects,
+    imageBlocks,
+  );
   if (markdown.trim().length === 0) {
+    const pdfType = classifyPdf(
+      extracted.pageCount,
+      extracted.pagesWithTextOps,
+      extracted.pagesWithImages,
+    );
     throw ConvertError.unsupported(
-      `PDF has no extractable text (${pdfType}, ${pages.length} pages): OCR is required`,
+      `PDF has no extractable text (${pdfType}, ${extracted.pageCount} pages): OCR is required`,
     );
   }
 
-  const total = stats.mapped + stats.unmapped;
-  if (isMostlyUndecodable(stats)) {
+  const total = extracted.stats.mapped + extracted.stats.unmapped;
+  if (isMostlyUndecodable(extracted.stats)) {
     throw ConvertError.unsupported(
-      `PDF text is not decodable (${stats.unmapped} of ${total} character codes have no Unicode mapping)`,
+      `PDF text is not decodable (${extracted.stats.unmapped} of ${total} character codes have no Unicode mapping)`,
     );
   }
 
@@ -1216,6 +1308,7 @@ interface PageExtract {
   items: TextItem[];
   lines: StrokeLine[];
   rects: PdfRect[];
+  images: PlacedImage[];
   hadTextOps: boolean;
   hadImage: boolean;
   stats: DecodeStats;
@@ -1350,7 +1443,13 @@ function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
   return out;
 }
 
-function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtract {
+function extractPage(
+  doc: PdfDocument,
+  page: PdfDict,
+  pageNo: number,
+  wantImages: boolean,
+  imageCache: Map<string, PlacedImage | null>,
+): PageExtract {
   const fonts = loadPageFonts(doc, page);
   const contents = dictGet(doc, page, '/Contents');
   const streams: Uint8Array[] = [];
@@ -1606,8 +1705,182 @@ function extractPage(doc: PdfDocument, page: PdfDict, pageNo: number): PageExtra
     args.length = 0;
   }
 
+  const images: PlacedImage[] = [];
+  if (wantImages) {
+    collectImages(
+      doc,
+      tokens,
+      dictGet(doc, page, '/Resources'),
+      [1, 0, 0, 1, 0, 0],
+      pageNo,
+      imageCache,
+      images,
+      0,
+    );
+  }
+
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
-  return { items, lines, rects, hadTextOps, hadImage, stats };
+  return { items, lines, rects, images, hadTextOps, hadImage, stats };
+}
+
+function collectImages(
+  doc: PdfDocument,
+  tokens: Token[],
+  resources: PdfValue | undefined,
+  startCtm: number[],
+  pageNo: number,
+  cache: Map<string, PlacedImage | null>,
+  out: PlacedImage[],
+  depth: number,
+): void {
+  if (depth > 8) return;
+  const xobjects = loadXObjects(doc, isDict(resources) ? resources : undefined);
+  const gs: number[][] = [];
+  let ctm = startCtm.slice();
+  let artifact = 0;
+  const args: PdfValue[] = [];
+
+  for (const tok of tokens) {
+    if (tok.k === 'v') {
+      args.push(tok.v);
+      continue;
+    }
+    const op = tok.v;
+    if (op === 'q') {
+      gs.push(ctm.slice());
+    } else if (op === 'Q') {
+      const prev = gs.pop();
+      if (prev) ctm = prev;
+    } else if (op === 'cm' && args.length >= 6) {
+      ctm = mulMat(
+        args.slice(-6).map((a) => (typeof a === 'number' ? a : 0)),
+        ctm,
+      );
+    } else if (op === 'BMC') {
+      if (nameOf(args[args.length - 1]) === '/Artifact') artifact += 1;
+    } else if (op === 'BDC') {
+      const tag = args.length >= 2 ? args[args.length - 2] : args[args.length - 1];
+      if (nameOf(tag) === '/Artifact') artifact += 1;
+    } else if (op === 'EMC') {
+      if (artifact > 0) artifact -= 1;
+    } else if (op === 'Do' && artifact === 0) {
+      const name =
+        typeof args[args.length - 1] === 'string' ? (args[args.length - 1] as string) : '';
+      const xobj = xobjects.get(name);
+      if (xobj) {
+        placeXObject(doc, xobj, resources, ctm, pageNo, cache, out, depth);
+      }
+    }
+    args.length = 0;
+  }
+}
+
+type LoadedXObject = { key: string; dict: PdfDict };
+
+function loadXObjects(
+  doc: PdfDocument,
+  resources: PdfDict | undefined,
+): Map<string, LoadedXObject> {
+  const out = new Map<string, LoadedXObject>();
+  if (!resources) return out;
+  const rawRes = resources.map.get('/XObject');
+  const xobj = deref(doc, rawRes);
+  if (!isDict(xobj)) return out;
+  for (const [key, val] of xobj.map) {
+    if (!key.startsWith('/')) continue;
+    const dict = deref(doc, val);
+    if (!isDict(dict)) continue;
+    const id = isRef(val) ? refKey(val.num, val.gen) : `inline:${key}`;
+    out.set(key, { key: id, dict });
+  }
+  return out;
+}
+
+function placeXObject(
+  doc: PdfDocument,
+  xobj: LoadedXObject,
+  parentResources: PdfValue | undefined,
+  ctm: number[],
+  pageNo: number,
+  cache: Map<string, PlacedImage | null>,
+  out: PlacedImage[],
+  depth: number,
+): void {
+  const subtype = nameOf(dictGet(doc, xobj.dict, '/Subtype'));
+  if (subtype === '/Form') {
+    const formRes = dictGet(doc, xobj.dict, '/Resources') ?? parentResources;
+    const matrix = dictGet(doc, xobj.dict, '/Matrix');
+    let nextCtm = ctm;
+    if (Array.isArray(matrix) && matrix.length >= 6) {
+      nextCtm = mulMat(
+        matrix.map((a) => (typeof a === 'number' ? a : 0)),
+        ctm,
+      );
+    }
+    const data = decodeStream(doc, xobj.dict);
+    collectImages(doc, tokenizeContent(data), formRes, nextCtm, pageNo, cache, out, depth + 1);
+    return;
+  }
+  if (subtype !== '/Image' && subtype !== undefined) return;
+
+  if (cache.has(xobj.key)) {
+    const cached = cache.get(xobj.key);
+    if (cached) out.push({ ...cached, page: pageNo, x: imageOrigin(ctm).x, y: imageOrigin(ctm).y });
+    return;
+  }
+
+  const extracted = decodeXObjectImage(doc, xobj.dict);
+  if (!extracted) {
+    cache.set(xobj.key, null);
+    return;
+  }
+  const origin = imageOrigin(ctm);
+  const placed: PlacedImage = {
+    key: xobj.key,
+    page: pageNo,
+    x: origin.x,
+    y: origin.y,
+    bytes: extracted.bytes,
+    mime: extracted.mime,
+  };
+  cache.set(xobj.key, placed);
+  out.push(placed);
+}
+
+function imageOrigin(ctm: number[]): { x: number; y: number } {
+  const a = applyMat(ctm, 0, 0);
+  const b = applyMat(ctm, 1, 1);
+  return { x: Math.min(a[0], b[0]), y: Math.max(a[1], b[1]) };
+}
+
+function decodeXObjectImage(
+  doc: PdfDocument,
+  dict: PdfDict,
+): { bytes: Uint8Array; mime: 'image/jpeg' | 'image/png' | 'image/webp' } | undefined {
+  const filterVal = deref(doc, dict.map.get('/Filter'));
+  const filters = (
+    Array.isArray(filterVal) ? filterVal : filterVal !== undefined ? [filterVal] : []
+  )
+    .map((f) => nameOf(deref(doc, f)))
+    .filter((n): n is string => n !== undefined);
+  const csVal = dictGet(doc, dict, '/ColorSpace');
+  let colorSpace = nameOf(csVal);
+  let indexedPalette: Uint8Array | undefined;
+  if (Array.isArray(csVal) && nameOf(csVal[0]) === '/Indexed') {
+    colorSpace = '/Indexed';
+    const pal = deref(doc, csVal[2]);
+    if (pal instanceof Uint8Array) indexedPalette = pal;
+    else if (isDict(pal) && pal.stream) indexedPalette = decodeStream(doc, pal);
+  }
+  return xObjectToImage({
+    width: asNumber(dictGet(doc, dict, '/Width')) ?? 0,
+    height: asNumber(dictGet(doc, dict, '/Height')) ?? 0,
+    colorSpace,
+    bitsPerComponent: asNumber(dictGet(doc, dict, '/BitsPerComponent')) ?? 8,
+    filters,
+    data: decodeStream(doc, dict),
+    indexedPalette,
+  });
 }
 
 function pathAsRect(path: [number, number][], page: number): PdfRect | undefined {
@@ -1901,6 +2174,7 @@ function itemsToMarkdown(
   items: TextItem[],
   strokeLines: StrokeLine[],
   pageRects: PdfRect[],
+  imageBlocks: MarkdownBlock[] = [],
 ): string {
   const tables = detectTables(items, strokeLines, pageRects);
   const claimed = new Set<number>();
@@ -1909,13 +2183,13 @@ function itemsToMarkdown(
   }
   const remaining = items.filter((_, i) => !claimed.has(i));
   const lines = groupIntoLines(remaining);
-  if (lines.length === 0 && tables.length === 0) return '';
+  if (lines.length === 0 && tables.length === 0 && imageBlocks.length === 0) return '';
   if (lines.length === 0) {
-    return `${tables
-      .slice()
-      .sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x)
-      .map((t) => t.markdown.trimEnd())
-      .join('\n\n')}\n`;
+    const blocks = [
+      ...tables.map((t) => ({ page: t.page, x: t.x, y: t.y, markdown: t.markdown })),
+      ...imageBlocks,
+    ].sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
+    return `${blocks.map((b) => b.markdown.trimEnd()).join('\n\n')}\n`;
   }
 
   const sizeCounts = new Map<number, number>();
@@ -2005,16 +2279,19 @@ function itemsToMarkdown(
   let prevPage = 0;
   let lastListX: number | undefined;
 
-  const pendingTables = tables.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
-  const flushTablesBefore = (page: number, y: number): void => {
-    while (pendingTables.length > 0) {
-      const next = pendingTables[0]!;
+  const pendingBlocks = [
+    ...tables.map((t) => ({ page: t.page, x: t.x, y: t.y, markdown: t.markdown })),
+    ...imageBlocks,
+  ].sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
+  const flushBlocksBefore = (page: number, y: number): void => {
+    while (pendingBlocks.length > 0) {
+      const next = pendingBlocks[0]!;
       if (next.page < page || (next.page === page && next.y >= y - 1)) {
         if (inPara) {
           out += '\n\n';
           inPara = false;
         }
-        out += `${pendingTables.shift()!.markdown.trimEnd()}\n\n`;
+        out += `${pendingBlocks.shift()!.markdown.trimEnd()}\n\n`;
         inList = false;
       } else {
         break;
@@ -2026,7 +2303,7 @@ function itemsToMarkdown(
     const line = lines[i]!;
     const page = line[0]!.page;
     const y = line[0]!.y;
-    flushTablesBefore(page, y);
+    flushBlocksBefore(page, y);
     if (page !== prevPage) {
       prevY = Number.POSITIVE_INFINITY;
       prevPage = page;
@@ -2083,7 +2360,7 @@ function itemsToMarkdown(
     inPara = true;
   }
 
-  flushTablesBefore(Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY);
+  flushBlocksBefore(Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY);
 
   out = out.replace(/\n{3,}/g, '\n\n').trim();
   return out.length === 0 ? '' : `${out}\n`;
