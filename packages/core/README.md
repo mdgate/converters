@@ -10,12 +10,14 @@ const convert = create([pdf()]);
 const markdown = await convert(bytes);
 ```
 
-Pass an `Ai` (from `@mdgate/ai`) when a converter should be able to read images:
+Pass `image` when a converter should hand off images it cannot convert:
 
 ```ts
 import { ai } from '@mdgate/ai';
 
 const convert = create([pdf()], {
-  ai: ai({ baseURL, apiKey, model }),
+  image: ai({ baseURL, apiKey, model }),
 });
 ```
+
+`image` is just `(input) => markdown`. Apple OCR, Tesseract, or any other function with that shape works the same way.

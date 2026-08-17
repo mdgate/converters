@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/ai",
   "version": "0.1.0",
-  "description": "Optional vision helper for mdgate converters: ai().readImage",
+  "description": "Optional image-to-markdown helper for mdgate: image: ai({ baseURL, apiKey, model })",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,

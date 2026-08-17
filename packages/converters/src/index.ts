@@ -1,13 +1,13 @@
 export type {
-  Ai,
-  AiImage,
-  AiImageMime,
   ConvertErrorCode,
   Converter,
   ConvertHint,
+  ConvertImage,
   ConvertOptions,
   ConvertResult,
   CreateOptions,
+  ImageInput,
+  ImageMime,
 } from '@mdgate/core';
 export { ConvertError, create } from '@mdgate/core';
 export { office } from '@mdgate/office';

@@ -1,13 +1,13 @@
-import type { Ai } from './ai.js';
+import type { ConvertImage } from './media.js';
 
 export type ConvertHint = {
   /** Filename or extension used only for sniffing, never read from disk. */
   path?: string;
 };
 
-/** Per-conversion input. `create` merges its `{ ai }` into this object. */
+/** Per-conversion input. `create` merges its `{ image }` into this object. */
 export type ConvertOptions = ConvertHint & {
-  ai?: Ai;
+  image?: ConvertImage;
 };
 
 export type ConvertResult = {

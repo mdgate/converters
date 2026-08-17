@@ -1,4 +1,4 @@
-import { type Ai, type AiImage, type AiImageMime, ConvertError } from '@mdgate/core';
+import { ConvertError, type ConvertImage, type ImageInput, type ImageMime } from '@mdgate/core';
 
 export type AiConfig = {
   baseURL: string;
@@ -6,7 +6,7 @@ export type AiConfig = {
   model: string;
 };
 
-const MIMES = new Set<AiImageMime>(['image/jpeg', 'image/png', 'image/webp']);
+const MIMES = new Set<ImageMime>(['image/jpeg', 'image/png', 'image/webp']);
 
 const SYSTEM_PROMPT = [
   'You convert a document image into GitHub-Flavored Markdown.',
@@ -20,27 +20,23 @@ const SYSTEM_PROMPT = [
 ].join(' ');
 
 /**
- * Build an `Ai` that talks to an OpenAI-compatible chat/completions endpoint.
+ * One implementation of `ConvertImage` via an OpenAI-compatible chat/completions endpoint.
  * `baseURL`, `apiKey`, and `model` are required — there is no default provider.
  */
-export function ai(config: AiConfig): Ai {
+export function ai(config: AiConfig): ConvertImage {
   const baseURL = requireField('baseURL', config.baseURL).replace(/\/+$/, '');
   const apiKey = requireField('apiKey', config.apiKey);
   const model = requireField('model', config.model);
 
-  return {
-    async readImage(image: AiImage): Promise<string> {
-      return readImage({ baseURL, apiKey, model }, image);
-    },
-  };
+  return (image) => convertImage({ baseURL, apiKey, model }, image);
 }
 
-async function readImage(config: Required<AiConfig>, image: AiImage): Promise<string> {
+async function convertImage(config: Required<AiConfig>, image: ImageInput): Promise<string> {
   if (!(image.bytes instanceof Uint8Array) || image.bytes.length === 0) {
-    throw ConvertError.ai('image bytes are required');
+    throw ConvertError.unsupported('image bytes are required');
   }
   if (!MIMES.has(image.mime)) {
-    throw ConvertError.ai(`unsupported image mime: ${String(image.mime)}`);
+    throw ConvertError.unsupported(`image mime: ${String(image.mime)}`);
   }
 
   const userText =
@@ -75,42 +71,42 @@ async function readImage(config: Required<AiConfig>, image: AiImage): Promise<st
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw ConvertError.ai(msg);
+    throw ConvertError.io(new Error(msg));
   }
 
   const raw = await response.text();
   if (!response.ok) {
-    throw ConvertError.ai(`HTTP ${response.status}: ${clip(raw)}`);
+    throw ConvertError.io(new Error(`HTTP ${response.status}: ${clip(raw)}`));
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw) as unknown;
   } catch {
-    throw ConvertError.ai('model response is not JSON');
+    throw ConvertError.io(new Error('model response is not JSON'));
   }
 
   const text = unwrapMarkdown(contentFromResponse(parsed));
   if (text.length === 0) {
-    throw ConvertError.ai('empty model response');
+    throw ConvertError.io(new Error('empty model response'));
   }
   return text.endsWith('\n') ? text : `${text}\n`;
 }
 
 function requireField(name: string, value: string): string {
   if (typeof value !== 'string' || value.trim() === '') {
-    throw ConvertError.ai(`${name} is required`);
+    throw ConvertError.unsupported(`${name} is required`);
   }
   return value.trim();
 }
 
 function contentFromResponse(parsed: unknown): string {
   if (typeof parsed !== 'object' || parsed === null || !('choices' in parsed)) {
-    throw ConvertError.ai('model response is missing choices');
+    throw ConvertError.io(new Error('model response is missing choices'));
   }
   const choices = (parsed as { choices: unknown }).choices;
   if (!Array.isArray(choices) || choices.length === 0) {
-    throw ConvertError.ai('model response is missing choices');
+    throw ConvertError.io(new Error('model response is missing choices'));
   }
   const message = (choices[0] as { message?: { content?: unknown }; text?: unknown } | undefined)
     ?.message;
@@ -129,7 +125,7 @@ function contentFromResponse(parsed: unknown): string {
       })
       .join('');
   }
-  throw ConvertError.ai('model response has no text content');
+  throw ConvertError.io(new Error('model response has no text content'));
 }
 
 function unwrapMarkdown(text: string): string {

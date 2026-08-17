@@ -1,9 +1,9 @@
-import type { Ai } from './ai.js';
 import type { Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
+import type { ConvertImage } from './media.js';
 
 export type CreateOptions = {
-  ai?: Ai;
+  image?: ConvertImage;
 };
 
 /**
@@ -38,7 +38,7 @@ export function create(
     }
 
     const convertOptions: ConvertOptions | undefined =
-      options?.ai === undefined ? hint : { ...hint, ai: options.ai };
+      options?.image === undefined ? hint : { ...hint, image: options.image };
     const result = await best.convert(bytes, convertOptions);
     return result.markdown;
   };

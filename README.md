@@ -41,13 +41,13 @@ const convert = create([pdf()]);
 const markdown = await convert(bytes);
 ```
 
-Optional vision (no default provider — you pass the endpoint):
+Hand off images the local converter cannot turn into markdown (`image` is any `(input) => markdown`):
 
 ```ts
 import { ai } from '@mdgate/ai';
 
 const convert = create([pdf()], {
-  ai: ai({
+  image: ai({
     baseURL: 'https://api.example.com/v1',
     apiKey: process.env.MY_KEY!,
     model: 'my-vision-model',
@@ -60,7 +60,7 @@ const convert = create([pdf()], {
 | Package | Role |
 |---|---|
 | `@mdgate/converters` | Bundle: `toMarkdown`, `all()`, re-exports |
-| `@mdgate/core` | `create()`, `Converter`, `ConvertError`, `Ai` |
+| `@mdgate/core` | `create()`, `Converter`, `ConvertError` |
 | `@mdgate/office` | doc/docx/ppt/pptx/xls/xlsx/odf/rtf/epub/csv |
 | `@mdgate/pdf` | PDF |
-| `@mdgate/ai` | Optional `ai({ baseURL, apiKey, model }).readImage` |
+| `@mdgate/ai` | Optional `image: ai({ baseURL, apiKey, model })` |
