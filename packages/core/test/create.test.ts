@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Converter, type ConvertImage, create, image } from '../src/index.js';
+import { type Converter, type ConvertImage, create } from '../src/index.js';
 
 function stub(id: string, score: number, markdown: string): Converter {
   return {
@@ -62,7 +62,7 @@ describe('create', () => {
     await without(new Uint8Array([1]));
     expect(seen).toBeUndefined();
 
-    const withImage = create([converter, image(convertImage)]);
+    const withImage = create([converter, { kind: 'image', convert: convertImage }]);
     await withImage(new Uint8Array([1]), { path: 'scan.pdf' });
     expect(seen).toBe(convertImage);
   });

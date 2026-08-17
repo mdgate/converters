@@ -14,8 +14,3 @@ export type ImagePlugin = {
   readonly kind: 'image';
   readonly convert: ConvertImage;
 };
-
-/** Register an image-to-markdown function with `create([pdf(), image(fn)])`. */
-export function image(convert: ConvertImage): ImagePlugin {
-  return { kind: 'image', convert };
-}

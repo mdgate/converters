@@ -34,7 +34,7 @@ const markdown = await toMarkdown(bytes, { path: 'notes.docx' });
 Pick converters yourself:
 
 ```ts
-import { create, image } from '@mdgate/core';
+import { create } from '@mdgate/core';
 import { pdf } from '@mdgate/pdf';
 
 const convert = create([pdf()]);
@@ -44,6 +44,7 @@ const markdown = await convert(bytes);
 Hand off images the local converter cannot turn into markdown:
 
 ```ts
+import { image } from '@mdgate/image';
 import { ai } from '@mdgate/ai';
 
 const convert = create([
@@ -66,4 +67,5 @@ const convert = create([
 | `@mdgate/core` | `create()`, `Converter`, `ConvertError` |
 | `@mdgate/office` | doc/docx/ppt/pptx/xls/xlsx/odf/rtf/epub/csv |
 | `@mdgate/pdf` | PDF |
+| `@mdgate/image` | `image(fn)` plugin for `create()` |
 | `@mdgate/ai` | Optional `image(ai({ baseURL, apiKey, model }))` |

@@ -17,7 +17,7 @@ function walkTs(dir: string, out: string[]): void {
 describe('portable runtime', () => {
   it('library sources do not import node builtins', () => {
     const hits: string[] = [];
-    for (const name of ['core', 'utils', 'office', 'pdf', 'ai', 'converters']) {
+    for (const name of ['core', 'utils', 'office', 'pdf', 'ai', 'image', 'converters']) {
       const files: string[] = [];
       walkTs(join(PACKAGES, name, 'src'), files);
       for (const file of files) {

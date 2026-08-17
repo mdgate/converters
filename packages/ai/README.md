@@ -3,7 +3,8 @@
 One `image` implementation for mdgate: an OpenAI-compatible vision model. No default endpoint — pass `baseURL`, `apiKey`, and `model`. The prompt is built in.
 
 ```ts
-import { create, image } from '@mdgate/core';
+import { create } from '@mdgate/core';
+import { image } from '@mdgate/image';
 import { ai } from '@mdgate/ai';
 import { pdf } from '@mdgate/pdf';
 

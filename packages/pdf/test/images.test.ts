@@ -1,4 +1,5 @@
-import { create, image } from '@mdgate/core';
+import { create } from '@mdgate/core';
+import { image } from '@mdgate/image';
 import { describe, expect, it } from 'vitest';
 import { xObjectToImage } from '../src/images.js';
 import { pdf } from '../src/index.js';
