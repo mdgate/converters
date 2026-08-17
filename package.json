@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "bun run --filter @mdgate/core --filter @mdgate/utils build && bun run --filter @mdgate/office --filter @mdgate/pdf --filter @mdgate/ai --filter @mdgate/image build && bun run --filter @mdgate/converters build",
+    "build": "bun run --filter @mdgate/core --filter @mdgate/utils build && bun run --filter @mdgate/document --filter @mdgate/containers --filter @mdgate/image build && bun run --filter @mdgate/office-common --filter @mdgate/ai build && bun run --filter @mdgate/csv --filter @mdgate/xlsx --filter @mdgate/docx --filter @mdgate/doc --filter @mdgate/rtf --filter @mdgate/pptx --filter @mdgate/ppt --filter @mdgate/odf --filter @mdgate/epub --filter @mdgate/pdf build && bun run --filter @mdgate/converters build",
     "dev:demo": "bun run --filter @mdgate/demo dev",
     "build:demo": "bun run --filter @mdgate/demo build",
     "deploy:demo": "bun run --filter @mdgate/demo deploy",
@@ -16,18 +16,29 @@
     "test:parity": "bun test/parity.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "pack:check": "npm pack -w @mdgate/utils -w @mdgate/core -w @mdgate/office -w @mdgate/pdf -w @mdgate/ai -w @mdgate/image -w @mdgate/converters --dry-run",
-    "publish:all": "npm publish -w @mdgate/utils && npm publish -w @mdgate/core && npm publish -w @mdgate/office && npm publish -w @mdgate/pdf && npm publish -w @mdgate/ai && npm publish -w @mdgate/image && npm publish -w @mdgate/converters"
+    "pack:check": "npm pack -w @mdgate/utils -w @mdgate/core -w @mdgate/document -w @mdgate/containers -w @mdgate/office-common -w @mdgate/csv -w @mdgate/xlsx -w @mdgate/docx -w @mdgate/doc -w @mdgate/rtf -w @mdgate/pptx -w @mdgate/ppt -w @mdgate/odf -w @mdgate/epub -w @mdgate/pdf -w @mdgate/ai -w @mdgate/image -w @mdgate/converters --dry-run",
+    "publish:all": "npm publish -w @mdgate/utils && npm publish -w @mdgate/core && npm publish -w @mdgate/document && npm publish -w @mdgate/containers && npm publish -w @mdgate/office-common && npm publish -w @mdgate/csv && npm publish -w @mdgate/xlsx && npm publish -w @mdgate/docx && npm publish -w @mdgate/doc && npm publish -w @mdgate/rtf && npm publish -w @mdgate/pptx && npm publish -w @mdgate/ppt && npm publish -w @mdgate/odf && npm publish -w @mdgate/epub && npm publish -w @mdgate/pdf && npm publish -w @mdgate/ai && npm publish -w @mdgate/image && npm publish -w @mdgate/converters"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
     "@mdgate/ai": "workspace:*",
+    "@mdgate/containers": "workspace:*",
     "@mdgate/converters": "workspace:*",
     "@mdgate/core": "workspace:*",
+    "@mdgate/csv": "workspace:*",
+    "@mdgate/doc": "workspace:*",
+    "@mdgate/document": "workspace:*",
+    "@mdgate/docx": "workspace:*",
+    "@mdgate/epub": "workspace:*",
     "@mdgate/image": "workspace:*",
-    "@mdgate/office": "workspace:*",
+    "@mdgate/odf": "workspace:*",
+    "@mdgate/office-common": "workspace:*",
     "@mdgate/pdf": "workspace:*",
+    "@mdgate/ppt": "workspace:*",
+    "@mdgate/pptx": "workspace:*",
+    "@mdgate/rtf": "workspace:*",
     "@mdgate/utils": "workspace:*",
+    "@mdgate/xlsx": "workspace:*",
     "@types/node": "^20.17.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"

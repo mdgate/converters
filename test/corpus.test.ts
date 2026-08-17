@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { detectOleDoc, detectZipDoc } from '@mdgate/containers';
+import { asciiStartsWith } from '@mdgate/utils';
 import { describe, expect, it } from 'vitest';
-import { formatFromBytes } from '../packages/office/src/internal/detect.js';
 import { hasPdfMagic } from '../packages/pdf/src/sniff.js';
 import {
   annotationDetail,
@@ -23,13 +24,14 @@ const DETECT_FOLDERS: Record<string, string | undefined> = {
   ppt: 'ppt',
   pptx: 'pptx',
   rtf: 'rtf',
-  xls: 'excel',
-  xlsx: 'excel',
+  xls: 'xls',
+  xlsx: 'xlsx',
   csv: undefined,
 };
 
 function detect(bytes: Uint8Array): string | undefined {
-  return formatFromBytes(bytes) ?? (hasPdfMagic(bytes) ? 'pdf' : undefined);
+  if (asciiStartsWith(bytes, '{\\rtf')) return 'rtf';
+  return detectOleDoc(bytes) ?? detectZipDoc(bytes) ?? (hasPdfMagic(bytes) ? 'pdf' : undefined);
 }
 
 const all = listFixtures();
