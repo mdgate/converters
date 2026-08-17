@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/utils",
-  "version": "0.1.1",
-  "description": "Internal inflate and legacy-encoding helpers for mdgate converters",
+  "version": "0.1.2",
+  "description": "Internal text, byte, inflate, and legacy-encoding helpers for mdgate converters",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
