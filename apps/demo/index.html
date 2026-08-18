@@ -6,7 +6,7 @@
     <title>mdgate — any file to Markdown</title>
     <meta
       name="description"
-      content="Convert Word, PowerPoint, Excel, PDF, Pages, HTML, email, notebooks, ebooks, and more to GitHub-Flavored Markdown, entirely in your browser."
+      content="Convert Word, PowerPoint, Excel, PDF, Pages, HTML, email, notebooks, ebooks, audio, video, and more to GitHub-Flavored Markdown, entirely in your browser."
     />
     <meta property="og:title" content="mdgate — any file to Markdown" />
     <meta
@@ -102,7 +102,7 @@
           <h1>Any file in.<br /><span class="accent">Markdown out.</span></h1>
           <p class="lede">
             Open-source TypeScript converters that turn office documents, HTML,
-            email, notebooks, ebooks, and more into
+            email, notebooks, ebooks, audio, video, and more into
             <strong>GitHub-Flavored Markdown</strong>. This page runs them in a
             Web Worker: <strong>files never leave your machine</strong>.
           </p>
@@ -405,8 +405,8 @@ const bytes = new Uint8Array(await file.arrayBuffer());
 const markdown = await toMarkdown(bytes, { path: file.name });</code></pre>
           <p class="prose">
             The same function works in Node, Edge, and the browser. Compose a
-            smaller set with <code>create()</code>, or hand images to a vision
-            model. See the
+            smaller set with <code>create()</code>, or hand images, audio, and
+            video to a model. See the
             <a href="https://github.com/mdgate/converters#quick-start">README</a>.
           </p>
         </section>

@@ -36,6 +36,8 @@
     "mdgate",
     "markdown",
     "vision",
-    "ocr"
+    "ocr",
+    "audio",
+    "video"
   ]
 }

@@ -19,7 +19,7 @@ const SAMPLE_HTML = `<!doctype html>
     <ul>
       <li>Office, iWork, and OpenDocument</li>
       <li>HTML, email, and notebooks</li>
-      <li>Ebooks, LaTeX, and ZIP archives</li>
+      <li>Ebooks, audio, video, and ZIP archives</li>
     </ul>
   </body>
 </html>
@@ -31,7 +31,7 @@ Subject: Any file to Markdown
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 
-mdgate converts office files, HTML, email, and notebooks
+mdgate converts office files, HTML, email, notebooks, audio, and video
 in the browser. Nothing is uploaded.
 `;
 
