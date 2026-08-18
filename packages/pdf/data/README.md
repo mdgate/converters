@@ -11,3 +11,5 @@ Build-time inputs for `scripts/gen-maps.py`. Regenerates `src/generated/*`.
 | `encodings.js` | ISO 32000 Annex D encoding names (pdf.js layout) |
 
 These are not a “complete Unicode character inventory”. Unicode is the *output* of PDF decoding. The files here are the official *equivalence* and *encoding* tables that map PDF codes and lookalike code points onto that output.
+
+`scripts/gen-maps.py` packs them into `src/generated/maps.bin` (zlib). That file is what `@mdgate/pdf` loads at runtime — it is not inlined as base64 inside `dist/index.js`.

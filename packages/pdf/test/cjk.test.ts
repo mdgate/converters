@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeCjkText, remapCjkCodePoint } from '../src/cjk.js';
-import { CJK_EQUIV_FROM } from '../src/generated/cjk-equiv.js';
+import { pdfMaps } from '../src/maps.js';
 
 describe('official CJK lookalike remapping', () => {
   it('ships the complete official table (1000+ mappings)', () => {
-    expect(CJK_EQUIV_FROM.length).toBeGreaterThan(1000);
+    expect(pdfMaps().cjkFrom.length).toBeGreaterThan(1000);
   });
 
   it('covers the full EquivalentUnifiedIdeograph set, not a case list', () => {

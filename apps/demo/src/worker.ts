@@ -1,4 +1,5 @@
-import { toMarkdown } from '@mdgate/converters';
+import { setPdfMaps, toMarkdown } from '@mdgate/converters';
+import mapsUrl from '@mdgate/pdf/maps.bin?url';
 
 export type ConvertRequest = {
   type: 'convert';
@@ -12,7 +13,19 @@ export type WorkerMessage =
   | { type: 'ok'; id: number; markdown: string; ms: number }
   | { type: 'err'; id: number; message: string };
 
-self.postMessage({ type: 'ready' } satisfies WorkerMessage);
+void fetch(mapsUrl)
+  .then((response) => {
+    if (!response.ok) throw new Error(`maps.bin ${response.status}`);
+    return response.arrayBuffer();
+  })
+  .then((buf) => {
+    setPdfMaps(new Uint8Array(buf));
+    self.postMessage({ type: 'ready' } satisfies WorkerMessage);
+  })
+  .catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    self.postMessage({ type: 'err', id: -1, message } satisfies WorkerMessage);
+  });
 
 self.addEventListener('message', (event: MessageEvent<ConvertRequest>) => {
   const data = event.data;

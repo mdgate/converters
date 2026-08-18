@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import re
+import struct
 import unicodedata
 import zlib
 from pathlib import Path
@@ -167,34 +168,102 @@ def parse_encodings_js(text: str) -> dict[str, list[str]]:
     return out
 
 
-def write_cjk_equiv(table: dict[int, int]) -> None:
+def pack_cjk(table: dict[int, int]) -> bytes:
     items = sorted(table.items())
-    froms = [a for a, _ in items]
-    tos = [b for _, b in items]
-    body = (
-        HEADER
-        + f"export const CJK_EQUIV_FROM = new Uint32Array({json.dumps(froms)});\n"
-        + f"export const CJK_EQUIV_TO = new Uint32Array({json.dumps(tos)});\n"
-    )
-    (OUT / "cjk-equiv.ts").write_text(body)
-    print(f"cjk-equiv: {len(items)} mappings")
+    out = bytearray(struct.pack("<I", len(items)))
+    for src, dst in items:
+        out += struct.pack("<II", src, dst)
+    return bytes(out)
 
 
-def write_adobe_cid(maps: dict[str, dict[int, int]]) -> None:
-    chunks = [HEADER, "export interface AdobeCidBlob {", "  bmp: string;", "  extra: number[];", "}\n"]
-    chunks.append("export const ADOBE_CID: Record<string, AdobeCidBlob> = {")
+def pack_adobe(maps: dict[str, dict[int, int]]) -> bytes:
+    out = bytearray(struct.pack("<B", len(maps)))
     for key, cmap in maps.items():
         flat, extra = pack_flat_u16(cmap)
-        z = zlib.compress(flat, 9)
-        extra_flat: list[int] = []
+        kb = key.encode("ascii")
+        out += struct.pack("<B", len(kb)) + kb
+        out += struct.pack("<I", len(flat)) + flat
+        out += struct.pack("<H", len(extra))
         for cid, cp in extra:
-            extra_flat.extend([cid, cp])
-        chunks.append(
-            f"  {json.dumps(key)}: {{ bmp: {json.dumps(b64(z))}, extra: {json.dumps(extra_flat)} }},"
-        )
-        print(f"adobe-cid {key}: {len(cmap)} mappings, zlib {len(z)}B, extra {len(extra)}")
-    chunks.append("};\n")
-    (OUT / "adobe-cid-data.ts").write_text("\n".join(chunks))
+            out += struct.pack("<HI", cid, cp)
+        print(f"adobe-cid {key}: {len(cmap)} mappings, flat {len(flat)}B, extra {len(extra)}")
+    return bytes(out)
+
+
+def pack_agl(agl: dict[str, str]) -> bytes:
+    lines: list[str] = []
+    for name, value in sorted(agl.items()):
+        hexes = " ".join(f"{ord(ch):04X}" for ch in value)
+        lines.append(f"{name}\t{hexes}")
+    return "\n".join(lines).encode("utf-8")
+
+
+def pack_encoding_cmaps(packed: dict[str, dict], uni: dict[str, str]) -> bytes:
+    names = list(packed)
+    idx = {n: i for i, n in enumerate(names)}
+    out = bytearray()
+    name_blob = "\0".join(names).encode("ascii")
+    out += struct.pack("<HH", len(names), len(name_blob))
+    out += name_blob
+    uni_blob = "\0".join(f"{k}={v}" for k, v in uni.items()).encode("ascii")
+    out += struct.pack("<HH", len(uni), len(uni_blob))
+    out += uni_blob
+    for name in names:
+        entry = packed[name]
+        base = entry.get("b")
+        space = entry.get("s") or []
+        ranges = entry.get("r") or []
+        flags = 1 if base else 0
+        out += struct.pack("<B", flags)
+        if base:
+            if base not in idx:
+                raise SystemExit(f"usecmap {base} missing for {name}")
+            out += struct.pack("<H", idx[base])
+        out += struct.pack("<H", len(space) // 3)
+        for i in range(0, len(space), 3):
+            out += struct.pack("<IIB", space[i], space[i + 1], space[i + 2])
+        out += struct.pack("<I", len(ranges) // 3)
+        for i in range(0, len(ranges), 3):
+            cid = ranges[i + 2]
+            if cid < 0 or cid > 0xFFFF:
+                raise SystemExit(f"cid overflow {name} {cid}")
+            out += struct.pack("<IIH", ranges[i], ranges[i + 1], cid)
+    return bytes(out)
+
+
+def write_maps_bin(
+    equiv: dict[int, int],
+    adobe: dict[str, dict[int, int]],
+    agl: dict[str, str],
+    enc_packed: dict[str, dict],
+    uni: dict[str, str],
+) -> None:
+    sections = [
+        (b"CJK1", pack_cjk(equiv)),
+        (b"CID1", pack_adobe(adobe)),
+        (b"AGL1", pack_agl(agl)),
+        (b"ENC1", pack_encoding_cmaps(enc_packed, uni)),
+    ]
+    raw = bytearray(b"MDG1")
+    for tag, payload in sections:
+        raw += tag + struct.pack("<I", len(payload)) + payload
+    blob = zlib.compress(bytes(raw), 9)
+    path = OUT / "maps.bin"
+    path.write_bytes(blob)
+    print(
+        f"maps.bin: {len(blob)}B zlib / {len(raw)}B raw "
+        f"(was ~635KB of base64 inside index.js)"
+    )
+    for stale in (
+        "adobe-cid-data.ts",
+        "encoding-cmap-data.ts",
+        "glyphlist-data.ts",
+        "cjk-equiv.ts",
+    ):
+        p = OUT / stale
+        if p.exists():
+            p.unlink()
+            print(f"removed {stale}")
 
 
 def write_encodings(encodings: dict[str, list[str]], agl: dict[str, str]) -> None:
@@ -296,7 +365,7 @@ def parse_encoding_cmap(text: str) -> dict:
     return {"name": name, "base": usecmap, "s": space, "r": ranges}
 
 
-def write_encoding_cmaps() -> None:
+def collect_encoding_cmaps() -> tuple[dict[str, dict], dict[str, str]]:
     cmap_dir = DATA / "cmaps"
     packed: dict[str, dict] = {}
     for path in sorted(cmap_dir.iterdir()):
@@ -333,12 +402,8 @@ def write_encoding_cmaps() -> None:
         ):
             for tail in ("-H", "-V", "-HW-H", "-HW-V"):
                 uni[f"{stem}-{enc}{tail}"] = kind
-
-    payload = json.dumps({"cmaps": packed, "uni": uni}, separators=(",", ":")).encode("utf-8")
-    z = zlib.compress(payload, 9)
-    body = HEADER + f"export const ENCODING_CMAP_ZLIB = {json.dumps(b64(z))};\n"
-    (OUT / "encoding-cmap-data.ts").write_text(body)
-    print(f"encoding-cmaps: {len(packed)} legacy, {len(uni)} uni names, zlib {len(z)}B")
+    print(f"encoding-cmaps: {len(packed)} legacy, {len(uni)} uni names")
+    return packed, uni
 
 
 def main() -> None:
@@ -350,11 +415,9 @@ def main() -> None:
     add_nfkc_block(equiv, 0xF900, 0xFAFF)  # CJK Compatibility Ideographs
     add_nfkc_block(equiv, 0x2F800, 0x2FA1F)  # Compatibility Ideographs Supplement
     add_nfkc_block(equiv, 0xFE30, 0xFE4F)  # CJK Compatibility Forms (vertical)
-    write_cjk_equiv(equiv)
 
     agl = parse_agl(DATA / "glyphlist.txt")
     agl.update(parse_agl(DATA / "zapfdingbats.txt"))
-    write_glyphlist(agl)
 
     encodings = parse_encodings_js((DATA / "encodings.js").read_text(encoding="utf-8"))
     write_encodings(encodings, agl)
@@ -366,8 +429,8 @@ def main() -> None:
         "Korea1": parse_to_unicode_cmap((DATA / "Adobe-Korea1-UCS2").read_text(encoding="latin1")),
         "KR": parse_to_unicode_cmap((DATA / "Adobe-KR-UCS2").read_text(encoding="latin1")),
     }
-    write_adobe_cid(adobe)
-    write_encoding_cmaps()
+    enc_packed, uni = collect_encoding_cmaps()
+    write_maps_bin(equiv, adobe, agl, enc_packed, uni)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+export type { AudioInput, AudioMime, ConvertAudio } from '@mdgate/audio';
+export { audio } from '@mdgate/audio';
 export type {
   Convert,
   ConvertErrorCode,
@@ -7,8 +9,6 @@ export type {
   ConvertResult,
 } from '@mdgate/core';
 export { ConvertError, create } from '@mdgate/core';
-export type { AudioInput, AudioMime, ConvertAudio } from '@mdgate/audio';
-export { audio } from '@mdgate/audio';
 export { csv } from '@mdgate/csv';
 export { data } from '@mdgate/data';
 export { doc } from '@mdgate/doc';
@@ -28,7 +28,7 @@ export { numbers } from '@mdgate/numbers';
 export { odf } from '@mdgate/odf';
 export { onenote } from '@mdgate/onenote';
 export { pages } from '@mdgate/pages';
-export { pdf } from '@mdgate/pdf';
+export { pdf, setPdfMaps } from '@mdgate/pdf';
 export { ppt } from '@mdgate/ppt';
 export { pptx } from '@mdgate/pptx';
 export { rtf } from '@mdgate/rtf';

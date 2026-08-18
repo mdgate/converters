@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/converters",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Official mdgate converter bundle",
   "type": "module",
   "license": "MIT",
@@ -42,7 +42,7 @@
     "@mdgate/odf": "0.1.0",
     "@mdgate/onenote": "0.1.0",
     "@mdgate/pages": "0.1.0",
-    "@mdgate/pdf": "0.2.0",
+    "@mdgate/pdf": "0.2.1",
     "@mdgate/ppt": "0.1.0",
     "@mdgate/pptx": "0.1.0",
     "@mdgate/rtf": "0.1.0",

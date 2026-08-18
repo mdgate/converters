@@ -1,27 +1,13 @@
 /** PDF standard encodings (ISO 32000 Annex D) and Encoding Differences. */
 
-import { inflateZlib } from '@mdgate/utils';
 import { PDF_ENCODINGS } from './generated/encodings-data.js';
-import { GLYPHLIST_ZLIB } from './generated/glyphlist-data.js';
+import { pdfMaps } from './maps.js';
 
 let glyphList: Map<string, string> | undefined;
 
-function decodeBase64(b64: string): Uint8Array {
-  if (typeof atob === 'function') {
-    const bin = atob(b64);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  const buf = Buffer.from(b64, 'base64');
-  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-}
-
 function loadGlyphList(): Map<string, string> {
   if (glyphList) return glyphList;
-  const raw = inflateZlib(decodeBase64(GLYPHLIST_ZLIB), 1 << 20);
-  let text = '';
-  for (let i = 0; i < raw.length; i += 1) text += String.fromCharCode(raw[i]!);
+  const text = pdfMaps().glyphListText;
   const map = new Map<string, string>();
   for (const line of text.split('\n')) {
     const tab = line.indexOf('\t');

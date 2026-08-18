@@ -7,10 +7,9 @@
  * Embedded CMap streams in the PDF are parsed with the same grammar.
  */
 
-import { inflateZlib } from '@mdgate/utils';
-import { ENCODING_CMAP_ZLIB } from './generated/encoding-cmap-data.js';
+import { pdfMaps, type UniKind } from './maps.js';
 
-export type UniKind = 'utf8' | 'utf16' | 'utf32';
+export type { UniKind };
 
 export interface EncodingCmap {
   name: string;
@@ -20,45 +19,13 @@ export interface EncodingCmap {
   ): { code: number; cid: number; size: number } | undefined;
 }
 
-interface Packed {
-  s?: number[];
-  r?: number[];
-  b?: string;
-}
-
 interface Resolved {
   space: number[];
   ranges: number[];
 }
 
-let packedTables: Record<string, Packed> | undefined;
-let uniNames: Record<string, UniKind> | undefined;
 const resolvedCache = new Map<string, Resolved>();
 const cmapCache = new Map<string, EncodingCmap>();
-
-function decodeBase64(b64: string): Uint8Array {
-  if (typeof atob === 'function') {
-    const bin = atob(b64);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  const buf = Buffer.from(b64, 'base64');
-  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-}
-
-function loadPacked(): void {
-  if (packedTables) return;
-  const raw = inflateZlib(decodeBase64(ENCODING_CMAP_ZLIB), 2 << 20);
-  let text = '';
-  for (let i = 0; i < raw.length; i += 1) text += String.fromCharCode(raw[i]!);
-  const parsed = JSON.parse(text) as {
-    cmaps: Record<string, Packed>;
-    uni: Record<string, UniKind>;
-  };
-  packedTables = parsed.cmaps;
-  uniNames = parsed.uni;
-}
 
 function overlayRanges(parent: number[], own: number[]): number[] {
   if (own.length === 0) return parent;
@@ -72,8 +39,7 @@ function overlayRanges(parent: number[], own: number[]): number[] {
 function resolvePacked(name: string, stack: string[] = []): Resolved {
   const hit = resolvedCache.get(name);
   if (hit) return hit;
-  loadPacked();
-  const packed = packedTables?.[name];
+  const packed = pdfMaps().enc[name];
   if (!packed || stack.includes(name)) return { space: [], ranges: [] };
   let space = packed.s ?? [];
   let ranges = packed.r ?? [];
@@ -135,8 +101,7 @@ export function encodingName(raw: string): string {
 }
 
 export function uniKind(name: string): UniKind | undefined {
-  loadPacked();
-  return uniNames?.[encodingName(name)];
+  return pdfMaps().uni[encodingName(name)];
 }
 
 export function encodingCmap(name: string): EncodingCmap | undefined {
@@ -145,8 +110,7 @@ export function encodingCmap(name: string): EncodingCmap | undefined {
   if (uniKind(key)) return undefined;
   const cached = cmapCache.get(key);
   if (cached) return cached;
-  loadPacked();
-  if (!packedTables?.[key]) return undefined;
+  if (!pdfMaps().enc[key]) return undefined;
   const cmap = makeCmap(key, resolvePacked(key));
   cmapCache.set(key, cmap);
   return cmap;
