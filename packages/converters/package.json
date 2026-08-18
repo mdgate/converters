@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/converters",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Official mdgate converter bundle",
   "type": "module",
   "license": "MIT",
@@ -33,7 +33,7 @@
     "@mdgate/fb2": "0.1.0",
     "@mdgate/html": "0.1.1",
     "@mdgate/hwp": "0.1.0",
-    "@mdgate/image": "0.1.1",
+    "@mdgate/image": "0.1.2",
     "@mdgate/ipynb": "0.1.0",
     "@mdgate/keynote": "0.1.0",
     "@mdgate/latex": "0.1.0",

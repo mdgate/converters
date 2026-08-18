@@ -85,7 +85,7 @@
     },
     "packages/converters": {
       "name": "@mdgate/converters",
-      "version": "0.3.4",
+      "version": "0.3.5",
       "dependencies": {
         "@mdgate/audio": "0.1.0",
         "@mdgate/core": "0.1.3",
@@ -98,7 +98,7 @@
         "@mdgate/fb2": "0.1.0",
         "@mdgate/html": "0.1.1",
         "@mdgate/hwp": "0.1.0",
-        "@mdgate/image": "0.1.1",
+        "@mdgate/image": "0.1.2",
         "@mdgate/ipynb": "0.1.0",
         "@mdgate/keynote": "0.1.0",
         "@mdgate/latex": "0.1.0",
@@ -227,7 +227,7 @@
     },
     "packages/image": {
       "name": "@mdgate/image",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@mdgate/core": "0.1.3",
         "@mdgate/document": "0.1.0",
