@@ -163,4 +163,86 @@ describe('PDF encoding diagnostics', () => {
     );
     expect(md).toContain('春夏秋冬雨');
   });
+
+  it('maps Kangxi and CJK-supplement radicals to unified ideographs', () => {
+    // ⼗ U+2F17, ⾏ U+2F8F, ⺠ U+2EA0, ⻘ U+2ED8 → 十行民青
+    const toUnicode = `%!PS-Adobe-3.0 Resource-CMap
+/CIDInit /ProcSet findresource begin
+12 dict begin
+begincmap
+/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def
+/CMapName /Adobe-Identity-UCS def
+/CMapType 2 def
+1 begincodespacerange
+<00> <FF>
+endcodespacerange
+4 beginbfrange
+<21><21><2f17>
+<22><22><2f8f>
+<23><23><2ea0>
+<24><24><2ed8>
+endbfrange
+endcmap
+CMapName currentdict /CMap defineresource pop
+end
+end
+`;
+    const md = toMarkdownFromPdf(
+      simpleTextPdf({
+        baseFont: 'AAAAAG+SimSun',
+        shown: '!"#$',
+        flags: 4,
+        toUnicode,
+      }),
+    );
+    expect(md).toContain('十行民青');
+    expect(md).not.toContain('⼗');
+    expect(md).not.toContain('⾏');
+    expect(md).not.toContain('⺠');
+    expect(md).not.toContain('⻘');
+  });
+
+  it('decodes WinAnsiEncoding including the euro and curly quotes', () => {
+    const md = toMarkdownFromPdf(
+      simpleTextPdf({
+        baseFont: 'Helvetica',
+        shown: 'Hello \\200 \\221quoted\\222',
+        flags: 32,
+      }),
+    );
+    expect(md).toContain('Hello');
+    expect(md).toContain('€');
+    expect(md).toContain('‘quoted’');
+  });
+
+  it('applies Encoding Differences via the Adobe Glyph List', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(\x27ok\x60) Tj
+ET
+`;
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding 6 0 R >>\nendobj\n',
+      '6 0 obj\n<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [39 /trademark 96 /Euro] >>\nendobj\n',
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    for (let i = 1; i <= objects.length; i += 1) {
+      xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    }
+    body += `${xref}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    const md = toMarkdownFromPdf(new TextEncoder().encode(body));
+    expect(md).toContain('™ok€');
+  });
 });

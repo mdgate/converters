@@ -4,6 +4,18 @@
 
 import { type Convert, ConvertError } from '@mdgate/core';
 import { InflateLimitError, inflateRaw, inflateZlib } from '@mdgate/utils';
+import { adobeOrderingKey, fillAdobeCidMap } from './adobe-cid.js';
+import { normalizeCjkText } from './cjk.js';
+import {
+  decodeUni,
+  type EncodingCmap,
+  encodingCmap,
+  inferAdobeOrdering,
+  parseEmbeddedCmap,
+  type UniKind,
+  uniKind,
+} from './encoding-cmap.js';
+import { applyDifferences, applyNamedEncoding } from './encodings.js';
 import { xObjectToImage } from './images.js';
 import { MAX_ENTRY_BYTES } from './limits.js';
 import { warn } from './log.js';
@@ -129,7 +141,7 @@ function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): strin
   }
 
   const markdown = itemsToMarkdown(
-    mergeScriptItems(extracted.items),
+    mergeScriptItems(dedupeOverlappingItems(extracted.items)),
     extracted.strokeLines,
     extracted.pageRects,
     imageBlocks,
@@ -871,13 +883,18 @@ interface FontInfo {
   italic: boolean;
   widths: Map<number, number>;
   defaultWidth: number;
+  /** ToUnicode: character code → Unicode. */
   cmap: Map<number, string>;
+  /** Adobe collection: CID → Unicode. Kept separate from ToUnicode keys. */
+  cidToUnicode: Map<number, string>;
   unitsScale: number;
   /** 1 for simple fonts; 2 for Type0 / Identity-H CID fonts. */
   codeByteLength: 1 | 2;
   isCid: boolean;
   /** PDF FontDescriptor /Flags bit 3 — custom encodings are common here. */
   symbolic: boolean;
+  encodingCmap?: EncodingCmap;
+  uniKind?: UniKind;
 }
 
 function isBoldFontName(name: string): boolean {
@@ -918,6 +935,7 @@ function emptyFont(): FontInfo {
     widths: new Map(),
     defaultWidth: 500,
     cmap: new Map(),
+    cidToUnicode: new Map(),
     unitsScale: 0.001,
     codeByteLength: 1,
     isCid: false,
@@ -936,17 +954,24 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
   const bold = isBoldFontName(name) || (flags & 0x40000) !== 0;
   const italic = isItalicFontName(name) || italicAngle !== 0 || (flags & 0x40) !== 0;
   const subtype = nameOf(dictGet(doc, d, '/Subtype'));
-  const encodingName = nameOf(dictGet(doc, d, '/Encoding'));
+  const encVal = dictGet(doc, d, '/Encoding');
+  const encodingName = nameOf(encVal);
   const isCid =
     subtype === '/Type0' || encodingName === '/Identity-H' || encodingName === '/Identity-V';
 
   const cmap = new Map<number, string>();
+  const cidToUnicode = new Map<number, string>();
   let codeByteLength: 1 | 2 = isCid ? 2 : 1;
+  const encCmap = isCid ? loadType0Encoding(doc, encVal, encodingName) : undefined;
+  const uni = isCid && encodingName ? uniKind(encodingName) : undefined;
+  if (!isCid) {
+    applySimpleFontEncoding(doc, encVal, name, subtype, (flags & 0x4) !== 0, cmap);
+  }
   const tu = d.map.get('/ToUnicode');
   if (tu !== undefined) {
     const parsed = parseToUnicode(decodeStream(doc, tu));
     for (const [k, v] of parsed.map) cmap.set(k, v);
-    codeByteLength = parsed.codeByteLength;
+    if (!encCmap && !uni) codeByteLength = parsed.codeByteLength;
   }
 
   const first = asNumber(dictGet(doc, d, '/FirstChar')) ?? 0;
@@ -977,8 +1002,22 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
     }
   }
 
-  applyTrueTypeFallback(doc, d, cidFont, cmap, isCid);
-  if (isCid && cmap.size > 0 && codeByteLength === 1 && [...cmap.keys()].some((k) => k > 255)) {
+  // Identity-H and simple fonts: CID/code ≈ GID. Legacy Encoding CMaps use
+  // a different code space; do not merge the TrueType cmap into it.
+  if (!encCmap && !uni) applyTrueTypeFallback(doc, d, cidFont, cmap, isCid);
+  if (isCid) {
+    applyAdobeCidFallback(doc, cidFont, encodingName, encCmap?.name, cidToUnicode);
+  }
+  normalizeCmapValues(cmap);
+  normalizeCmapValues(cidToUnicode);
+  if (
+    isCid &&
+    !encCmap &&
+    !uni &&
+    cmap.size > 0 &&
+    codeByteLength === 1 &&
+    [...cmap.keys()].some((k) => k > 255)
+  ) {
     codeByteLength = 2;
   }
 
@@ -995,11 +1034,104 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
     widths,
     defaultWidth,
     cmap,
+    cidToUnicode,
     unitsScale,
     codeByteLength,
     isCid,
     symbolic,
+    encodingCmap: encCmap,
+    uniKind: uni,
   };
+}
+
+function pdfText(v: PdfValue | undefined): string | undefined {
+  if (typeof v === 'string') return v.startsWith('/') ? v.slice(1) : v;
+  if (v instanceof Uint8Array) {
+    let s = '';
+    for (const b of v) s += String.fromCharCode(b);
+    return s;
+  }
+  return undefined;
+}
+
+function applySimpleFontEncoding(
+  doc: PdfDocument,
+  encVal: PdfValue | undefined,
+  baseFont: string,
+  subtype: string | undefined,
+  symbolic: boolean,
+  cmap: Map<number, string>,
+): void {
+  let baseName = nameOf(encVal);
+  let differences: PdfValue[] | undefined;
+  const encDict = isDict(encVal)
+    ? encVal
+    : isDict(deref(doc, encVal))
+      ? deref(doc, encVal)
+      : undefined;
+  if (isDict(encDict)) {
+    baseName = nameOf(dictGet(doc, encDict, '/BaseEncoding'));
+    const diffs = dictGet(doc, encDict, '/Differences');
+    if (Array.isArray(diffs)) differences = diffs;
+  }
+  const lower = baseFont.toLowerCase();
+  if (!baseName) {
+    if (lower.includes('symbol') && !lower.includes('text')) baseName = '/SymbolEncoding';
+    else if (lower.includes('zapfdingbats')) baseName = '/ZapfDingbatsEncoding';
+    else if (!symbolic) baseName = subtype === '/Type1' ? '/StandardEncoding' : '/WinAnsiEncoding';
+  }
+  if (baseName) applyNamedEncoding(cmap, baseName);
+  else if (differences && !symbolic) applyNamedEncoding(cmap, 'StandardEncoding');
+  if (differences) applyDifferences(cmap, differences);
+}
+
+function loadType0Encoding(
+  doc: PdfDocument,
+  encVal: PdfValue | undefined,
+  encodingName: string | undefined,
+): EncodingCmap | undefined {
+  if (encodingName === '/Identity-H' || encodingName === '/Identity-V') return undefined;
+  if (encodingName) {
+    const predefined = encodingCmap(encodingName);
+    if (predefined) return predefined;
+  }
+  const streamSrc = isDict(encVal) ? encVal : undefined;
+  if (streamSrc?.stream) {
+    const text = latin1Decode(decodeStream(doc, streamSrc));
+    const parsed = parseEmbeddedCmap(text);
+    if (parsed) return parsed;
+    const use = nameOf(dictGet(doc, streamSrc, '/UseCMap'));
+    if (use) return encodingCmap(use);
+  }
+  return undefined;
+}
+
+function applyAdobeCidFallback(
+  doc: PdfDocument,
+  cidFont: PdfDict | undefined,
+  encodingName: string | undefined,
+  encCmapName: string | undefined,
+  dest: Map<number, string>,
+): void {
+  let key: string | undefined;
+  if (cidFont) {
+    const info = dictGet(doc, cidFont, '/CIDSystemInfo');
+    if (isDict(info)) {
+      const registry = pdfText(dictGet(doc, info, '/Registry')) ?? '';
+      const ordering = pdfText(dictGet(doc, info, '/Ordering')) ?? '';
+      key = adobeOrderingKey(registry, ordering);
+    }
+  }
+  if (!key && encodingName) key = inferAdobeOrdering(encodingName);
+  if (!key && encCmapName) key = inferAdobeOrdering(encCmapName);
+  if (key) fillAdobeCidMap(key, dest);
+}
+
+function normalizeCmapValues(cmap: Map<number, string>): void {
+  for (const [code, text] of cmap) {
+    const next = normalizeCjkText(text);
+    if (next !== text) cmap.set(code, next);
+  }
 }
 
 function applyTrueTypeFallback(
@@ -1203,7 +1335,7 @@ function stripInvisibles(text: string): string {
     }
     out += ch;
   }
-  return out;
+  return normalizeCjkText(out);
 }
 
 // ---------------------------------------------------------------------------
@@ -1391,28 +1523,84 @@ function loadPageFonts(doc: PdfDocument, page: PdfDict): Map<string, FontInfo> {
   return fonts;
 }
 
+function mapDecoded(
+  font: FontInfo,
+  code: number,
+  cid: number,
+  unicodePassthrough: boolean,
+): DecodedChar {
+  const fromCode = font.cmap.get(code);
+  if (fromCode !== undefined) {
+    return { ch: stripInvisibles(fromCode), code: cid || code, mapped: true };
+  }
+  // Uni* encodings put Unicode in the content stream. That number is not a CID.
+  if (unicodePassthrough && code >= 0x20) {
+    try {
+      const ch = String.fromCodePoint(code);
+      if (ch !== '\uFFFD' && (ch === '\t' || ch === '\n' || !/[\p{Cc}\p{Cf}]/u.test(ch))) {
+        return { ch: stripInvisibles(ch), code: cid || code, mapped: true };
+      }
+    } catch {
+      // Invalid code point.
+    }
+  }
+  if (cid !== code) {
+    const fromCidAsToUnicode = font.cmap.get(cid);
+    if (fromCidAsToUnicode !== undefined) {
+      return { ch: stripInvisibles(fromCidAsToUnicode), code: cid, mapped: true };
+    }
+  }
+  const fromAdobe = font.cidToUnicode.get(cid);
+  if (fromAdobe !== undefined) {
+    return { ch: stripInvisibles(fromAdobe), code: cid, mapped: true };
+  }
+  if (code >= 32 && code < 127 && !font.isCid) {
+    return {
+      ch: String.fromCharCode(code),
+      code,
+      mapped: isSafeAsciiFallback(font, code),
+    };
+  }
+  return { ch: '', code: cid || code, mapped: false };
+}
+
 function decodeOneByte(font: FontInfo, raw: Uint8Array): DecodedChar[] {
   const out: DecodedChar[] = [];
   for (const code of raw) {
-    const fromCmap = font.cmap.get(code);
-    if (fromCmap !== undefined) {
-      out.push({ ch: stripInvisibles(fromCmap), code, mapped: true });
-      continue;
-    }
-    if (code >= 32 && code < 127) {
-      out.push({
-        ch: String.fromCharCode(code),
-        code,
-        mapped: isSafeAsciiFallback(font, code),
-      });
-      continue;
-    }
-    out.push({ ch: '', code, mapped: false });
+    out.push(mapDecoded(font, code, code, false));
   }
   return out;
 }
 
 function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
+  if (font.uniKind) {
+    const out: DecodedChar[] = [];
+    let i = 0;
+    while (i < raw.length) {
+      const got = decodeUni(font.uniKind, raw, i);
+      if (!got) break;
+      out.push(mapDecoded(font, got.code, got.code, true));
+      i += got.size;
+    }
+    return out;
+  }
+
+  if (font.encodingCmap) {
+    const out: DecodedChar[] = [];
+    let i = 0;
+    while (i < raw.length) {
+      const got = font.encodingCmap.decode(raw, i);
+      if (!got) {
+        out.push(mapDecoded(font, raw[i]!, raw[i]!, false));
+        i += 1;
+        continue;
+      }
+      out.push(mapDecoded(font, got.code, got.cid, false));
+      i += got.size;
+    }
+    return out;
+  }
+
   if (font.codeByteLength !== 2) return decodeOneByte(font, raw);
 
   // Odd-length strings sometimes mean the producer emitted 1-byte codes on a Type0 font.
@@ -1422,26 +1610,10 @@ function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
   }
 
   const out: DecodedChar[] = [];
-  const passthrough = font.isCid && font.cmap.size === 0;
+  const passthrough = font.isCid && font.cmap.size === 0 && font.cidToUnicode.size === 0;
   for (let i = 0; i + 1 < raw.length; i += 2) {
     const code = ((raw[i]! << 8) | raw[i + 1]!) >>> 0;
-    const fromCmap = font.cmap.get(code);
-    if (fromCmap !== undefined) {
-      out.push({ ch: stripInvisibles(fromCmap), code, mapped: true });
-      continue;
-    }
-    if (passthrough && code >= 0x20) {
-      try {
-        const ch = String.fromCodePoint(code);
-        if (ch !== '\uFFFD' && (ch === '\t' || ch === '\n' || !/[\p{Cc}\p{Cf}]/u.test(ch))) {
-          out.push({ ch: stripInvisibles(ch), code, mapped: true });
-          continue;
-        }
-      } catch {
-        // Invalid code point.
-      }
-    }
-    out.push({ ch: '', code, mapped: false });
+    out.push(mapDecoded(font, code, code, passthrough));
   }
   return out;
 }
@@ -1979,6 +2151,50 @@ function markDecorations(items: TextItem[], lines: StrokeLine[], httpRects: Rect
       if (rule.y >= sMin && rule.y <= sMax) item.isStrikeout = true;
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Fake-bold / text-shadow: Chrome print and CJK CSS often draw the same
+// glyph twice (or 4–7 times) within a fraction of an em.
+// ---------------------------------------------------------------------------
+
+function dedupeOverlappingItems(items: TextItem[]): TextItem[] {
+  if (items.length < 2) return items;
+  const out: TextItem[] = [];
+  const buckets = new Map<string, TextItem[]>();
+  for (const item of items) {
+    if (item.text.length === 0) {
+      out.push(item);
+      continue;
+    }
+    const tol = Math.max(1.5, item.fontSize * 0.2);
+    const gx = Math.round(item.x / 2);
+    const gy = Math.round(item.y / 2);
+    let dup = false;
+    for (let dx = -1; dx <= 1 && !dup; dx += 1) {
+      for (let dy = -1; dy <= 1 && !dup; dy += 1) {
+        const cell = buckets.get(`${item.page}:${gx + dx}:${gy + dy}`);
+        if (!cell) continue;
+        for (const prev of cell) {
+          if (
+            prev.text === item.text &&
+            Math.abs(prev.x - item.x) <= tol &&
+            Math.abs(prev.y - item.y) <= tol
+          ) {
+            dup = true;
+            break;
+          }
+        }
+      }
+    }
+    if (dup) continue;
+    out.push(item);
+    const key = `${item.page}:${gx}:${gy}`;
+    const cell = buckets.get(key);
+    if (cell) cell.push(item);
+    else buckets.set(key, [item]);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

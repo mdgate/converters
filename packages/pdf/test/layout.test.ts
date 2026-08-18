@@ -89,4 +89,48 @@ Q
     );
     expect(md.indexOf('Top')).toBeLessThan(md.indexOf('Bottom'));
   });
+
+  it('drops fake-bold glyphs drawn twice at the same point', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(Title) Tj
+1 0 0 1 20 50 Tm
+(Title) Tj
+ET
+`),
+    );
+    expect(md.match(/Title/g)).toHaveLength(1);
+  });
+
+  it('drops CSS text-shadow copies offset by a fraction of an em', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(Index) Tj
+1 0 0 1 20.3 50.2 Tm
+(Index) Tj
+1 0 0 1 19.8 49.9 Tm
+(Index) Tj
+ET
+`),
+    );
+    expect(md.match(/Index/g)).toHaveLength(1);
+  });
+
+  it('keeps two identical characters that sit a full em apart', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(5) Tj
+1 0 0 1 32 50 Tm
+(5) Tj
+ET
+`),
+    );
+    expect(md.replace(/\s+/g, '')).toBe('55');
+  });
 });
