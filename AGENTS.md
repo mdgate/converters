@@ -53,7 +53,7 @@ Review every prose output against these rules before delivering.
 ### Engineering
 
 - Package manager: **Bun** (`bun install`, `bun.lock`). Run workspace scripts with `bun run`. Workspace scope: `@mdgate/*`.
-- Deploy target: **Cloudflare** only, for the demo. `account_id` is pinned in `apps/demo/wrangler.jsonc`.
+- Deploy target: **Cloudflare** only, for the demo. `account_id` is pinned in `apps/demo/wrangler.jsonc`. Push to `main` deploys via Workers Builds (see Deploy).
 - Layout:
   - Format packages: `packages/<format>` (`@mdgate/docx`, `@mdgate/pdf`, …). Each implements `Converter` from `@mdgate/core`.
   - Shared packages: `packages/core` (contract, `create()`, `ConvertError`), `packages/document` (shared model + GFM serializer), `packages/containers` (ZIP/OPC, OLE, XML), `packages/office-common`, `packages/iwork-common`, `packages/utils`, `packages/ai`.
@@ -218,7 +218,12 @@ When closing issues via commit:
 - Repo: `github.com/mdgate/converters`.
 - Cloudflare account id: `b1a1e79c50cbd7f8b2cfb5b74c5d76db` (pinned in `apps/demo/wrangler.jsonc`).
 - Production Worker: `mdgate-demo` → `https://demo.mdgate.dev`.
-- Do not run manual deploy unless the user asks. Prefer:
+- Auto-deploy: Workers Builds is connected to this GitHub repo. A push to `main` builds packages, then runs `bun run deploy:demo`. Settings live on the Worker (Settings > Builds), not in git:
+  - Root: `/`
+  - Build: `bun run build`
+  - Deploy: `bun run deploy:demo`
+  - `BUN_VERSION=1.3.4`
+- Do not run manual deploy unless the user asks. Prefer waiting for Workers Builds, or:
   ```bash
   bun run deploy:demo       # vite build && wrangler deploy
   ```
