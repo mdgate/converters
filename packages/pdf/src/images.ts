@@ -1,4 +1,4 @@
-type ImageMime = 'image/jpeg' | 'image/png' | 'image/webp';
+type ImageMime = 'image/jpeg' | 'image/png';
 
 export type RawPdfImage = {
   width: number;

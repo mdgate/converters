@@ -7,11 +7,7 @@ export type ConvertErrorCode =
   | 'missingPart'
   | 'io';
 
-/**
- * Why a conversion could not produce a useful result.
- *
- * Bindings publish {@link ConvertError.code} as the branch key.
- */
+/** Why a conversion could not produce a useful result. */
 export class ConvertError extends Error {
   readonly code: ConvertErrorCode;
   readonly part: string | undefined;

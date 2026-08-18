@@ -67,7 +67,7 @@ def convert_lo(src, filter_spec, out_dir, final_name):
 # location on RTF export, so the generating machine's absolute path lands in
 # the fixture. Anchor it to a fixed root: the fixture tests that a `HYPERLINK`
 # field carrying a file URL is read, not which directory generated it.
-FIXTURE_URI_ROOT = b"file:///anydoc"
+FIXTURE_URI_ROOT = b"file:///mdgate"
 
 
 def anchor_local_paths(path):

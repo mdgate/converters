@@ -2,9 +2,7 @@ import type { Converter, ConvertHint, ConvertOptions, ConvertResult } from '@mdg
 import { toMarkdownFromPdf } from './pdf.js';
 import { extensionOf, hasPdfMagic } from './sniff.js';
 
-export type PdfOptions = Record<string, never>;
-
-export function pdf(_options: PdfOptions = {}): Converter {
+export function pdf(): Converter {
   return {
     id: 'pdf',
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {

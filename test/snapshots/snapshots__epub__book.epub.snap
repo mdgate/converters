@@ -6,7 +6,7 @@ expression: output
 
 # Fixture Book
 
-anydoc tests
+mdgate tests
 
 <a id="epub-text-ch001-xhtml-chapter-one"></a>
 

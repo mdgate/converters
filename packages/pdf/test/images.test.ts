@@ -92,7 +92,7 @@ function rawRgbPdf(): Uint8Array {
 
 describe('pdf image handoff', () => {
   it('does not convert images when image is not registered', async () => {
-    expect(() => toMarkdownFromPdf(jpegPdf({}))).toThrow(/OCR is required/);
+    expect(() => toMarkdownFromPdf(jpegPdf({}))).toThrow(/no extractable text/);
     const md = toMarkdownFromPdf(jpegPdf({ withText: true }));
     expect(md).toContain('Hello');
     expect(md).not.toContain('IMG');

@@ -210,7 +210,7 @@ function toAsciiLowercase(s: string): string {
   return out;
 }
 
-/** `xsd:unsignedByte` / Rust `u8` parse. */
+/** `xsd:unsignedByte`: integer 0–255. */
 export function parseU8(v: string): number | undefined {
   if (!/^\d+$/.test(v)) return undefined;
   const n = Number(v);
@@ -218,7 +218,7 @@ export function parseU8(v: string): number | undefined {
   return n;
 }
 
-/** Non-negative integer that fits in a JS safe integer (Rust `u64`/`usize`). */
+/** Non-negative integer that fits in a JS safe integer. */
 export function parseUint(v: string): number | undefined {
   if (!/^\d+$/.test(v)) return undefined;
   const n = Number(v);

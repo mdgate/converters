@@ -1,6 +1,6 @@
 ---
 title: Fixture Book
-author: anydoc tests
+author: mdgate tests
 lang: en
 ---
 

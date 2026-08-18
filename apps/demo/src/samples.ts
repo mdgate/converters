@@ -1,6 +1,6 @@
 const SAMPLE_RTF = String.raw`{\rtf1\ansi\deff0{\fonttbl{\f0 Times New Roman;}}
 \pard\sa200 {\b mdgate} turns office files into {\i GitHub-Flavored Markdown} in the browser.\par
-\pard\sa200 Headings, lists, and tables come through the same document model, whether the source is a 2003 .doc or yesterday's .xlsx.\par
+\pard\sa200 Headings, lists, and tables come through the same Markdown dialect, whether the source is a 2003 .doc or yesterday's .xlsx.\par
 }`;
 
 const SAMPLE_CSV = `format,family,notes
@@ -8,7 +8,7 @@ docx,office,WordprocessingML
 html,web,saved pages
 eml,mail,RFC 822
 ipynb,notebook,Jupyter
-pdf,pdf,text-based pages
+pdf,pdf,text and embedded images
 `;
 
 const SAMPLE_HTML = `<!doctype html>

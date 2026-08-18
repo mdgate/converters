@@ -122,11 +122,11 @@ export function formatFloat(f: number): string {
   if (f === Number.NEGATIVE_INFINITY) return '-inf';
   const rounded = Number.parseFloat(f.toExponential(14));
   if (Number.isNaN(rounded)) return String(f);
-  return rustDisplayF64(rounded);
+  return formatPlainDecimal(rounded);
 }
 
-/** Rust `Display` for a finite f64: decimal, no trailing zeros, no exponent. */
-function rustDisplayF64(n: number): string {
+/** Finite decimal: no trailing zeros, no exponent. */
+function formatPlainDecimal(n: number): string {
   if (Object.is(n, -0)) return '0';
   const raw = n.toString();
   if (!/[eE]/.test(raw)) return raw;

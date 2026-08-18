@@ -57,7 +57,7 @@ Markdown specials: \*stars* \_under_ \[bracket] \`tick` #hash 1. dotted | pipe.
 
 External link to [example](https://example.com/page).
 
-Relative link to [a sibling file](file:///anydoc/tests/fixture-src/sibling.odt).
+Relative link to [a sibling file](file:///mdgate/tests/fixture-src/sibling.odt).
 
 <a id="plainmark"></a>This plain paragraph carries a bookmark.
 

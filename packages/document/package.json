@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/document",
   "version": "0.1.0",
-  "description": "mdgate document model and Markdown renderer shared by all converters",
+  "description": "mdgate document model and Markdown renderer",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,

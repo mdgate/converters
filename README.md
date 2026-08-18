@@ -83,13 +83,13 @@ const convert = create([
 
 ## Features
 
-- **One output for every format.** Each format parses into a shared document model and renders through a single Markdown serializer, so escaping, tables, heading anchors, and footnotes behave the same whether the input was a `.doc` from 2003 or a `.xlsx` from yesterday.
+- **One output for every format.** Official converters share one Markdown dialect — same escaping, tables, heading anchors, and footnotes — whether the input was a `.doc` from 2003 or a `.xlsx` from yesterday.
 - **Full document structure.** Headings, bold/italic/strikethrough, inline code and code blocks, links, bulleted/numbered/nested lists, tables with merged cells, block quotes, footnotes and endnotes, and speaker notes.
 - **Content-based format detection.** The format is read from the bytes (PDF header, RTF open group, OLE stream names, ZIP package mimetype), so mislabeled files still convert. CSV and plain text have no such marker — pass `hint.path` for those.
 - **Portable TypeScript.** No native addons, no WASM, no Node builtins. The same `toMarkdown(bytes)` call works in Node, Cloudflare Workers, and the browser.
 - **Install only what you need.** One package per format, or `@mdgate/converters` for the full set.
 - **Nested conversion.** A ZIP of emails of Word docs converts through the same registry, up to a small depth limit.
-- **PDF support built in.** Text-based PDFs convert locally. Scanned or image-only pages need OCR and are reported as unsupported — hand them to `image()` if you have a vision model.
+- **PDF support built in.** Text is extracted locally. Embedded images are handed to the converter pool — register `image()` if you have a vision model.
 
 ## Supported formats
 
@@ -127,15 +127,15 @@ file bytes
   │
   ├─► format parser      → one per family
   │         │
-  │         └─► Document → shared model: blocks, inlines, tables,
-  │                        notes, assets
-  │               │
-  │               └─► GFM serializer → Markdown
+  │         ├─► Document → shared model: blocks, inlines, tables,
+  │         │              notes, assets → GFM serializer
+  │         │
+  │         └─► Markdown directly (PDF text; images/audio via callback)
   │
   └─► nested convert     → zip / eml / … can hand inner bytes back
 ```
 
-Because every format funnels through the same document model and serializer, output quirks get fixed once. A table-escaping fix for docx is automatically a table-escaping fix for rtf, odt, and everything else.
+Converters that share the document model get serializer fixes once. A table-escaping fix for docx is automatically a table-escaping fix for rtf, odt, and everything else on that path.
 
 ## Errors
 
@@ -158,7 +158,7 @@ try {
 
 | `code` | Meaning |
 | --- | --- |
-| `unsupported` | Unknown format, or one that cannot be converted (an image-only PDF) |
+| `unsupported` | Unknown format, or one that cannot be converted |
 | `malformed` | Structurally unusable: no meaningful content could be extracted |
 | `encrypted` | Encrypted or password-protected |
 | `resourceLimit` | Crossed a fixed safety limit (decompression, nesting, node count) |
@@ -167,7 +167,7 @@ try {
 
 ## Write your own converter
 
-A converter is two functions: `sniff` says whether the bytes are yours, `convert` turns them into markdown. Parse into a `Document` from `@mdgate/document` and render with `documentToMarkdown` so your output matches every other converter:
+A converter is two functions: `sniff` says whether the bytes are yours, `convert` turns them into markdown. Most converters parse into a `Document` from `@mdgate/document` and render with `documentToMarkdown` so the Markdown dialect matches:
 
 ```ts
 import type { Converter } from '@mdgate/core';

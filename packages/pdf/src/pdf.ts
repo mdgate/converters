@@ -17,7 +17,6 @@ import {
 import { applyDifferences, applyNamedEncoding } from './encodings.js';
 import { xObjectToImage } from './images.js';
 import { MAX_ENTRY_BYTES } from './limits.js';
-import { warn } from './log.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
 
@@ -36,9 +35,6 @@ interface ExtractedPdf {
   strokeLines: StrokeLine[];
   pageRects: PdfRect[];
   stats: DecodeStats;
-  pageCount: number;
-  pagesWithTextOps: number;
-  pagesWithImages: number;
   images: PlacedImage[];
 }
 
@@ -48,7 +44,7 @@ interface PlacedImage {
   x: number;
   y: number;
   bytes: Uint8Array;
-  mime: 'image/jpeg' | 'image/png' | 'image/webp';
+  mime: 'image/jpeg' | 'image/png';
 }
 
 interface MarkdownBlock {
@@ -73,12 +69,8 @@ function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
   const images: PlacedImage[] = [];
   const imageCache = new Map<string, PlacedImage | null>();
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
-  let pagesWithTextOps = 0;
-  let pagesWithImages = 0;
   for (let i = 0; i < pages.length; i += 1) {
     const extracted = extractPage(doc, pages[i]!, i + 1, wantImages, imageCache);
-    if (extracted.hadTextOps) pagesWithTextOps += 1;
-    if (extracted.hadImage) pagesWithImages += 1;
     items.push(...extracted.items);
     strokeLines.push(...extracted.lines);
     pageRects.push(...extracted.rects);
@@ -92,9 +84,6 @@ function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
     strokeLines,
     pageRects,
     stats,
-    pageCount: pages.length,
-    pagesWithTextOps,
-    pagesWithImages,
     images,
   };
 }
@@ -110,11 +99,11 @@ async function convertUniqueImages(
   const blocks: MarkdownBlock[] = [];
   await Promise.all(
     [...first.values()].map(async (img) => {
-      const ext = img.mime === 'image/jpeg' ? 'jpg' : img.mime === 'image/webp' ? 'webp' : 'png';
+      const ext = img.mime === 'image/jpeg' ? 'jpg' : 'png';
       let markdown: string;
       try {
         markdown = (
-          await convert(img.bytes, { path: `page-${img.page}.${ext}`, page: img.page })
+          await convert(img.bytes, { path: `image-${img.page}.${ext}`, page: img.page })
         ).trim();
       } catch (err) {
         if (err instanceof ConvertError && err.code === 'unsupported') return;
@@ -133,12 +122,6 @@ async function convertUniqueImages(
 }
 
 function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): string {
-  if (extracted.pagesWithTextOps < extracted.pageCount && imageBlocks.length === 0) {
-    warn(
-      `${extracted.pageCount - extracted.pagesWithTextOps} of ${extracted.pageCount} pages need OCR and were not extracted`,
-    );
-  }
-
   const markdown = itemsToMarkdown(
     mergeScriptItems(dedupeOverlappingItems(extracted.items)),
     extracted.strokeLines,
@@ -146,14 +129,7 @@ function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): strin
     imageBlocks,
   );
   if (markdown.trim().length === 0) {
-    const pdfType = classifyPdf(
-      extracted.pageCount,
-      extracted.pagesWithTextOps,
-      extracted.pagesWithImages,
-    );
-    throw ConvertError.unsupported(
-      `PDF has no extractable text (${pdfType}, ${extracted.pageCount} pages): OCR is required`,
-    );
+    throw ConvertError.unsupported('PDF has no extractable text');
   }
 
   const total = extracted.stats.mapped + extracted.stats.unmapped;
@@ -169,14 +145,6 @@ function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): strin
 // ---------------------------------------------------------------------------
 // Validation / errors
 // ---------------------------------------------------------------------------
-
-type PdfTypeName = 'TextBased' | 'Scanned' | 'ImageBased' | 'Mixed';
-
-function classifyPdf(pageCount: number, withText: number, withImages: number): PdfTypeName {
-  if (withText === 0) return withImages > 0 ? 'Scanned' : 'ImageBased';
-  if (withText < pageCount && withImages > 0) return 'Mixed';
-  return 'TextBased';
-}
 
 function stripBomAndWs(bytes: Uint8Array): Uint8Array {
   let start = 0;
@@ -1443,8 +1411,6 @@ interface PageExtract {
   lines: StrokeLine[];
   rects: PdfRect[];
   images: PlacedImage[];
-  hadTextOps: boolean;
-  hadImage: boolean;
   stats: DecodeStats;
 }
 
@@ -1660,8 +1626,6 @@ function extractPage(
   let path: [number, number][] = [];
   let pathStart: [number, number] | undefined;
   let artifact = 0;
-  let hadTextOps = false;
-  let hadImage = false;
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   const args: PdfValue[] = [];
 
@@ -1781,7 +1745,6 @@ function extractPage(
     } else if (op === 'Ts' && args.length >= 1) {
       rise = lastNum(1);
     } else if (op === 'Tj' || op === "'" || op === '"') {
-      hadTextOps = true;
       if (op === "'") {
         tlm = translateTextMatrix(tlm, 0, -leading);
         tm = tlm.slice();
@@ -1789,7 +1752,6 @@ function extractPage(
       const raw = args[args.length - 1];
       if (raw instanceof Uint8Array) emitText(raw);
     } else if (op === 'TJ') {
-      hadTextOps = true;
       const arr = args[args.length - 1];
       if (Array.isArray(arr)) {
         for (const el of arr) {
@@ -1873,8 +1835,6 @@ function extractPage(
         }
       }
       path = [];
-    } else if (op === 'Do') {
-      hadImage = true;
     }
     args.length = 0;
   }
@@ -1894,7 +1854,7 @@ function extractPage(
   }
 
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
-  return { items, lines, rects, images, hadTextOps, hadImage, stats };
+  return { items, lines, rects, images, stats };
 }
 
 function collectImages(
@@ -2030,7 +1990,7 @@ function imageOrigin(ctm: number[]): { x: number; y: number } {
 function decodeXObjectImage(
   doc: PdfDocument,
   dict: PdfDict,
-): { bytes: Uint8Array; mime: 'image/jpeg' | 'image/png' | 'image/webp' } | undefined {
+): { bytes: Uint8Array; mime: 'image/jpeg' | 'image/png' } | undefined {
   const filterVal = deref(doc, dict.map.get('/Filter'));
   const filters = (
     Array.isArray(filterVal) ? filterVal : filterVal !== undefined ? [filterVal] : []

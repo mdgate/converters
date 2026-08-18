@@ -15,7 +15,7 @@ describe('toMarkdown', () => {
 
   it('detects pdf from bytes and routes around the document model', async () => {
     try {
-      await toMarkdown(new TextEncoder().encode('%PDF-1.7\n'), { path: 'scan.bin' });
+      await toMarkdown(new TextEncoder().encode('%PDF-1.7\n'), { path: 'notes.bin' });
       throw new Error('expected ConvertError');
     } catch (err) {
       expect(err).toBeInstanceOf(ConvertError);

@@ -304,7 +304,7 @@ function trimFloat(v: number): string {
   if (Number.isNaN(v)) return 'NaN';
   if (v === Number.POSITIVE_INFINITY) return 'inf';
   if (v === Number.NEGATIVE_INFINITY) return '-inf';
-  return formatRustF64(v);
+  return formatPlainNumber(v);
 }
 
 /**
@@ -420,8 +420,8 @@ function parseF64(s: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** Closest practical match for Rust `f64` Display (ryu shortest). */
-function formatRustF64(v: number): string {
+/** Shortest JS number string; keeps distinct -0. */
+function formatPlainNumber(v: number): string {
   if (Object.is(v, -0)) return '-0';
   return String(v);
 }

@@ -340,10 +340,11 @@
           <dl class="facts">
             <dt>One model</dt>
             <dd>
-              <strong>Every format parses into the same document model</strong>
-              and renders through the same Markdown serializer, so headings,
-              nested lists, and tables come out the same from a .doc, an
-              .eml, or yesterday’s .xlsx.
+              <strong>Office, HTML, email, and similar formats share one
+              document model</strong>
+              and the same Markdown serializer, so headings, nested lists,
+              and tables come out the same from a .doc, an .eml, or
+              yesterday’s .xlsx. PDF writes Markdown directly.
             </dd>
             <dt>Detection</dt>
             <dd>
@@ -364,8 +365,8 @@
             </dd>
             <dt>PDF</dt>
             <dd>
-              Text-based PDFs convert locally. Scanned or image-only pages need
-              OCR and are reported as unsupported.
+              Text is extracted locally. Embedded images are handed to the
+              converter pool when a vision callback is registered.
             </dd>
             <dt>This page</dt>
             <dd>

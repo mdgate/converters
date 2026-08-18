@@ -11,7 +11,6 @@
       "!**/dist",
       "!**/node_modules",
       "!**/.wrangler",
-      "!**/test/perf-scratch",
       "!**/test/*.md",
       "!**/src/generated"
     ]

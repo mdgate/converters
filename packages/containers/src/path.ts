@@ -91,7 +91,7 @@ function fromHex(c: number): number {
   return c - 87;
 }
 
-/** Rust `Debug` for `&str`: quoted, escaped. */
+/** JSON-quoted string. */
 function jsonDebug(s: string): string {
   return JSON.stringify(s);
 }
