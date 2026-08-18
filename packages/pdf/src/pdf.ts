@@ -1,5 +1,4 @@
-//! PDF frontend. Extracts positioned text and writes Markdown directly —
-//! there is no document model.
+//! PDF frontend. Reconstructs reading order from positioned text.
 
 import { type Convert, ConvertError } from '@mdgate/core';
 import { InflateLimitError, inflateRaw, inflateZlib } from '@mdgate/utils';
