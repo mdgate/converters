@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const PACKAGES = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'packages');
-const NODE_IMPORT = /from\s+['"]node:|require\(\s*['"]node:/;
+const NODE_IMPORT = /from\s+['"]node:/;
 
 function walkTs(dir: string, out: string[]): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

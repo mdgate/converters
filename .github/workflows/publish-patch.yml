@@ -1,0 +1,53 @@
+name: Publish patch
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: >
+      github.repository == 'mdgate/converters' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - id: decide
+        run: bun scripts/should-publish-patch.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+      - if: steps.decide.outputs.publish != 'true'
+        run: echo "${{ steps.decide.outputs.reason }}"
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun install --frozen-lockfile
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun run version -- patch
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun scripts/commit-release.ts
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun run publish:all
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
