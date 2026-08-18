@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>og</title>
+    <style>
+      @font-face {
+        font-family: "Geist Sans";
+        src: url("/fonts/geist-sans-500.woff2") format("woff2");
+        font-weight: 500;
+      }
+      @font-face {
+        font-family: "Geist Sans";
+        src: url("/fonts/geist-sans-600.woff2") format("woff2");
+        font-weight: 600;
+      }
+      @font-face {
+        font-family: "Geist Mono";
+        src: url("/fonts/geist-mono-500.woff2") format("woff2");
+        font-weight: 500;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        background: #f4f1ea;
+        color: #1c1917;
+        font-family: "Geist Sans", system-ui, sans-serif;
+      }
+      .card {
+        box-sizing: border-box;
+        width: 1200px;
+        height: 630px;
+        padding: 72px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background:
+          linear-gradient(#e7e1d6, #e7e1d6) left / 1px 100% no-repeat,
+          linear-gradient(#e7e1d6, #e7e1d6) right / 1px 100% no-repeat,
+          #f4f1ea;
+      }
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .mark {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: #0f766e;
+        display: grid;
+        place-items: center;
+      }
+      .mark svg {
+        width: 20px;
+        height: 20px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 84px;
+        line-height: 0.98;
+        letter-spacing: -0.035em;
+        font-weight: 600;
+      }
+      h1 span {
+        color: #0f766e;
+      }
+      .meta {
+        display: flex;
+        gap: 16px;
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 18px;
+        font-weight: 500;
+        color: rgba(28, 25, 23, 0.56);
+      }
+      .meta b {
+        color: #1c1917;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="lockup">
+        <div class="mark">
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path
+              d="M10 13h12M10 19h12M13 10v12M19 10v12"
+              stroke="#f4f1ea"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </div>
+        mdgate
+      </div>
+      <h1>Any file in.<br /><span>Markdown out.</span></h1>
+      <div class="meta">
+        <span><b>@mdgate/converters</b></span>
+        <span>Node · Edge · browser</span>
+        <span>demo.mdgate.dev</span>
+      </div>
+    </div>
+  </body>
+</html>

@@ -9,7 +9,8 @@
     "deploy": "vite build && wrangler deploy"
   },
   "dependencies": {
-    "@mdgate/converters": "workspace:*"
+    "@mdgate/converters": "workspace:*",
+    "marked": "^16.2.0"
   },
   "devDependencies": {
     "typescript": "^5.8.0",

@@ -1,5 +1,6 @@
 import { formatLabel, stemOf } from './format';
-import { sampleCsv, sampleDocx, sampleEml, sampleHtml, sampleRtf } from './samples';
+import { renderMarkdown } from './preview';
+import { sampleCsv, sampleDocx, sampleEml, sampleHtml, sampleRtf, sampleXlsx } from './samples';
 import type { ConvertRequest, WorkerMessage } from './worker';
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -13,10 +14,14 @@ const dropTitle = $('drop-title');
 const dropHint = $('drop-hint');
 const fileInput = $<HTMLInputElement>('file');
 const output = $('output');
+const preview = $('preview');
 const result = $('result');
 const resultName = $('result-name');
 const resultArrow = $('result-arrow');
 const resultStats = $('result-stats');
+const view = $('view');
+const viewPreview = $<HTMLButtonElement>('view-preview');
+const viewSource = $<HTMLButtonElement>('view-source');
 const copyBtn = $<HTMLButtonElement>('copy');
 const downloadBtn = $<HTMLButtonElement>('download');
 const sampleHtmlBtn = $<HTMLButtonElement>('sample-html');
@@ -24,12 +29,21 @@ const sampleEmlBtn = $<HTMLButtonElement>('sample-eml');
 const sampleRtfBtn = $<HTMLButtonElement>('sample-rtf');
 const sampleCsvBtn = $<HTMLButtonElement>('sample-csv');
 const sampleDocxBtn = $<HTMLButtonElement>('sample-docx');
-const sampleButtons = [sampleHtmlBtn, sampleEmlBtn, sampleRtfBtn, sampleCsvBtn, sampleDocxBtn];
+const sampleXlsxBtn = $<HTMLButtonElement>('sample-xlsx');
+const sampleButtons = [
+  sampleHtmlBtn,
+  sampleEmlBtn,
+  sampleRtfBtn,
+  sampleCsvBtn,
+  sampleDocxBtn,
+  sampleXlsxBtn,
+];
 
 let markdown = '';
 let baseName = 'document';
 let seq = 0;
 let ready = false;
+let showPreview = true;
 
 const idleTitle = 'Drop a file here';
 const idleHint = 'or <u>browse</u> for one. Conversion happens locally, nothing is uploaded.';
@@ -62,6 +76,14 @@ function setBusy(busy: boolean, label?: string): void {
   }
 }
 
+function applyView(): void {
+  const previewOn = showPreview && !output.classList.contains('error');
+  preview.hidden = !previewOn;
+  output.hidden = previewOn;
+  viewPreview.setAttribute('aria-pressed', previewOn ? 'true' : 'false');
+  viewSource.setAttribute('aria-pressed', previewOn ? 'false' : 'true');
+}
+
 function showResult(name: string, stats: string, text: string, isError: boolean): void {
   result.hidden = false;
   resultName.textContent = name;
@@ -69,8 +91,15 @@ function showResult(name: string, stats: string, text: string, isError: boolean)
   resultStats.textContent = isError ? '' : stats;
   copyBtn.hidden = isError;
   downloadBtn.hidden = isError;
+  view.hidden = isError;
   output.textContent = text;
   output.classList.toggle('error', isError);
+  if (isError) {
+    preview.replaceChildren();
+  } else {
+    preview.innerHTML = renderMarkdown(text);
+  }
+  applyView();
   result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -107,6 +136,15 @@ async function convertFile(file: File): Promise<void> {
   convert(file.name, new Uint8Array(await file.arrayBuffer()));
 }
 
+function convertFetched(name: string, load: () => Promise<Uint8Array>): void {
+  void load()
+    .then((bytes) => convert(name, bytes))
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      showResult(name, '', `Could not load sample: ${message}`, true);
+    });
+}
+
 drop.addEventListener('click', () => {
   if (!drop.disabled) fileInput.click();
 });
@@ -133,13 +171,17 @@ sampleHtmlBtn.addEventListener('click', () => convert('page.html', sampleHtml())
 sampleEmlBtn.addEventListener('click', () => convert('note.eml', sampleEml()));
 sampleRtfBtn.addEventListener('click', () => convert('notes.rtf', sampleRtf()));
 sampleCsvBtn.addEventListener('click', () => convert('report.csv', sampleCsv()));
-sampleDocxBtn.addEventListener('click', () => {
-  void sampleDocx()
-    .then((bytes) => convert('letter.docx', bytes))
-    .catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
-      showResult('letter.docx', '', `Could not load sample: ${message}`, true);
-    });
+sampleDocxBtn.addEventListener('click', () => convertFetched('letter.docx', sampleDocx));
+sampleXlsxBtn.addEventListener('click', () => convertFetched('sheet.xlsx', sampleXlsx));
+
+viewPreview.addEventListener('click', () => {
+  showPreview = true;
+  applyView();
+});
+
+viewSource.addEventListener('click', () => {
+  showPreview = false;
+  applyView();
 });
 
 copyBtn.addEventListener('click', async () => {

@@ -35,6 +35,14 @@ mdgate converts office files, HTML, email, and notebooks
 in the browser. Nothing is uploaded.
 `;
 
+async function fetchSample(path: string): Promise<Uint8Array> {
+  const res = await fetch(path);
+  if (!res.ok) {
+    throw new Error(`could not load sample (${res.status})`);
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}
+
 export function sampleRtf(): Uint8Array {
   return new TextEncoder().encode(SAMPLE_RTF);
 }
@@ -51,10 +59,10 @@ export function sampleEml(): Uint8Array {
   return new TextEncoder().encode(SAMPLE_EML);
 }
 
-export async function sampleDocx(): Promise<Uint8Array> {
-  const res = await fetch('/samples/letter.docx');
-  if (!res.ok) {
-    throw new Error(`could not load sample (${res.status})`);
-  }
-  return new Uint8Array(await res.arrayBuffer());
+export function sampleDocx(): Promise<Uint8Array> {
+  return fetchSample('/samples/letter.docx');
+}
+
+export function sampleXlsx(): Promise<Uint8Array> {
+  return fetchSample('/samples/sheet.xlsx');
 }

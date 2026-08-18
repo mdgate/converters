@@ -2,6 +2,9 @@
 
 Official mdgate converter bundle: every format converter in one install.
 
+[Try the in-browser demo](https://demo.mdgate.dev). Full docs live in the
+[repository README](https://github.com/mdgate/converters#readme).
+
 ```ts
 import { toMarkdown } from '@mdgate/converters';
 

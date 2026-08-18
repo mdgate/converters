@@ -1,30 +1,28 @@
-# mdgate converters
+# mdgate
 
-Local document-to-markdown converters. Pass file bytes; get GitHub-Flavored Markdown.
+[![npm](https://img.shields.io/npm/v/@mdgate/converters.svg)](https://www.npmjs.com/package/@mdgate/converters)
+[![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
+[![demo](https://img.shields.io/badge/demo-demo.mdgate.dev-0f766e)](https://demo.mdgate.dev)
 
-Works in Node, Edge, and browsers. No native addons.
+TypeScript converters that turn documents — Word, PowerPoint, Excel, OpenDocument, Apple iWork, PDF, HTML, email, notebooks, ebooks, and more — into clean GitHub-Flavored Markdown.
 
-The in-browser demo is at [demo.mdgate.dev](https://demo.mdgate.dev). From this repo: `bun run dev:demo`.
+Works in Node, Edge, and the browser. No native addons, no WASM. Pass file bytes; get Markdown.
 
-## Install
+**[Try it in your browser](https://demo.mdgate.dev)**: the demo runs the library in a Web Worker, so files are converted locally and never leave your machine.
 
-Everything:
+<p align="center">
+  <a href="https://demo.mdgate.dev">
+    <img src="apps/demo/public/og.png" alt="mdgate demo — any file in, Markdown out" width="800" />
+  </a>
+</p>
+
+## Quick start
+
+### Everything
 
 ```bash
 npm i @mdgate/converters
 ```
-
-Or exactly the formats you need — one package per format, nothing else comes along:
-
-```bash
-npm i @mdgate/docx
-npm i @mdgate/pdf
-npm i @mdgate/pages
-```
-
-## Usage
-
-Batteries included:
 
 ```ts
 import { readFile } from 'node:fs/promises';
@@ -36,7 +34,13 @@ const markdown = await toMarkdown(bytes, { path: 'notes.docx' });
 
 `hint.path` is only a sniff hint (needed for signature-less formats like CSV). It is never read from disk.
 
-One format — same function, different import:
+### One format
+
+Same function, different import — only that parser comes along:
+
+```bash
+npm i @mdgate/docx
+```
 
 ```ts
 import { toMarkdown } from '@mdgate/docx';
@@ -44,7 +48,7 @@ import { toMarkdown } from '@mdgate/docx';
 const markdown = await toMarkdown(bytes);
 ```
 
-Compose your own set:
+### Compose your own set
 
 ```ts
 import { create } from '@mdgate/core';
@@ -55,11 +59,15 @@ const convert = create([docx(), pdf()]);
 const markdown = await convert(bytes);
 ```
 
-Hand off images the local converters cannot turn into markdown:
+### Images the local converters cannot read
+
+Raster images, and images embedded in a PDF, need a vision callback. SVG converts locally.
 
 ```ts
+import { create } from '@mdgate/core';
 import { image } from '@mdgate/image';
 import { ai } from '@mdgate/ai';
+import { pdf } from '@mdgate/pdf';
 
 const convert = create([
   pdf(),
@@ -72,6 +80,109 @@ const convert = create([
   ),
 ]);
 ```
+
+## Features
+
+- **One output for every format.** Each format parses into a shared document model and renders through a single Markdown serializer, so escaping, tables, heading anchors, and footnotes behave the same whether the input was a `.doc` from 2003 or a `.xlsx` from yesterday.
+- **Full document structure.** Headings, bold/italic/strikethrough, inline code and code blocks, links, bulleted/numbered/nested lists, tables with merged cells, block quotes, footnotes and endnotes, and speaker notes.
+- **Content-based format detection.** The format is read from the bytes (PDF header, RTF open group, OLE stream names, ZIP package mimetype), so mislabeled files still convert. CSV and plain text have no such marker — pass `hint.path` for those.
+- **Portable TypeScript.** No native addons, no WASM, no Node builtins. The same `toMarkdown(bytes)` call works in Node, Cloudflare Workers, and the browser.
+- **Install only what you need.** One package per format, or `@mdgate/converters` for the full set.
+- **Nested conversion.** A ZIP of emails of Word docs converts through the same registry, up to a small depth limit.
+- **PDF support built in.** Text-based PDFs convert locally. Scanned or image-only pages need OCR and are reported as unsupported — hand them to `image()` if you have a vision model.
+
+## Supported formats
+
+| Family | Extensions |
+| --- | --- |
+| Word | `.doc`, `.docx`, `.docm` |
+| PowerPoint | `.ppt`, `.pps`, `.pot`, `.pptx`, `.pptm`, `.ppsx`, `.ppsm` |
+| Excel | `.xls`, `.xlsx`, `.xlsm`, `.xlsb` |
+| OpenDocument | `.odt`, `.ods`, `.odp`, `.odg` (+ templates and flat XML) |
+| Apple iWork | `.pages`, `.numbers`, `.key` |
+| WPS Office | `.wps`, `.wpt`, `.et`, `.ett`, `.dps`, `.dpt` |
+| Hangul | `.hwp`, `.hwpx`, `.hwt`, `.hwtx` |
+| Rich Text | `.rtf` |
+| PDF | `.pdf` |
+| HTML | `.html`, `.htm`, `.xhtml`, `.mhtml`, `.mht` |
+| Email | `.eml`, `.msg`, `.mbox`, `.emlx` |
+| Notebooks | `.ipynb` |
+| Ebooks | `.epub`, `.fb2`, `.mobi`, `.azw`, `.azw3`, `.prc` |
+| LaTeX | `.tex`, `.latex`, `.ltx` |
+| Visio | `.vsd`, `.vsdx`, `.vss`, `.vst`, `.vssx`, `.vstx` |
+| OneNote | `.one`, `.onetoc2`, `.onepkg` |
+| Data | `.csv`, `.json`, `.jsonl`, `.xml`, `.yaml` |
+| Text | `.txt`, `.md`, and source files |
+| Subtitles | `.srt`, `.vtt`, `.webvtt` |
+| Archives | `.zip`, `.zipx`, `.jar` |
+| Images | `.svg` locally; JPEG/PNG/WebP/GIF/TIFF/HEIC/BMP via a vision callback |
+| Audio | MP3/WAV/M4A/AAC/OGG/FLAC/WebM via a transcription callback |
+
+## How it works
+
+```
+file bytes
+  │
+  ├─► sniff              → each converter scores the bytes (and optional path)
+  │
+  ├─► format parser      → one per family
+  │         │
+  │         └─► Document → shared model: blocks, inlines, tables,
+  │                        notes, assets
+  │               │
+  │               └─► GFM serializer → Markdown
+  │
+  └─► nested convert     → zip / eml / … can hand inner bytes back
+```
+
+Because every format funnels through the same document model and serializer, output quirks get fixed once. A table-escaping fix for docx is automatically a table-escaping fix for rtf, odt, and everything else.
+
+## Errors
+
+A conversion throws only when no meaningful Markdown could come out of the file. `ConvertError.code` names what went wrong:
+
+```ts
+import { toMarkdown, ConvertError } from '@mdgate/converters';
+
+try {
+  return await toMarkdown(bytes, { path });
+} catch (error) {
+  if (error instanceof ConvertError &&
+      (error.code === 'encrypted' || error.code === 'unsupported')) {
+    unconverted.push([path, error]);
+    return;
+  }
+  throw error;
+}
+```
+
+| `code` | Meaning |
+| --- | --- |
+| `unsupported` | Unknown format, or one that cannot be converted (an image-only PDF) |
+| `malformed` | Structurally unusable: no meaningful content could be extracted |
+| `encrypted` | Encrypted or password-protected |
+| `resourceLimit` | Crossed a fixed safety limit (decompression, nesting, node count) |
+| `missingPart` | A part required for any meaningful output is absent |
+| `io` | The file could not be read |
+
+## Write your own converter
+
+A converter is two functions: `sniff` says whether the bytes are yours, `convert` turns them into markdown. Parse into a `Document` from `@mdgate/document` and render with `documentToMarkdown` so your output matches every other converter:
+
+```ts
+import type { Converter } from '@mdgate/core';
+import { documentToMarkdown } from '@mdgate/document';
+
+export function myFormat(): Converter {
+  return {
+    id: 'my-format',
+    sniff: (bytes) => (looksLikeMyFormat(bytes) ? 2 : 0),
+    convert: (bytes) => ({ markdown: documentToMarkdown(parseMyFormat(bytes)) }),
+  };
+}
+```
+
+Converters registered with `create()` compete by sniff score; content signatures (score 2) outrank extension hints (score 1).
 
 ## Packages
 
@@ -93,7 +204,7 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/html` | html, htm, xhtml, mhtml, mht |
 | `@mdgate/email` | eml, msg, mbox, emlx |
 | `@mdgate/ipynb` | ipynb (Jupyter) |
-| `@mdgate/odf` | odt, ods, odp |
+| `@mdgate/odf` | odt, ods, odp, odg |
 | `@mdgate/pages` | pages |
 | `@mdgate/numbers` | numbers |
 | `@mdgate/keynote` | key |
@@ -122,25 +233,16 @@ Contract and shared layers:
 | `@mdgate/iwork-common` | Internal: Apple iWork IWA / Snappy / protobuf helpers |
 | `@mdgate/utils` | Internal: text, byte, inflate, encoding helpers |
 
-## Write your own converter
+## Development
 
-A converter is two functions: `sniff` says whether the bytes are yours,
-`convert` turns them into markdown. Parse into a `Document` from
-`@mdgate/document` and render with `documentToMarkdown` so your output matches
-every other converter:
-
-```ts
-import type { Converter } from '@mdgate/core';
-import { documentToMarkdown } from '@mdgate/document';
-
-export function myFormat(): Converter {
-  return {
-    id: 'my-format',
-    sniff: (bytes) => (looksLikeMyFormat(bytes) ? 2 : 0),
-    convert: (bytes) => ({ markdown: documentToMarkdown(parseMyFormat(bytes)) }),
-  };
-}
+```bash
+bun install
+bun test
+bun run dev:demo
 ```
 
-Converters registered with `create()` compete by sniff score; content
-signatures (score 2) outrank extension hints (score 1).
+A committed fixture corpus under `test/fixtures/` is snapshot-tested. `test/robustness.test.ts` mutation-tests fixtures, and `test/abuse.test.ts` checks the safety limits.
+
+## License
+
+[MIT](LICENSE)

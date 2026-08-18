@@ -6,89 +6,117 @@
     <title>mdgate — any file to Markdown</title>
     <meta
       name="description"
-      content="Convert office documents, HTML, email, notebooks, ebooks, and more to GitHub-Flavored Markdown, entirely in your browser."
+      content="Convert Word, PowerPoint, Excel, PDF, Pages, HTML, email, notebooks, ebooks, and more to GitHub-Flavored Markdown, entirely in your browser."
     />
-    <meta property="og:title" content="mdgate" />
+    <meta property="og:title" content="mdgate — any file to Markdown" />
     <meta
       property="og:description"
       content="Open-source TypeScript converters that turn almost any file into clean GitHub-Flavored Markdown. This page runs them locally: files never leave your machine."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://demo.mdgate.dev/" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="https://demo.mdgate.dev/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://demo.mdgate.dev/og.png" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <div class="page">
-      <header class="top">
+      <header class="top rail">
+        <svg class="frame" aria-hidden="true">
+          <line x1="0.5" y1="0" x2="0.5" y2="100%" />
+          <line x1="100%" y1="0" x2="100%" y2="100%" transform="translate(-0.5 0)" />
+        </svg>
         <a class="lockup" href="./">
           <img src="/favicon.svg" width="22" height="22" alt="" />
           <span class="wordmark">mdgate</span>
         </a>
         <nav>
           <a href="#about">About</a>
-          <a href="#install">Install</a>
+          <a class="aux" href="#install">Install</a>
+          <a href="https://github.com/mdgate/converters">GitHub</a>
+          <a class="pkg" href="https://www.npmjs.com/package/@mdgate/converters">npm</a>
         </nav>
       </header>
 
-      <main>
+      <main class="rail">
+        <svg class="frame" aria-hidden="true">
+          <line x1="0.5" y1="0" x2="0.5" y2="100%" />
+          <line x1="100%" y1="0" x2="100%" y2="100%" transform="translate(-0.5 0)" />
+        </svg>
+        <svg class="junction top" aria-hidden="true">
+          <line x1="0" y1="10.5" x2="100%" y2="10.5" />
+          <path
+            d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+            fill="currentColor"
+            transform="rotate(180 5.5 5.5)"
+          />
+          <path
+            d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+            fill="currentColor"
+            transform="translate(0 10) rotate(-90 5.5 5.5)"
+          />
+          <svg x="100%" overflow="visible" aria-hidden="true">
+            <path
+              d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+              fill="currentColor"
+              transform="translate(-11 0) rotate(90 5.5 5.5)"
+            />
+            <path
+              d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+              fill="currentColor"
+              transform="translate(-11 10)"
+            />
+          </svg>
+        </svg>
+        <svg class="junction bottom" aria-hidden="true">
+          <line x1="0" y1="10.5" x2="100%" y2="10.5" />
+          <path
+            d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+            fill="currentColor"
+            transform="rotate(180 5.5 5.5)"
+          />
+          <path
+            d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+            fill="currentColor"
+            transform="translate(0 10) rotate(-90 5.5 5.5)"
+          />
+          <svg x="100%" overflow="visible" aria-hidden="true">
+            <path
+              d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+              fill="currentColor"
+              transform="translate(-11 0) rotate(90 5.5 5.5)"
+            />
+            <path
+              d="M4 0H11V7H10C10 3.68629 7.31371 1 4 1V0Z"
+              fill="currentColor"
+              transform="translate(-11 10)"
+            />
+          </svg>
+        </svg>
+
         <section class="band hero">
           <h1>Any file in.<br /><span class="accent">Markdown out.</span></h1>
           <p class="lede">
             Open-source TypeScript converters that turn office documents, HTML,
             email, notebooks, ebooks, and more into
-            <strong>GitHub-Flavored Markdown</strong>. This page runs them in
-            your browser: files never leave your machine.
+            <strong>GitHub-Flavored Markdown</strong>. This page runs them in a
+            Web Worker: <strong>files never leave your machine</strong>.
           </p>
-          <ul class="formats" aria-label="Supported formats">
-            <li>doc</li>
-            <li>docx</li>
-            <li>ppt</li>
-            <li>pptx</li>
-            <li>xls</li>
-            <li>xlsx</li>
-            <li>odt</li>
-            <li>ods</li>
-            <li>odp</li>
-            <li>odg</li>
-            <li>pages</li>
-            <li>numbers</li>
-            <li>key</li>
-            <li>wps</li>
-            <li>rtf</li>
-            <li>pdf</li>
-            <li>html</li>
-            <li>eml</li>
-            <li>msg</li>
-            <li>ipynb</li>
-            <li>md</li>
-            <li>txt</li>
-            <li>csv</li>
-            <li>tsv</li>
-            <li>json</li>
-            <li>xml</li>
-            <li>yaml</li>
-            <li>tex</li>
-            <li>epub</li>
-            <li>fb2</li>
-            <li>mobi</li>
-            <li>hwp</li>
-            <li>vsdx</li>
-            <li>one</li>
-            <li>zip</li>
-            <li>srt</li>
-            <li>svg</li>
-          </ul>
           <ul class="badges">
             <li>
-              <span class="key">npm</span>
-              <span class="value">@mdgate/converters</span>
+              <a href="https://www.npmjs.com/package/@mdgate/converters">
+                <span class="key">npm</span>
+                <span class="value">@mdgate/converters</span>
+              </a>
             </li>
             <li>
-              <span class="key">api</span>
-              <span class="value">mdgate</span>
+              <a href="https://github.com/mdgate/converters/blob/main/LICENSE">
+                <span class="key">license</span>
+                <span class="value">MIT</span>
+              </a>
             </li>
             <li>
               <span class="key">runtime</span>
@@ -99,6 +127,10 @@
 
         <section class="band">
           <button class="drop" id="drop" type="button" aria-describedby="drop-hint" disabled>
+            <svg class="drop-mark" viewBox="0 0 48 48" aria-hidden="true">
+              <rect x="8" y="6" width="32" height="36" rx="4" />
+              <path d="M16 18h16M16 24h16M16 30h10" />
+            </svg>
             <span class="big" id="drop-title">Loading the converter…</span>
             <span class="small" id="drop-hint">TypeScript converters, compiled once for this page</span>
           </button>
@@ -110,11 +142,12 @@
           />
           <p class="samples">
             No file at hand? Try a sample:
+            <button type="button" id="sample-docx">letter.docx</button>
+            <button type="button" id="sample-xlsx">sheet.xlsx</button>
             <button type="button" id="sample-html">page.html</button>
             <button type="button" id="sample-eml">note.eml</button>
             <button type="button" id="sample-rtf">notes.rtf</button>
             <button type="button" id="sample-csv">report.csv</button>
-            <button type="button" id="sample-docx">letter.docx</button>
           </p>
         </section>
 
@@ -124,10 +157,16 @@
             <span class="arrow" id="result-arrow" hidden>→</span>
             <span id="result-stats"></span>
             <span class="spacer"></span>
+            <fieldset class="view" id="view" hidden>
+              <legend class="sr-only">Result view</legend>
+              <button type="button" id="view-preview" aria-pressed="true">Preview</button>
+              <button type="button" id="view-source" aria-pressed="false">Markdown</button>
+            </fieldset>
             <button type="button" id="copy" hidden>Copy</button>
             <button type="button" id="download" hidden>Download .md</button>
           </div>
-          <pre class="output" id="output"></pre>
+          <article class="preview" id="preview"></article>
+          <pre class="output" id="output" hidden></pre>
         </section>
 
         <section class="band" id="about">
@@ -148,9 +187,15 @@
             </dd>
             <dt>Portable</dt>
             <dd>
-              The converters are TypeScript with no Node builtins. The same
-              <code>toMarkdown(bytes)</code> call works in Node, Edge, and this
-              page.
+              The converters are TypeScript with no Node builtins and no WASM.
+              The same <code>toMarkdown(bytes)</code> call works in Node, Edge,
+              and this page.
+            </dd>
+            <dt>Formats</dt>
+            <dd>
+              Office, Apple iWork, OpenDocument, WPS, Hangul, Visio, OneNote,
+              PDF, HTML, email, notebooks, ebooks, LaTeX, archives, and more —
+              one package or only the formats you need.
             </dd>
             <dt>PDF</dt>
             <dd>
@@ -160,8 +205,10 @@
             <dt>This page</dt>
             <dd>
               The converter above is
-              <code>@mdgate/converters</code>, running in a Web Worker. Drop a
-              file into your own app the same way.
+              <a href="https://www.npmjs.com/package/@mdgate/converters"
+                >@mdgate/converters</a
+              >, running in a Web Worker. Drop a file into your own app the
+              same way.
             </dd>
           </dl>
         </section>
@@ -169,27 +216,39 @@
         <section class="band" id="install">
           <h2>Install</h2>
           <dl class="installs">
-            <dt>Local</dt>
+            <dt>Everything</dt>
             <dd>
               <span class="dollar">$</span>
               <code class="cmd">npm install @mdgate/converters</code>
             </dd>
-            <dt>Hosted API</dt>
+            <dt>One format</dt>
             <dd>
               <span class="dollar">$</span>
-              <code class="cmd">npm install mdgate</code>
+              <code class="cmd">npm install @mdgate/docx</code>
             </dd>
           </dl>
           <pre class="snippet"><code>import { toMarkdown } from '@mdgate/converters';
 
 const bytes = new Uint8Array(await file.arrayBuffer());
 const markdown = await toMarkdown(bytes, { path: file.name });</code></pre>
+          <p class="prose">
+            The same function works in Node, Edge, and the browser. Compose a
+            smaller set with <code>create()</code>, or hand images to a vision
+            model. See the
+            <a href="https://github.com/mdgate/converters#quick-start">README</a>.
+          </p>
         </section>
       </main>
 
-      <footer>
+      <footer class="rail">
+        <svg class="frame" aria-hidden="true">
+          <line x1="0.5" y1="0" x2="0.5" y2="100%" />
+          <line x1="100%" y1="0" x2="100%" y2="100%" transform="translate(-0.5 0)" />
+        </svg>
         <span>Local conversion · nothing is uploaded</span>
-        <a href="#install">Get the library</a>
+        <a href="https://github.com/mdgate/converters">Source</a>
+        <a href="https://github.com/mdgate/converters/issues">Issues</a>
+        <a href="https://github.com/mdgate/converters/blob/main/LICENSE">MIT</a>
       </footer>
     </div>
     <script type="module" src="/src/main.ts"></script>
