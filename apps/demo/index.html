@@ -34,7 +34,8 @@
           <span class="wordmark">mdgate</span>
         </a>
         <nav>
-          <a href="#about">About</a>
+          <a href="#formats">Formats</a>
+          <a class="aux" href="#about">About</a>
           <a class="aux" href="#install">Install</a>
           <a href="https://github.com/mdgate/converters">GitHub</a>
           <a class="pkg" href="https://www.npmjs.com/package/@mdgate/converters">npm</a>
@@ -169,6 +170,171 @@
           <pre class="output" id="output" hidden></pre>
         </section>
 
+        <section class="band" id="formats">
+          <h2>Formats</h2>
+          <p class="lede">
+            This page runs <code>@mdgate/converters</code>. Every row converts
+            locally except raster images and audio, which need a callback.
+          </p>
+          <table class="catalog">
+            <thead>
+              <tr>
+                <th scope="col">Package</th>
+                <th scope="col">Extensions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/docx">@mdgate/docx</a></th>
+                <td>
+                  <span>docx</span><span>docm</span><span>dotx</span><span>dotm</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/doc">@mdgate/doc</a></th>
+                <td><span>doc</span><span>dot</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/rtf">@mdgate/rtf</a></th>
+                <td><span>rtf</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/pptx">@mdgate/pptx</a></th>
+                <td>
+                  <span>pptx</span><span>pptm</span><span>ppsx</span><span>ppsm</span><span>potx</span><span>potm</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/ppt">@mdgate/ppt</a></th>
+                <td><span>ppt</span><span>pps</span><span>pot</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/xlsx">@mdgate/xlsx</a></th>
+                <td>
+                  <span>xlsx</span><span>xlsm</span><span>xlsb</span><span>xls</span><span>xltx</span><span>xltm</span><span>xlt</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/odf">@mdgate/odf</a></th>
+                <td>
+                  <span>odt</span><span>ods</span><span>odp</span><span>odg</span><span>ott</span><span>ots</span><span>otp</span><span>otg</span><span>fodt</span><span>fods</span><span>fodp</span><span>fodg</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/pages">@mdgate/pages</a></th>
+                <td><span>pages</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/numbers">@mdgate/numbers</a></th>
+                <td><span>numbers</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/keynote">@mdgate/keynote</a></th>
+                <td><span>key</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/wps">@mdgate/wps</a></th>
+                <td>
+                  <span>wps</span><span>wpt</span><span>et</span><span>ett</span><span>dps</span><span>dpt</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/hwp">@mdgate/hwp</a></th>
+                <td>
+                  <span>hwp</span><span>hwpx</span><span>hwt</span><span>hwtx</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/pdf">@mdgate/pdf</a></th>
+                <td><span>pdf</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/html">@mdgate/html</a></th>
+                <td>
+                  <span>html</span><span>htm</span><span>xhtml</span><span>mhtml</span><span>mht</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/email">@mdgate/email</a></th>
+                <td>
+                  <span>eml</span><span>msg</span><span>mbox</span><span>emlx</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/ipynb">@mdgate/ipynb</a></th>
+                <td><span>ipynb</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/epub">@mdgate/epub</a></th>
+                <td><span>epub</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/fb2">@mdgate/fb2</a></th>
+                <td><span>fb2</span><span>fb2.zip</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/mobi">@mdgate/mobi</a></th>
+                <td>
+                  <span>mobi</span><span>azw</span><span>azw3</span><span>prc</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/latex">@mdgate/latex</a></th>
+                <td><span>tex</span><span>latex</span><span>ltx</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/visio">@mdgate/visio</a></th>
+                <td>
+                  <span>vsd</span><span>vsdx</span><span>vss</span><span>vst</span><span>vssx</span><span>vstx</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/onenote">@mdgate/onenote</a></th>
+                <td>
+                  <span>one</span><span>onetoc2</span><span>onepkg</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/csv">@mdgate/csv</a></th>
+                <td><span>csv</span><span>tsv</span><span>tab</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/data">@mdgate/data</a></th>
+                <td>
+                  <span>json</span><span>jsonl</span><span>xml</span><span>yaml</span><span>yml</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/text">@mdgate/text</a></th>
+                <td>
+                  <span>txt</span><span>text</span><span>md</span><span>markdown</span><span>mdx</span><span>js</span><span>ts</span><span>py</span><span>go</span><span>rs</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/subtitle">@mdgate/subtitle</a></th>
+                <td><span>srt</span><span>vtt</span><span>webvtt</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/zip">@mdgate/zip</a></th>
+                <td><span>zip</span><span>zipx</span><span>jar</span></td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/image">@mdgate/image</a></th>
+                <td>
+                  <span>svg</span>
+                  <span class="note">jpeg png webp gif tiff heic bmp via a vision callback</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/audio">@mdgate/audio</a></th>
+                <td>
+                  <span class="note">mp3 wav m4a aac ogg flac webm via a transcription callback</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
         <section class="band" id="about">
           <h2>About</h2>
           <dl class="facts">
@@ -193,9 +359,8 @@
             </dd>
             <dt>Formats</dt>
             <dd>
-              Office, Apple iWork, OpenDocument, WPS, Hangul, Visio, OneNote,
-              PDF, HTML, email, notebooks, ebooks, LaTeX, archives, and more —
-              one package or only the formats you need.
+              One package per family, or the full bundle. The
+              <a href="#formats">list above</a> is what this page will convert.
             </dd>
             <dt>PDF</dt>
             <dd>

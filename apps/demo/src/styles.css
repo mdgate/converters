@@ -644,6 +644,101 @@ code {
   border: 0;
 }
 
+.catalog {
+  width: 100%;
+  margin: 22px 0 0;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.catalog thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.catalog th,
+.catalog td {
+  padding: 10px 0;
+  border-top: 1px solid var(--border-faint);
+  vertical-align: top;
+  text-align: left;
+}
+
+.catalog tbody tr:first-child th,
+.catalog tbody tr:first-child td {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.catalog th[scope="row"] {
+  width: 168px;
+  padding-right: 16px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.catalog th[scope="row"] a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.catalog th[scope="row"] a:hover {
+  color: var(--accent);
+}
+
+.catalog td span {
+  display: inline-block;
+  margin: 0 6px 6px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.catalog td .note {
+  letter-spacing: 0;
+  text-transform: none;
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+@media (max-width: 575px) {
+  .catalog,
+  .catalog tbody,
+  .catalog tr,
+  .catalog th[scope="row"],
+  .catalog td {
+    display: block;
+    width: auto;
+  }
+
+  .catalog th[scope="row"] {
+    padding: 12px 0 4px;
+    border-top: 1px solid var(--border-faint);
+    white-space: normal;
+  }
+
+  .catalog td {
+    padding: 0 0 12px;
+    border-top: 0;
+  }
+
+  .catalog tbody tr:first-child th {
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
 .facts {
   display: grid;
   grid-template-columns: 108px 1fr;
