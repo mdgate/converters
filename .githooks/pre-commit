@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+if [ -n "$CI" ]; then
+  exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "pre-commit: bun not found" >&2
+  exit 1
+fi
+
+bun run lint
+bun test

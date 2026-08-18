@@ -68,8 +68,9 @@ Review every prose output against these rules before delivering.
 
 ## Commands
 
-- Install: `bun install` from the repo root.
-- After code changes (not docs-only): run `bun test` and `bun run lint`. Fix failures before committing.
+- Install: `bun install` from the repo root. That also sets `core.hooksPath` to `.githooks`.
+- Pre-commit runs `bun run lint` then `bun test`. Fix failures before committing. The hook is a no-op when `CI` is set so release commits on the runner do not re-run the suite.
+- After code changes (not docs-only): run `bun test` and `bun run lint` even if you skip the hook.
 - Prefer a scoped Vitest path when iterating:
   ```bash
   bunx vitest run packages/html/test/html.test.ts

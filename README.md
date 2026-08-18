@@ -245,7 +245,7 @@ Contract and shared layers:
 ## Development
 
 ```bash
-bun install
+bun install          # also enables .githooks/pre-commit (lint + test)
 bun test
 bun run dev:demo
 ```
