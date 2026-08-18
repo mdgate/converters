@@ -55,5 +55,7 @@ Only need one format? Install just that package instead — for example
 | `@mdgate/hwp` | hwp, hwpx, hwt, hwtx |
 | `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
 | `@mdgate/zip` | zip, zipx, jar |
-| `@mdgate/image` | jpeg/png/webp/gif/tiff/heic/bmp via a vision callback; svg locally (`svg()` is in `all()`) |
-| `@mdgate/audio` | mp3/wav/m4a/aac/ogg/flac/webm via a transcription callback |
+| `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg |
+| `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, webm\* |
+
+\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`). Not registered by `all()`. SVG converts locally.

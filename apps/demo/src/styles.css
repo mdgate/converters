@@ -706,10 +706,7 @@ code {
 }
 
 .catalog td .note {
-  letter-spacing: 0;
-  text-transform: none;
   border-style: dashed;
-  color: var(--text-muted);
 }
 
 @media (max-width: 575px) {

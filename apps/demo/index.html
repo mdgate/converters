@@ -172,10 +172,6 @@
 
         <section class="band" id="formats">
           <h2>Formats</h2>
-          <p class="lede">
-            This page runs <code>@mdgate/converters</code>. Every row converts
-            locally except raster images and audio, which need a callback.
-          </p>
           <table class="catalog">
             <thead>
               <tr>
@@ -321,18 +317,22 @@
               <tr>
                 <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/image">@mdgate/image</a></th>
                 <td>
-                  <span>svg</span>
-                  <span class="note">jpeg png webp gif tiff heic bmp via a vision callback</span>
+                  <span class="note">jpeg</span><span class="note">png</span><span class="note">webp</span><span class="note">gif</span><span class="note">tiff</span><span class="note">heic</span><span class="note">bmp</span><span>svg</span>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/audio">@mdgate/audio</a></th>
                 <td>
-                  <span class="note">mp3 wav m4a aac ogg flac webm via a transcription callback</span>
+                  <span class="note">mp3</span><span class="note">wav</span><span class="note">m4a</span><span class="note">aac</span><span class="note">ogg</span><span class="note">flac</span><span class="note">webm</span>
                 </td>
               </tr>
             </tbody>
           </table>
+          <p class="prose">
+            Dashed badges need a callback — vision for raster images,
+            transcription for audio — and are not registered by
+            <code>all()</code>. SVG converts locally.
+          </p>
         </section>
 
         <section class="band" id="about">

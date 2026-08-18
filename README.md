@@ -115,8 +115,10 @@ const convert = create([
 | Text | `.txt`, `.md`, and source files |
 | Subtitles | `.srt`, `.vtt`, `.webvtt` |
 | Archives | `.zip`, `.zipx`, `.jar` |
-| Images | `.svg` locally; JPEG/PNG/WebP/GIF/TIFF/HEIC/BMP via a vision callback |
-| Audio | MP3/WAV/M4A/AAC/OGG/FLAC/WebM via a transcription callback |
+| Images | `.jpeg`\*, `.png`\*, `.webp`\*, `.gif`\*, `.tiff`\*, `.heic`\*, `.bmp`\*, `.svg` |
+| Audio | `.mp3`\*, `.wav`\*, `.m4a`\*, `.aac`\*, `.ogg`\*, `.flac`\*, `.webm`\* |
+
+\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`). Not registered by `all()`. SVG converts locally.
 
 ## How it works
 
@@ -218,9 +220,11 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/hwp` | hwp, hwpx, hwt, hwtx |
 | `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
 | `@mdgate/zip` | zip, zipx, jar |
-| `@mdgate/image` | jpeg/png/webp/gif/tiff/heic/bmp via a vision callback; svg locally (`svg()` is in `all()`) |
-| `@mdgate/audio` | mp3/wav/m4a/aac/ogg/flac/webm via a transcription callback |
+| `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg |
+| `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, webm\* |
 | `@mdgate/ai` | Optional `image(ai({ baseURL, apiKey, model }).convertImage)` |
+
+\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`). Not registered by `all()`. SVG converts locally.
 
 Contract and shared layers:
 
