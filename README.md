@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
 [![demo](https://img.shields.io/badge/demo-demo.mdgate.dev-0f766e)](https://demo.mdgate.dev)
 
-TypeScript converters that turn documents — Word, PowerPoint, Excel, OpenDocument, Apple iWork, PDF, HTML, email, notebooks, ebooks, and more — into clean GitHub-Flavored Markdown.
+TypeScript converters that turn documents (Word, PowerPoint, Excel, OpenDocument, Apple iWork, PDF, HTML, email, notebooks, ebooks, audio, video, and more) into clean GitHub-Flavored Markdown.
 
 Works in Node, Edge, and the browser. No native addons, no WASM, no external dependencies. Pass file bytes; get Markdown.
 
@@ -59,14 +59,15 @@ const convert = create([docx(), pdf()]);
 const markdown = await convert(bytes);
 ```
 
-### Images and video the local converters cannot read
+### Images, audio, and video the local converters cannot read
 
-Raster images, and images embedded in a PDF, need a vision callback. SVG converts locally. Video
-files need a callback that accepts the whole file.
+Raster images, and images embedded in a PDF, need a vision callback. SVG converts locally. Audio
+needs a transcription callback. Video files need a callback that accepts the whole file.
 
 ```ts
 import { create } from '@mdgate/core';
 import { image } from '@mdgate/image';
+import { audio } from '@mdgate/audio';
 import { video } from '@mdgate/video';
 import { ai } from '@mdgate/ai';
 import { pdf } from '@mdgate/pdf';
@@ -80,6 +81,7 @@ const media = ai({
 const convert = create([
   pdf(),
   image(media.convertImage),
+  audio(media.convertAudio),
   video(media.convertVideo),
 ]);
 ```
