@@ -75,7 +75,7 @@ Review every prose output against these rules before delivering.
   bunx vitest run packages/html/test/html.test.ts
   bunx vitest run test/to-markdown.test.ts
   ```
-- Workspace tests under `test/` (corpus, parity, portable, robustness) import `@mdgate/*` from `dist/`. If those fail after a source change, `bun run build` then re-run. Do not run `bun run build` otherwise, and never `bun run deploy:demo` / `bun run publish:all`, unless the user asks.
+- Workspace tests under `test/` (corpus, parity, portable, robustness) import `@mdgate/*` from `dist/`. If those fail after a source change, `bun run build` then re-run. Do not run `bun run build` otherwise, and never `bun run deploy:demo` / `bun run publish:all` / `bun run version --`, unless the user asks to publish. Patch publishes itself after a green CI on `main`. Minor and major go through `release.yml` (see Releasing).
 - If you create or modify a test file, run it and iterate until it passes.
 - If a converter output change is intentional, update the matching snapshot under `test/snapshots`. Do not weaken assertions to make a test pass.
 - Fixture-corpus parity: `bun run test:parity`.
@@ -99,41 +99,65 @@ Lightweight rules (no supply-chain age gate, no lockfile commit hooks, no forced
 
 ## Releasing
 
+Agents ship this repo. Do not hand-edit `version` or `@mdgate/*` pins. Ordinary commits do not touch versions. Git holds the last published `x.y.z`. There is one npm line: `latest`. No beta.
+
 All published `@mdgate/*` packages share one version. `@mdgate/converters@0.4.1` means every package is `0.4.1`. Internal `@mdgate/*` pins are that same number. Private packages (workspace root, `@mdgate/demo`) stay on `workspace:*` and are not published. Never mix versions in a compose install.
 
-| Change | During 0.x | After 1.0 |
-| --- | --- | --- |
-| Bugfix. Public TypeScript API unchanged. Converted Markdown may change. | patch | patch |
-| New format, new published package, or new public API | minor | minor |
-| Breaking public API or `Converter` contract | minor | major |
-| First API freeze | `1.0.0` | - |
+| Change | During 0.x | After 1.0 | Who publishes |
+| --- | --- | --- | --- |
+| Bugfix. Public TypeScript API unchanged. Converted Markdown may change. | patch | patch | CI, after green `main` |
+| New format, new published package, or new public API | minor | minor | Human, `release.yml` |
+| Breaking public API or `Converter` contract | minor | major | Human, `release.yml` |
+| First API freeze | `1.0.0` | - | Human, `release.yml` |
 
-A mixed release takes the highest row. A new published package is born at the version that introduces it; adding one is a minor. Wire it into `build`, `pack:check`, `publish:all`, and into `@mdgate/converters` if it is a format.
+A mixed release takes the highest row. Do not infer minor vs major from commit messages. Ask if that increment is unclear.
+
+A new published package is born at the version that introduces it; adding one is a minor. Add `packages/<name>` with public `@mdgate/<name>`. `pack:check` and `publish:all` discover it from `packages/*/package.json`. Still wire it into the layered `build` script, and into `@mdgate/converters` if it is a format.
 
 Do not unpublish. Do not reuse a version. Pre-`0.4.0` versions are the old independent line; they stay on npm.
 
-Bump only when shipping to npm. Ordinary commits do not touch versions. Never edit `version` or `@mdgate/*` pins by hand:
+### What agents do
+
+- Fix a converter, change output, land the PR on `main`. After CI is green, `publish-patch.yml` bumps patch, commits `release: x.y.z`, tags, publishes. Do not bump in the PR.
+- Add a format, add a published package, or change the public API. Label the PR `release:minor` (or `release:major`). After merge, run `gh workflow run release.yml -f increment=minor` from `main`. Auto-patch will not fire.
+- A new `packages/<name>/package.json` that is public also blocks auto-patch, even if the label is missing. Then run Release with `minor`.
+- Docs, AGENTS, CI, or demo only: no publish.
+- Put `[skip publish]` in the commit message to skip auto-patch for a `packages/` change that must not ship yet.
+
+Repo secret `NPM_TOKEN` is an npm Automation token with publish rights on `@mdgate/*`. Put it in GitHub Actions secrets, never in the repo. If branch protection blocks the bot, allow `github-actions[bot]` to push `main`.
+
+### Workflows
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| `ci.yml` | PR and push to `main` | `lint`, `build`, `test`, `pack:check`. Skips `release:` commits. |
+| `publish-patch.yml` | CI succeeded on a `main` push | Patch bump + publish, unless skipped (see above). |
+| `release.yml` | `workflow_dispatch` on `main` | `minor` / `major` (or a forced `patch`). Test, bump, commit, tag, publish. |
 
 ```bash
-bun run version -- patch        # 0.4.0 → 0.4.1
-bun run version -- minor        # 0.4.0 → 0.5.0
-bun run version -- major        # 0.4.0 → 1.0.0
-bun run version -- 0.5.0        # explicit; only to realign a drifted tree
-bun run version:check
+gh workflow run release.yml -f increment=minor
+gh workflow run release.yml -f increment=major
 ```
 
-One bump writes the same number onto every published package and every internal `@mdgate/*` pin. Never bump a subset. If nothing user-visible ships, do not bump.
+If publish dies halfway, re-run the same workflow. Do not bump again. Already-published packages are skipped. Agents still do not push to `main` themselves; only these workflows do, and only for `release: x.y.z`.
 
-Bump and `publish:all` are one release. Current number already on npm: bump first, then publish. Do not republish the same number, and do not leave a new number unpublished. If `publish:all` dies halfway, retry the rest at the **same** version. It refuses to run if versions have drifted.
+### Local fallback
+
+Use only when CI cannot (missing secret, registry outage, explicit user request):
 
 ```bash
 bun test
-bun run version:check
-bun run version -- patch        # or minor / major
-git commit -am "release: 0.4.1"
-git tag v0.4.1
+bun run lint
+bun run pack:check
+bun run version -- patch                    # or minor / major
+git commit -am "release: 0.4.2"
+git tag v0.4.2
 bun run publish:all
 ```
+
+`bun run version -- 0.5.0` realigns a drifted tree to an exact `x.y.z`. `version:check` rejects anything that is not a shared exact `x.y.z`.
+
+One bump moves every published package. Never bump a subset. If nothing user-visible ships, do not bump. Do not leave a new number unpublished. Do not publish without bumping.
 
 ## Git
 

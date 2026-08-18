@@ -12,7 +12,8 @@
       "!**/node_modules",
       "!**/.wrangler",
       "!**/test/*.md",
-      "!**/src/generated"
+      "!**/src/generated",
+      "!**/packages/pdf/data/encodings.js"
     ]
   },
   "formatter": {
