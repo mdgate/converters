@@ -43,3 +43,6 @@ jobs:
       - run: bun run publish:all
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: bun scripts/github-release.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

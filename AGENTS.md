@@ -119,7 +119,7 @@ Do not unpublish. Do not reuse a version. Pre-`0.4.0` versions are the old indep
 
 ### What agents do
 
-- Fix a converter, change output, land the PR on `main`. After CI is green, `publish-patch.yml` bumps patch, commits `release: x.y.z`, tags, publishes. Do not bump in the PR.
+- Fix a converter, change output, land the PR on `main`. After CI is green, `publish-patch.yml` bumps patch, commits `release: x.y.z`, tags, publishes, and writes a GitHub Release from the merged PRs. Do not bump in the PR.
 - Add a format, add a published package, or change the public API. Label the PR `release:minor` (or `release:major`). After merge, run `gh workflow run release.yml -f increment=minor` from `main`. Auto-patch will not fire.
 - A new `packages/<name>/package.json` that is public also blocks auto-patch, even if the label is missing. Then run Release with `minor`.
 - Docs, AGENTS, CI, or demo only: no publish.
@@ -132,8 +132,8 @@ Repo secret `NPM_TOKEN` is an npm Automation token with publish rights on `@mdga
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
 | `ci.yml` | PR and push to `main` | `lint`, `build`, `test`, `pack:check`. Skips `release:` commits. |
-| `publish-patch.yml` | CI succeeded on a `main` push | Patch bump + publish, unless skipped (see above). |
-| `release.yml` | `workflow_dispatch` on `main` | `minor` / `major` (or a forced `patch`). Test, bump, commit, tag, publish. |
+| `publish-patch.yml` | CI succeeded on a `main` push | Patch bump + publish + GitHub Release, unless skipped (see above). |
+| `release.yml` | `workflow_dispatch` on `main` | `minor` / `major` (or a forced `patch`). Test, bump, commit, tag, publish, GitHub Release. |
 
 ```bash
 gh workflow run release.yml -f increment=minor
@@ -154,6 +154,7 @@ bun run version -- patch                    # or minor / major
 git commit -am "release: 0.4.2"
 git tag v0.4.2
 bun run publish:all
+bun scripts/github-release.ts
 ```
 
 `bun run version -- 0.5.0` realigns a drifted tree to an exact `x.y.z`. `version:check` rejects anything that is not a shared exact `x.y.z`.
