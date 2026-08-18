@@ -77,7 +77,7 @@
     },
     "packages/containers": {
       "name": "@mdgate/containers",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@mdgate/core": "0.1.3",
         "@mdgate/utils": "0.1.2",
@@ -85,7 +85,7 @@
     },
     "packages/converters": {
       "name": "@mdgate/converters",
-      "version": "0.3.0",
+      "version": "0.3.3",
       "dependencies": {
         "@mdgate/audio": "0.1.0",
         "@mdgate/core": "0.1.3",
@@ -93,10 +93,10 @@
         "@mdgate/data": "0.1.0",
         "@mdgate/doc": "0.1.0",
         "@mdgate/docx": "0.1.0",
-        "@mdgate/email": "0.1.0",
+        "@mdgate/email": "0.1.1",
         "@mdgate/epub": "0.1.0",
         "@mdgate/fb2": "0.1.0",
-        "@mdgate/html": "0.1.0",
+        "@mdgate/html": "0.1.1",
         "@mdgate/hwp": "0.1.0",
         "@mdgate/image": "0.1.1",
         "@mdgate/ipynb": "0.1.0",
@@ -116,7 +116,7 @@
         "@mdgate/visio": "0.1.0",
         "@mdgate/wps": "0.1.0",
         "@mdgate/xlsx": "0.1.0",
-        "@mdgate/zip": "0.1.0",
+        "@mdgate/zip": "0.1.1",
       },
     },
     "packages/core": {
@@ -173,12 +173,12 @@
     },
     "packages/email": {
       "name": "@mdgate/email",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
-        "@mdgate/containers": "0.1.0",
+        "@mdgate/containers": "0.1.1",
         "@mdgate/core": "0.1.3",
         "@mdgate/document": "0.1.0",
-        "@mdgate/html": "0.1.0",
+        "@mdgate/html": "0.1.1",
         "@mdgate/utils": "0.1.2",
       },
     },
@@ -206,9 +206,9 @@
     },
     "packages/html": {
       "name": "@mdgate/html",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
-        "@mdgate/containers": "0.1.0",
+        "@mdgate/containers": "0.1.1",
         "@mdgate/core": "0.1.3",
         "@mdgate/document": "0.1.0",
         "@mdgate/office-common": "0.1.0",
@@ -335,7 +335,7 @@
     },
     "packages/pdf": {
       "name": "@mdgate/pdf",
-      "version": "0.1.6",
+      "version": "0.2.1",
       "dependencies": {
         "@mdgate/core": "0.1.3",
         "@mdgate/utils": "0.1.2",
@@ -433,9 +433,9 @@
     },
     "packages/zip": {
       "name": "@mdgate/zip",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
-        "@mdgate/containers": "0.1.0",
+        "@mdgate/containers": "0.1.1",
         "@mdgate/core": "0.1.3",
         "@mdgate/document": "0.1.0",
         "@mdgate/utils": "0.1.2",
@@ -868,6 +868,40 @@
     "youch": ["youch@4.1.0-beta.10", "", { "dependencies": { "@poppinss/colors": "^4.1.5", "@poppinss/dumper": "^0.6.4", "@speed-highlight/core": "^1.2.7", "cookie": "^1.0.2", "youch-core": "^0.3.3" } }, "sha512-rLfVLB4FgQneDr0dv1oddCVZmKjcJ6yX6mS4pU82Mq/Dt9a3cLZQ62pDBL4AUO+uVrCvtWz3ZFUL2HFAFJ/BXQ=="],
 
     "youch-core": ["youch-core@0.3.3", "", { "dependencies": { "@poppinss/exception": "^1.2.2", "error-stack-parser-es": "^1.0.5" } }, "sha512-ho7XuGjLaJ2hWHoK8yFnsUGy2Y5uDpqSTq1FkHLK4/oqKtyUU1AFbOOxY4IpC9f0fTLjwYbslUz0Po5BpD1wrA=="],
+
+    "@mdgate/doc/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/docx/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/epub/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/epub/@mdgate/html": ["@mdgate/html@0.1.0", "", { "dependencies": { "@mdgate/containers": "0.1.0", "@mdgate/core": "0.1.3", "@mdgate/document": "0.1.0", "@mdgate/office-common": "0.1.0", "@mdgate/utils": "0.1.2" } }, "sha512-OnzRhyYRRZLe/doiAmQwxLMQEkc8y1uzix8O/+AJQMc/7/z10egvtBVZitwTGC37MiQ7VKT+P5gBxRI6cnwZhw=="],
+
+    "@mdgate/fb2/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/hwp/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/iwork-common/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/mobi/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/mobi/@mdgate/html": ["@mdgate/html@0.1.0", "", { "dependencies": { "@mdgate/containers": "0.1.0", "@mdgate/core": "0.1.3", "@mdgate/document": "0.1.0", "@mdgate/office-common": "0.1.0", "@mdgate/utils": "0.1.2" } }, "sha512-OnzRhyYRRZLe/doiAmQwxLMQEkc8y1uzix8O/+AJQMc/7/z10egvtBVZitwTGC37MiQ7VKT+P5gBxRI6cnwZhw=="],
+
+    "@mdgate/odf/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/office-common/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/onenote/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/ppt/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/pptx/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/visio/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/wps/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
+
+    "@mdgate/xlsx/@mdgate/containers": ["@mdgate/containers@0.1.0", "", { "dependencies": { "@mdgate/core": "0.1.3", "@mdgate/utils": "0.1.2" } }, "sha512-W088jrJ3wVK/1KSDgVrafJSRwzkIteQhGKW20DVGKWPlvX1XO2iwWAq1c4WuZjdQClbk3bpyzQVmSMgKlF/cig=="],
 
     "wrangler/esbuild": ["esbuild@0.28.1", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.28.1", "@esbuild/android-arm": "0.28.1", "@esbuild/android-arm64": "0.28.1", "@esbuild/android-x64": "0.28.1", "@esbuild/darwin-arm64": "0.28.1", "@esbuild/darwin-x64": "0.28.1", "@esbuild/freebsd-arm64": "0.28.1", "@esbuild/freebsd-x64": "0.28.1", "@esbuild/linux-arm": "0.28.1", "@esbuild/linux-arm64": "0.28.1", "@esbuild/linux-ia32": "0.28.1", "@esbuild/linux-loong64": "0.28.1", "@esbuild/linux-mips64el": "0.28.1", "@esbuild/linux-ppc64": "0.28.1", "@esbuild/linux-riscv64": "0.28.1", "@esbuild/linux-s390x": "0.28.1", "@esbuild/linux-x64": "0.28.1", "@esbuild/netbsd-arm64": "0.28.1", "@esbuild/netbsd-x64": "0.28.1", "@esbuild/openbsd-arm64": "0.28.1", "@esbuild/openbsd-x64": "0.28.1", "@esbuild/openharmony-arm64": "0.28.1", "@esbuild/sunos-x64": "0.28.1", "@esbuild/win32-arm64": "0.28.1", "@esbuild/win32-ia32": "0.28.1", "@esbuild/win32-x64": "0.28.1" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-HrJrvZv5ayxBzPfwphOoNzkzOIIlifzk0KJrGK2c8R4+LKpMtpYLQeUdjnwjWv/LZlkH2laZk+4w78pi99D4Vw=="],
 

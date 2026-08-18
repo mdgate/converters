@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/converters",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Official mdgate converter bundle",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "@mdgate/data": "0.1.0",
     "@mdgate/doc": "0.1.0",
     "@mdgate/docx": "0.1.0",
-    "@mdgate/email": "0.1.0",
+    "@mdgate/email": "0.1.1",
     "@mdgate/epub": "0.1.0",
     "@mdgate/fb2": "0.1.0",
-    "@mdgate/html": "0.1.0",
+    "@mdgate/html": "0.1.1",
     "@mdgate/hwp": "0.1.0",
     "@mdgate/image": "0.1.1",
     "@mdgate/ipynb": "0.1.0",
@@ -51,7 +51,7 @@
     "@mdgate/visio": "0.1.0",
     "@mdgate/wps": "0.1.0",
     "@mdgate/xlsx": "0.1.0",
-    "@mdgate/zip": "0.1.0"
+    "@mdgate/zip": "0.1.1"
   },
   "publishConfig": {
     "access": "public"
