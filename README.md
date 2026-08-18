@@ -32,7 +32,7 @@ const bytes = new Uint8Array(await readFile('notes.docx'));
 const markdown = await toMarkdown(bytes, { path: 'notes.docx' });
 ```
 
-`hint.path` is only a sniff hint (needed for signature-less formats like CSV). It is never read from disk.
+`hint.path` is only a sniff hint (needed for signature-less formats like CSV). It is never read from disk. `hint.page` is 1-based and is honored for raster images (via `image()`) and PDF. Other converters ignore it.
 
 ### One format
 
@@ -167,6 +167,16 @@ try {
 | `resourceLimit` | Crossed a fixed safety limit (decompression, nesting, node count) |
 | `missingPart` | A part required for any meaningful output is absent |
 | `io` | The file could not be read |
+
+## Limitations
+
+These limits are fixed. You cannot change them per call.
+
+**Input.** `toMarkdown` takes file bytes (`Uint8Array`). `hint.path` is a sniff hint only: never read from disk, and required for signature-less formats (CSV, TSV, plain text, source). `hint.page` is 1-based. `image()` and PDF honor it; other converters ignore it.
+
+**Self-service.** `all()` and the [demo](https://demo.mdgate.dev) convert locally with no extra config. Raster images, audio, and video need a callback (`image()`, `audio()`, `video()`) and are not in `all()`. SVG converts locally. Encrypted files throw `encrypted`.
+
+**Resource limits.** Archives, XML, MIME, table expansion, and nested convert hops (zip of eml of docx, max 3) throw `resourceLimit` when they cross a fixed cap. `ConvertError.limit` names the cap.
 
 ## Write your own converter
 

@@ -11,7 +11,10 @@ export function create(converters: readonly Converter[]): Convert {
     depth: number,
   ): Promise<string> => {
     if (depth > MAX_DEPTH) {
-      throw ConvertError.unsupported('nested conversion limit');
+      throw ConvertError.resourceLimit(
+        'max_convert_depth',
+        `nested conversion exceeds ${MAX_DEPTH} hops`,
+      );
     }
     if (!(bytes instanceof Uint8Array)) {
       throw ConvertError.unsupported('input must be a Uint8Array');

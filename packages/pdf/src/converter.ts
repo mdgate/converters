@@ -12,9 +12,11 @@ export function pdf(): Converter {
     },
     convert(bytes: Uint8Array, options?: ConvertOptions): ConvertResult | Promise<ConvertResult> {
       if (options?.convert !== undefined) {
-        return toMarkdownFromPdf(bytes, options.convert).then((markdown) => ({ markdown }));
+        return toMarkdownFromPdf(bytes, options.convert, options.page).then((markdown) => ({
+          markdown,
+        }));
       }
-      return { markdown: toMarkdownFromPdf(bytes) };
+      return { markdown: toMarkdownFromPdf(bytes, undefined, options?.page) };
     },
   };
 }

@@ -42,7 +42,7 @@ Only need one format? Install just that package instead — for example
 | `@mdgate/html` | html, htm, xhtml, mhtml, mht |
 | `@mdgate/email` | eml, msg, mbox, emlx |
 | `@mdgate/ipynb` | ipynb (Jupyter) |
-| `@mdgate/odf` | odt, ods, odp |
+| `@mdgate/odf` | odt, ods, odp, odg |
 | `@mdgate/pages` | pages |
 | `@mdgate/numbers` | numbers |
 | `@mdgate/keynote` | key |

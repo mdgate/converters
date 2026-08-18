@@ -21,8 +21,12 @@ import { cmapFromTrueType } from './truetype.js';
 
 export function toMarkdownFromPdf(bytes: Uint8Array): string;
 export function toMarkdownFromPdf(bytes: Uint8Array, convert: Convert): Promise<string>;
-export function toMarkdownFromPdf(bytes: Uint8Array, convert?: Convert): string | Promise<string> {
-  const extracted = extractPdf(bytes, convert !== undefined);
+export function toMarkdownFromPdf(
+  bytes: Uint8Array,
+  convert?: Convert,
+  page?: number,
+): string | Promise<string> {
+  const extracted = extractPdf(bytes, convert !== undefined, page);
   if (convert === undefined) return finishPdf(extracted, []);
   return convertUniqueImages(extracted.images, convert).then((blocks) =>
     finishPdf(extracted, blocks),
@@ -53,13 +57,16 @@ interface MarkdownBlock {
   markdown: string;
 }
 
-function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
+function extractPdf(bytes: Uint8Array, wantImages: boolean, page?: number): ExtractedPdf {
   validatePdfBytes(bytes);
   const doc = parsePdf(bytes);
   if (doc.encrypted) throw ConvertError.encrypted();
   const pages = collectPages(doc);
   if (pages.length === 0) {
     throw ConvertError.malformed('invalid PDF structure');
+  }
+  if (page !== undefined && (!Number.isInteger(page) || page < 1 || page > pages.length)) {
+    throw ConvertError.unsupported(`PDF page ${page}`);
   }
 
   const items: TextItem[] = [];
@@ -69,6 +76,7 @@ function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
   const imageCache = new Map<string, PlacedImage | null>();
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   for (let i = 0; i < pages.length; i += 1) {
+    if (page !== undefined && i + 1 !== page) continue;
     const extracted = extractPage(doc, pages[i]!, i + 1, wantImages, imageCache);
     items.push(...extracted.items);
     strokeLines.push(...extracted.lines);
