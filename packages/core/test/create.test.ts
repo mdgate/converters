@@ -87,8 +87,7 @@ describe('create', () => {
     await expect(convert(new Uint8Array([3]))).resolves.toBe('3+2+1+leaf');
     await expect(convert(new Uint8Array([4]))).rejects.toMatchObject({
       name: 'ConvertError',
-      code: 'resourceLimit',
-      limit: 'max_convert_depth',
+      code: 'unsupported',
     });
   });
 });

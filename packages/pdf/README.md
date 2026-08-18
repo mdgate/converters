@@ -8,5 +8,4 @@ import { pdf } from '@mdgate/pdf';
 
 const convert = create([pdf()]);
 const markdown = await convert(bytes);
-const page = await convert(bytes, { page: 2 });
 ```

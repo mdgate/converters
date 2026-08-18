@@ -1,7 +1,5 @@
 export type ConvertHint = {
-  /** Sniff hint only. Never read from disk. Needed for signature-less formats such as CSV. */
   path?: string;
-  /** 1-based page. Honored by `image()` and PDF. Other converters ignore it. */
   page?: number;
 };
 
