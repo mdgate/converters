@@ -129,19 +129,14 @@ const convert = create([
 ```
 file bytes
   │
-  ├─► sniff              → each converter scores the bytes (and optional path)
-  │
-  ├─► format parser      → one per family
-  │         │
-  │         ├─► Document → shared model: blocks, inlines, tables,
-  │         │              notes, assets → GFM serializer
-  │         │
-  │         └─► Markdown directly (PDF text; images/audio/video via callback)
-  │
-  └─► nested convert     → zip / eml / … can hand inner bytes back
+  └─► convert
+        ├─► sniff              → each converter scores the bytes (and optional path)
+        ├─► parser             → Markdown
+        │         └─► Document → GFM serializer   (optional)
+        └─► nested convert     → zip / eml / … can hand inner bytes back
 ```
 
-Converters that share the document model get serializer fixes once. A table-escaping fix for docx is automatically a table-escaping fix for rtf, odt, and everything else on that path.
+The contract is sniff plus Markdown. A parser may build a `Document` and run the shared GFM serializer, so a table-escaping fix applies to every format on that helper. A parser may also hand inner bytes back to `convert`.
 
 ## Errors
 
@@ -173,7 +168,7 @@ try {
 
 ## Write your own converter
 
-A converter is two functions: `sniff` says whether the bytes are yours, `convert` turns them into markdown. Most converters parse into a `Document` from `@mdgate/document` and render with `documentToMarkdown` so the Markdown dialect matches:
+A converter is two functions: `sniff` says whether the bytes are yours, `convert` turns them into markdown. A parser may build a `Document` from `@mdgate/document` and render with `documentToMarkdown` so the Markdown dialect matches:
 
 ```ts
 import type { Converter } from '@mdgate/core';
