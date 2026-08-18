@@ -144,8 +144,9 @@ Worktree and PR Workflow:
 - All modifications must be performed in a new dedicated git worktree on a fresh branch (local agents only).
 - The PR must be a real remote GitHub Pull Request (push the worktree branch to origin, then create via `gh pr create` or GitHub UI). Local merges or local-only branches do not count as submission.
 - Direct commits or pushes to `main` are not allowed for modifications.
-- After the remote PR is merged on GitHub, delete the worktree and the branch.
-- After merging a PR, always update the local main branch and check main for any legacy diff remnants.
+- Merge PRs with squash (`gh pr merge --squash`). Do not use merge commits.
+- After the remote PR is squash-merged on GitHub, delete the worktree and the branch.
+- After squash-merging a PR, always update the local main branch and check main for any legacy diff remnants.
 
 Committing:
 
