@@ -39,6 +39,8 @@ describe('portable runtime', () => {
       'pdf',
       'ai',
       'image',
+      'audio',
+      'video',
       'converters',
     ]) {
       const files: string[] = [];
@@ -46,6 +48,32 @@ describe('portable runtime', () => {
       for (const file of files) {
         const src = readFileSync(file, 'utf8');
         if (NODE_IMPORT.test(src)) hits.push(file);
+      }
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it('published packages depend only on @mdgate/*', () => {
+    const fields = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const;
+    const hits: string[] = [];
+    for (const name of readdirSync(PACKAGES)) {
+      const path = join(PACKAGES, name, 'package.json');
+      const json = JSON.parse(readFileSync(path, 'utf8')) as {
+        name?: string;
+        private?: boolean;
+        dependencies?: Record<string, string>;
+        optionalDependencies?: Record<string, string>;
+        peerDependencies?: Record<string, string>;
+      };
+      if (json.private) continue;
+      for (const field of fields) {
+        const deps = json[field];
+        if (deps === undefined) continue;
+        for (const dep of Object.keys(deps)) {
+          if (!dep.startsWith('@mdgate/')) {
+            hits.push(`${json.name ?? name} ${field}.${dep}`);
+          }
+        }
       }
     }
     expect(hits).toEqual([]);

@@ -78,16 +78,10 @@ function mp4AudioMime(bytes: Uint8Array): AudioMime | undefined {
   }
   const boxSize = ((bytes[0]! << 24) | (bytes[1]! << 16) | (bytes[2]! << 8) | bytes[3]!) >>> 0;
   const end = Math.min(bytes.length, boxSize >= 16 ? boxSize : bytes.length, 256);
-  let m4a = false;
-  let mp4 = false;
-  if (isM4aBrand(bytes, 8)) m4a = true;
-  if (isMp4Brand(bytes, 8)) mp4 = true;
+  if (isM4aBrand(bytes, 8)) return 'audio/m4a';
   for (let i = 16; i + 4 <= end; i += 4) {
-    if (isM4aBrand(bytes, i)) m4a = true;
-    if (isMp4Brand(bytes, i)) mp4 = true;
+    if (isM4aBrand(bytes, i)) return 'audio/m4a';
   }
-  if (m4a) return 'audio/m4a';
-  if (mp4) return 'audio/mp4';
   return undefined;
 }
 
@@ -98,10 +92,6 @@ function isM4aBrand(bytes: Uint8Array, i: number): boolean {
     (bytes[i + 2] === 0x41 || bytes[i + 2] === 0x42 || bytes[i + 2] === 0x50) &&
     bytes[i + 3] === 0x20
   );
-}
-
-function isMp4Brand(bytes: Uint8Array, i: number): boolean {
-  return bytes[i] === 0x6d && bytes[i + 1] === 0x70 && bytes[i + 2] === 0x34;
 }
 
 function isOgg(bytes: Uint8Array): boolean {

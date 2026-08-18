@@ -24,7 +24,7 @@ describe('audio', () => {
     expect(converter.sniff(MP3)).toBe(2);
     expect(converter.sniff(WAV)).toBe(2);
     expect(converter.sniff(M4A)).toBe(2);
-    expect(converter.sniff(MP4)).toBe(2);
+    expect(converter.sniff(MP4)).toBe(0);
     expect(converter.sniff(OGG)).toBe(2);
     expect(converter.sniff(FLAC)).toBe(2);
     expect(converter.sniff(new Uint8Array([1]), { path: 'a.mp3' })).toBe(1);
@@ -47,7 +47,6 @@ describe('audio', () => {
     await expect(convert(MP3)).resolves.toBe('got audio/mpeg\n');
     await expect(convert(WAV)).resolves.toBe('got audio/wav\n');
     await expect(convert(M4A)).resolves.toBe('got audio/m4a\n');
-    await expect(convert(MP4)).resolves.toBe('got audio/mp4\n');
     await expect(convert(OGG)).resolves.toBe('got audio/ogg\n');
     await expect(convert(FLAC)).resolves.toBe('got audio/flac\n');
     await expect(convert(new Uint8Array([1]), { path: 'clip.aac' })).resolves.toBe(

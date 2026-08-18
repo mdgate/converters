@@ -1,7 +1,7 @@
 {
-  "name": "@mdgate/ai",
+  "name": "@mdgate/video",
   "version": "0.4.1",
-  "description": "Optional AI helper for mdgate: ai({ baseURL, apiKey, model }).convertImage / convertAudio / convertVideo",
+  "description": "mdgate video converter",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
@@ -22,9 +22,7 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.4.1",
-    "@mdgate/image": "0.4.1",
-    "@mdgate/video": "0.4.1"
+    "@mdgate/core": "0.4.1"
   },
   "publishConfig": {
     "access": "public"
@@ -35,7 +33,6 @@
   "keywords": [
     "mdgate",
     "markdown",
-    "vision",
-    "ocr"
+    "video"
   ]
 }

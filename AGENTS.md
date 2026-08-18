@@ -43,11 +43,11 @@ Review every prose output against these rules before delivering.
 
 ### Product domain
 
-- **mdgate** (this monorepo): TypeScript converters that turn documents into GitHub-Flavored Markdown. Word, PowerPoint, Excel, OpenDocument, Apple iWork, WPS, Hangul, PDF, HTML, email, notebooks, ebooks, and more. Pass file bytes; get Markdown.
-- **Runtimes**: Node, Edge (Cloudflare Workers), and the browser. No native addons, no WASM, no Node builtins.
+- **mdgate** (this monorepo): TypeScript converters that turn documents into GitHub-Flavored Markdown. Word, PowerPoint, Excel, OpenDocument, Apple iWork, WPS, Hangul, PDF, HTML, email, notebooks, ebooks, audio, video, and more. Pass file bytes; get Markdown.
+- **Runtimes**: Node, Edge (Cloudflare Workers), and the browser. No native addons, no WASM, no Node builtins, no dependencies outside `@mdgate/*`.
 - **Public API**: `@mdgate/converters` is the official bundle (`toMarkdown`, `create`, `all`). Each format is also its own package (`@mdgate/docx`, `@mdgate/pdf`, …) with the same `toMarkdown` function. Compose a custom set with `create()` from `@mdgate/core`.
 - **Detection**: converters `sniff` bytes (and optional `hint.path`). Path is a sniff hint only, never read from disk. Needed for signature-less formats such as CSV.
-- **Callbacks**: raster images and audio need a registered callback (`image()`, `audio()`). SVG converts locally. Those callbacks are not in `all()`.
+- **Callbacks**: raster images, audio, and video need a registered callback (`image()`, `audio()`, `video()`). SVG converts locally. Those callbacks are not in `all()`.
 - **Demo**: `apps/demo` (`@mdgate/demo`) at `demo.mdgate.dev`. Runs the library in a Web Worker. Files convert locally and never leave the machine.
 
 ### Engineering
@@ -90,6 +90,7 @@ Review every prose output against these rules before delivering.
 
 Lightweight rules (no supply-chain age gate, no lockfile commit hooks, no forced exact pins yet):
 
+- Published `@mdgate/*` packages depend only on other `@mdgate/*` packages. Do not add a third-party runtime dependency to a published package. Root and `@mdgate/demo` may take tools and app deps.
 - Treat dependency and `bun.lock` changes as reviewed code. Explain why a dep was added or bumped in the PR.
 - Prefer stable, well-known packages. Avoid drive-by upgrades unrelated to the task.
 - Hydrate with `bun install`. For CI-style installs use `bun install --frozen-lockfile`.

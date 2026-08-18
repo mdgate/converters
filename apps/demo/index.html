@@ -323,14 +323,20 @@
               <tr>
                 <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/audio">@mdgate/audio</a></th>
                 <td>
-                  <span class="note">mp3</span><span class="note">wav</span><span class="note">m4a</span><span class="note">aac</span><span class="note">ogg</span><span class="note">flac</span><span class="note">webm</span>
+                  <span class="note">mp3</span><span class="note">wav</span><span class="note">m4a</span><span class="note">aac</span><span class="note">ogg</span><span class="note">flac</span><span class="note">weba</span>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/video">@mdgate/video</a></th>
+                <td>
+                  <span class="note">mp4</span><span class="note">m4v</span><span class="note">mov</span><span class="note">webm</span><span class="note">mkv</span><span class="note">avi</span>
                 </td>
               </tr>
             </tbody>
           </table>
           <p class="prose">
-            Dashed badges need a callback — vision for raster images,
-            transcription for audio — and are not registered by
+            Dashed badges need a callback (vision for raster images,
+            transcription for audio, video understanding for video) and are not registered by
             <code>all()</code>. SVG converts locally.
           </p>
         </section>
@@ -354,7 +360,8 @@
             </dd>
             <dt>Portable</dt>
             <dd>
-              The converters are TypeScript with no Node builtins and no WASM.
+              The converters are TypeScript with no Node builtins, no WASM,
+              and no dependencies outside <code>@mdgate/*</code>.
               The same <code>toMarkdown(bytes)</code> call works in Node, Edge,
               and this page.
             </dd>

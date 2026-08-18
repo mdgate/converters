@@ -34,6 +34,8 @@ export { pptx } from '@mdgate/pptx';
 export { rtf } from '@mdgate/rtf';
 export { subtitle } from '@mdgate/subtitle';
 export { text } from '@mdgate/text';
+export type { ConvertVideo, VideoInput, VideoMime } from '@mdgate/video';
+export { video } from '@mdgate/video';
 export { visio } from '@mdgate/visio';
 export { wps } from '@mdgate/wps';
 export { xlsx } from '@mdgate/xlsx';

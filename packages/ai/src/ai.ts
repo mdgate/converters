@@ -1,5 +1,6 @@
 import { ConvertError } from '@mdgate/core';
 import type { ConvertImage, ImageInput, ImageMime } from '@mdgate/image';
+import type { ConvertVideo, VideoInput, VideoMime } from '@mdgate/video';
 
 export type AiConfig = {
   baseURL: string;
@@ -24,6 +25,14 @@ const MIMES = new Set<ImageMime>([
   'image/bmp',
 ]);
 
+const VIDEO_MIMES = new Set<VideoMime>([
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+  'video/x-matroska',
+  'video/x-msvideo',
+]);
+
 const IMAGE_SYSTEM_PROMPT = [
   'You convert a document image into GitHub-Flavored Markdown.',
   'Transcribe all readable text exactly, in reading order.',
@@ -44,13 +53,24 @@ const AUDIO_SYSTEM_PROMPT = [
   'Do not add a preamble or postscript.',
 ].join(' ');
 
+const VIDEO_SYSTEM_PROMPT = [
+  'You convert a video into GitHub-Flavored Markdown.',
+  'Transcribe spoken words exactly, in listening order.',
+  'Transcribe on-screen text and describe slides, diagrams, and scenes when they carry meaning.',
+  'Preserve structure: headings, paragraphs, lists, tables, and timestamps when they help reading order.',
+  'Do not mention that the source is a video.',
+  'Do not wrap the entire answer in a markdown code fence.',
+  'Do not add a preamble or postscript.',
+].join(' ');
+
 export type Ai = {
   convertImage: ConvertImage;
   convertAudio: ConvertAudio;
+  convertVideo: ConvertVideo;
 };
 
 /**
- * OpenAI-compatible vision (and later other media) helpers.
+ * OpenAI-compatible vision and media helpers.
  * `baseURL`, `apiKey`, and `model` are required — there is no default provider.
  */
 export function ai(config: AiConfig): Ai {
@@ -61,6 +81,7 @@ export function ai(config: AiConfig): Ai {
   return {
     convertImage: (image) => runConvertImage({ baseURL, apiKey, model }, image),
     convertAudio: (audio) => runConvertAudio({ baseURL, apiKey, model }, audio),
+    convertVideo: (input) => runConvertVideo({ baseURL, apiKey, model }, input),
   };
 }
 
@@ -100,6 +121,23 @@ async function runConvertAudio(config: Required<AiConfig>, audio: AudioInput): P
     AUDIO_SYSTEM_PROMPT,
     'Transcribe this audio as markdown.',
     `data:${mime};base64,${bytesToBase64(audio.bytes)}`,
+  );
+}
+
+async function runConvertVideo(config: Required<AiConfig>, input: VideoInput): Promise<string> {
+  if (!(input.bytes instanceof Uint8Array) || input.bytes.length === 0) {
+    throw ConvertError.unsupported('video bytes are required');
+  }
+  if (!VIDEO_MIMES.has(input.mime)) {
+    throw ConvertError.unsupported(`video mime: ${String(input.mime)}`);
+  }
+
+  // Completions only accept text+image parts; send video as a data URL.
+  return completeChat(
+    config,
+    VIDEO_SYSTEM_PROMPT,
+    'Extract the content of this video as markdown.',
+    `data:${input.mime};base64,${bytesToBase64(input.bytes)}`,
   );
 }
 
