@@ -1,4 +1,4 @@
-import { type CompoundFile, MAX_RECORDS, readOleStream } from '@mdgate/containers';
+import { type CompoundFile, readOleStream } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import { decode, encodingExists, warn } from '@mdgate/utils';
 import { builtinFormatByCode, type CellFormat, detectCustomNumberFormat } from './numfmt.js';
@@ -29,9 +29,7 @@ export function parseXlsCfb(ole: CompoundFile): SheetRange[] {
   const formats = new Map<number, CellFormat>();
   const xfs: number[] = [];
 
-  // Count every parent record in the workbook stream (same MAX_RECORDS
-  // gate as collectRecords on the full stream) while only parsing globals
-  // through the first EOF.
+  // Parse workbook globals through the first EOF.
   walkRecords(stream, (typ, data, rec) => {
     switch (typ) {
       case 0x002f:
@@ -67,9 +65,7 @@ export function parseXlsCfb(ole: CompoundFile): SheetRange[] {
       default:
         break;
     }
-    // First EOF ends the workbook globals. Keep scanning so MAX_RECORDS
-    // still covers sheet records that live later in this same stream.
-    if (typ === 0x000a && sheetMetas.length > 0) return 'count';
+    if (typ === 0x000a && sheetMetas.length > 0) return false;
     return;
   });
 
@@ -653,16 +649,12 @@ class BiffRecord {
   }
 }
 
-/** `false` stops the walk. `'count'` keeps scanning for MAX_RECORDS only. */
-type WalkControl = boolean | 'count' | undefined;
-
+/** `false` stops the walk. */
 function walkRecords(
   stream: Uint8Array,
-  handler: (typ: number, data: Uint8Array, rec: BiffRecord | undefined) => WalkControl,
+  handler: (typ: number, data: Uint8Array, rec: BiffRecord | undefined) => boolean | undefined,
 ): void {
   let i = 0;
-  let n = 0;
-  let counting = false;
   while (i + 4 <= stream.length) {
     const typ = u16(stream, i);
     const len = u16(stream, i + 2);
@@ -680,17 +672,8 @@ function walkRecords(
       }
       rec = new BiffRecord(typ, data, cont);
     }
-    n += 1;
-    if (n > MAX_RECORDS) {
-      throw ConvertError.resourceLimit(
-        'max_records',
-        `workbook stream exceeds ${MAX_RECORDS} records`,
-      );
-    }
-    if (counting) continue;
     const ctrl = handler(typ, rec !== undefined ? rec.data : data, rec);
     if (ctrl === false) return;
-    if (ctrl === 'count') counting = true;
   }
 }
 

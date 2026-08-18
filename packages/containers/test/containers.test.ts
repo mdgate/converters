@@ -73,16 +73,11 @@ describe('xml', () => {
     expect(root.childElems()[0]!.text()).toBe('text');
   });
 
-  it('hard-fails on depth limit', () => {
-    const xml = '<d>'.repeat(MAX_XML_DEPTH + 2);
-    try {
-      parseXml(Buffer.from(xml));
-      throw new Error('expected resourceLimit');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConvertError);
-      expect((err as ConvertError).code).toBe('resourceLimit');
-      expect((err as ConvertError).limit).toBe('max_xml_depth');
-    }
+  it('parses deeper than the old xml depth cap', () => {
+    const depth = MAX_XML_DEPTH + 2;
+    const xml = `${'<d>'.repeat(depth)}x${'</d>'.repeat(depth)}`;
+    const root = parseXml(Buffer.from(xml));
+    expect(root.text()).toBe('x');
   });
 });
 
@@ -260,20 +255,17 @@ describe('mime', () => {
     expect(dec.decode(root.parts[1]!.bytes).trim()).toBe('second');
   });
 
-  it('hard-fails on nested multipart bombs', () => {
+  it('parses nested multipart without a depth cap', () => {
     let body = 'Content-Type: text/plain\r\n\r\nx';
     for (let i = 0; i < 40; i += 1) {
       const b = `b${i}`;
       body = `Content-Type: multipart/mixed; boundary=${b}\r\n\r\n--${b}\r\n${body}\r\n--${b}--\r\n`;
     }
-    try {
-      parseMime(enc.encode(body));
-      throw new Error('expected resourceLimit');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConvertError);
-      expect((err as ConvertError).code).toBe('resourceLimit');
-      expect((err as ConvertError).limit).toBe('max_mime_depth');
-    }
+    const root = parseMime(enc.encode(body));
+    const texts = walkMimeParts(root)
+      .filter((part) => part.contentType.startsWith('text/plain'))
+      .map((part) => dec.decode(part.bytes));
+    expect(texts.some((t) => t.includes('x'))).toBe(true);
   });
 });
 

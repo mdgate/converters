@@ -1,18 +1,12 @@
 import type { Convert, Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
 
-/** Nested convert hops: zip → eml → docx. */
-const MAX_DEPTH = 3;
-
 export function create(converters: readonly Converter[]): Convert {
   const run = async (
     bytes: Uint8Array,
     hint: ConvertHint | undefined,
     depth: number,
   ): Promise<string> => {
-    if (depth > MAX_DEPTH) {
-      throw ConvertError.unsupported('nested conversion limit');
-    }
     if (!(bytes instanceof Uint8Array)) {
       throw ConvertError.unsupported('input must be a Uint8Array');
     }

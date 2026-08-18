@@ -22,8 +22,6 @@ import {
   trimTrailing,
 } from './decompress.js';
 
-const MAX_RECORDS = 100_000;
-const MAX_TEXT_BYTES = 128 * 1024 * 1024;
 const PDB_HEADER = 78;
 const NONE = 0xffffffff;
 const enc = new TextEncoder();
@@ -148,9 +146,6 @@ function parsePdb(bytes: Uint8Array): { name: string; records: Uint8Array[] } {
   }
   const count = u16(bytes, 76);
   if (count === 0) throw ConvertError.malformed('Palm database has no records');
-  if (count > MAX_RECORDS) {
-    throw ConvertError.resourceLimit('max_entry_count', `Palm database has ${count} records`);
-  }
   if (bytes.length < PDB_HEADER + count * 8) {
     throw ConvertError.malformed('truncated record list');
   }
@@ -255,7 +250,7 @@ function extractText(
   }
   if (first >= records.length || last < first) throw ConvertError.missingPart('text');
 
-  const expected = palm.textLength > 0 ? Math.min(palm.textLength, MAX_TEXT_BYTES) : MAX_TEXT_BYTES;
+  const expected = palm.textLength > 0 ? palm.textLength : Number.MAX_SAFE_INTEGER;
   const huff = loadHuff(records, palm, mobi);
   const parts: Uint8Array[] = [];
   let total = 0;
@@ -266,9 +261,6 @@ function extractText(
     const chunk = decompressRecord(rec, palm.compression, huff, expected - total);
     parts.push(chunk);
     total += chunk.length;
-    if (total > MAX_TEXT_BYTES) {
-      throw ConvertError.resourceLimit('max_entry_bytes', 'book text exceeds the read cap');
-    }
     if (palm.textLength > 0 && total >= palm.textLength) break;
   }
   if (total === 0) throw ConvertError.missingPart('text');
@@ -434,7 +426,7 @@ function isDrm(mobi: MobiHeader): boolean {
 function hasMobiRecord0(bytes: Uint8Array): boolean {
   if (bytes.length < PDB_HEADER + 8) return false;
   const count = u16(bytes, 76);
-  if (count < 1 || count > MAX_RECORDS) return false;
+  if (count < 1) return false;
   const rec0 = u32(bytes, PDB_HEADER);
   return rec0 + 20 <= bytes.length && asciiEq(bytes, rec0 + 16, 'MOBI');
 }

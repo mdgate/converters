@@ -1,6 +1,5 @@
 import { ConvertError } from '@mdgate/core';
 import { debug, decode, encodingExists, warn } from '@mdgate/utils';
-import { MAX_XML_DEPTH, MAX_XML_NODES } from './limits.js';
 
 /** Well-known namespace URIs. */
 export const ns = {
@@ -288,7 +287,6 @@ export function parseXml(bytes: Uint8Array): Element {
   const nameInterner = new Map<string, string>();
   const root = new Element(undefined, '');
   const stack: Element[] = [];
-  let nodes = 0;
   let recovered = false;
 
   for (;;) {
@@ -301,14 +299,6 @@ export function parseXml(bytes: Uint8Array): Element {
     }
     switch (kind) {
       case EV_START: {
-        if (!lexer.empty && stack.length >= MAX_XML_DEPTH) {
-          throw ConvertError.resourceLimit(
-            'max_xml_depth',
-            `element nesting exceeds ${MAX_XML_DEPTH}`,
-          );
-        }
-        bumpNodes(nodes);
-        nodes += 1;
         scope.push();
         scope.applyDecls(lexer.attrs);
         const elem = startToElement(lexer.name, lexer.attrs, scope, uriInterner, nameInterner);
@@ -333,22 +323,16 @@ export function parseXml(bytes: Uint8Array): Element {
       }
       case EV_TEXT: {
         if (lexer.text.length > 0) {
-          bumpNodes(nodes);
-          nodes += 1;
           pushText(stack, root, lexer.text);
         }
         break;
       }
       case EV_GREF: {
         const resolved = resolveEntity(lexer.name) ?? `&${lexer.name};`;
-        bumpNodes(nodes);
-        nodes += 1;
         pushText(stack, root, resolved);
         break;
       }
       case EV_CDATA: {
-        bumpNodes(nodes);
-        nodes += 1;
         pushText(stack, root, lexer.text);
         break;
       }
@@ -364,12 +348,6 @@ export function parseXml(bytes: Uint8Array): Element {
         }
         return root;
     }
-  }
-}
-
-function bumpNodes(nodes: number): void {
-  if (nodes + 1 > MAX_XML_NODES) {
-    throw ConvertError.resourceLimit('max_xml_nodes', `part exceeds ${MAX_XML_NODES} xml nodes`);
   }
 }
 

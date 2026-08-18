@@ -63,7 +63,7 @@ export class ConvertError extends Error {
     return new ConvertError('io', `io error: ${msg}`);
   }
 
-  /** Fixed safety limits hard-fail in every context, including optional parts. */
+  /** True for errors that must abort even when a part is optional. */
   isFatal(): boolean {
     return this.code === 'resourceLimit';
   }

@@ -13,7 +13,6 @@ import {
   inlinesAreEmpty,
   inlinesToPlainText,
   type LinkTarget,
-  MAX_ASSET_TOTAL_BYTES,
   type Note,
   PLAIN,
   plain,
@@ -473,12 +472,6 @@ function addAsset(ctx: Ctx, origin: string, mediaType: string, bytes: Uint8Array
   const existing = ctx.byOrigin.get(origin);
   if (existing !== undefined) return existing;
   ctx.assetTotal += bytes.length;
-  if (ctx.assetTotal > MAX_ASSET_TOTAL_BYTES) {
-    throw ConvertError.resourceLimit(
-      'max_asset_total_bytes',
-      'embedded assets exceed the retained-bytes cap',
-    );
-  }
   const id = ctx.assets.length;
   ctx.byOrigin.set(origin, id);
   ctx.assets.push({ id, mediaType, originPart: origin, bytes: bytes.slice() });

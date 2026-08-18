@@ -93,7 +93,7 @@ const convert = create([
 - **Content-based format detection.** The format is read from the bytes (PDF header, RTF open group, OLE stream names, ZIP package mimetype), so mislabeled files still convert. CSV and plain text have no such marker — pass `hint.path` for those.
 - **Portable TypeScript.** No native addons, no WASM, no Node builtins, no external dependencies. The same `toMarkdown(bytes)` call works in Node, Cloudflare Workers, and the browser.
 - **Install only what you need.** One package per format, or `@mdgate/converters` for the full set.
-- **Nested conversion.** A ZIP of emails of Word docs converts through the same registry, up to a small depth limit.
+- **Nested conversion.** A ZIP of emails of Word docs converts through the same registry.
 - **PDF support built in.** Text is extracted locally. Embedded images are handed to the converter pool — register `image()` if you have a vision model.
 
 ## Supported formats
@@ -164,7 +164,7 @@ try {
 | `unsupported` | Unknown format, or one that cannot be converted |
 | `malformed` | Structurally unusable: no meaningful content could be extracted |
 | `encrypted` | Encrypted or password-protected |
-| `resourceLimit` | Crossed a fixed safety limit (decompression, nesting, node count) |
+| `resourceLimit` | Reserved. Converters do not refuse a file on a fixed size or depth cap |
 | `missingPart` | A part required for any meaningful output is absent |
 | `io` | The file could not be read |
 
@@ -247,7 +247,7 @@ bun test
 bun run dev:demo
 ```
 
-A committed fixture corpus under `test/fixtures/` is snapshot-tested. `test/robustness.test.ts` mutation-tests fixtures, and `test/abuse.test.ts` checks the safety limits.
+A committed fixture corpus under `test/fixtures/` is snapshot-tested. `test/robustness.test.ts` mutation-tests fixtures, and `test/abuse.test.ts` checks that hostile files still convert.
 
 ## License
 

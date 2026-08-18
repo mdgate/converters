@@ -1,5 +1,4 @@
 import { ConvertError } from '@mdgate/core';
-import { MAX_ENTRY_BYTES } from './limits.js';
 
 const OLE_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
 const FREESECT = 0xffffffff;
@@ -149,11 +148,10 @@ export class CompoundFile {
       }
     }
 
-    const dirBytes = readFatChain(bytes, fat, sectorSize, firstDirSector, MAX_ENTRY_BYTES);
+    const dirBytes = readFatChain(bytes, fat, sectorSize, firstDirSector, bytes.length);
     const entries: DirEntry[] = [];
     for (let off = 0; off + 128 <= dirBytes.length; off += 128) {
       entries.push(parseDirEntry(dirBytes, off, majorVersion));
-      if (entries.length > 100_000) break;
     }
     if (entries.length === 0 || entries[0]!.type !== TYPE_ROOT) {
       throw ConvertError.malformed('not an OLE2 compound file: missing root storage');
@@ -180,14 +178,7 @@ export class CompoundFile {
     if (entry === undefined || entry.type !== TYPE_STREAM) {
       throw ConvertError.missingPart(name);
     }
-    if (entry.size > MAX_ENTRY_BYTES) {
-      throw ConvertError.resourceLimit('max_entry_bytes', `${name} stream exceeds the read cap`);
-    }
-    const data = this.readEntryBytes(entry, MAX_ENTRY_BYTES + 1);
-    if (data.length > MAX_ENTRY_BYTES) {
-      throw ConvertError.resourceLimit('max_entry_bytes', `${name} stream exceeds the read cap`);
-    }
-    return data;
+    return this.readEntryBytes(entry, Number.MAX_SAFE_INTEGER);
   }
 
   private lookup(path: string): DirEntry | undefined {
@@ -221,7 +212,7 @@ export class CompoundFile {
   private walkSiblings(sid: number, out: { name: string; type: number }[]): void {
     const seen = new Set<number>();
     const visit = (id: number): void => {
-      if (id > MAXREGSECT || seen.has(id) || seen.size > 100_000) return;
+      if (id > MAXREGSECT || seen.has(id)) return;
       seen.add(id);
       const e = this.entries[id];
       if (e === undefined || e.type === TYPE_UNKNOWN) return;

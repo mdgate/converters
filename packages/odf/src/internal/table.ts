@@ -1,7 +1,6 @@
 /** ODF tables: canonical grid construction with covered-cell consumption. */
 
 import { type Element, ns } from '@mdgate/containers';
-import { ConvertError } from '@mdgate/core';
 import {
   type Block,
   cellSpanning,
@@ -9,8 +8,6 @@ import {
   heading,
   type Inline,
   inlinesAreEmpty,
-  MAX_EXPANSION,
-  MAX_EXPANSION_TEXT_BYTES,
   plain,
   resolveHeaderRows,
 } from '@mdgate/document';
@@ -45,22 +42,10 @@ interface TableState {
 
 function charge(state: TableState, cells: number): void {
   state.expansion = saturatingAdd(state.expansion, cells);
-  if (state.expansion > MAX_EXPANSION) {
-    throw ConvertError.resourceLimit(
-      'max_expansion',
-      'table repeat expansion exceeds the content budget',
-    );
-  }
 }
 
 function chargeBytes(state: TableState, bytes: number): void {
   state.expansionBytes = saturatingAdd(state.expansionBytes, bytes);
-  if (state.expansionBytes > MAX_EXPANSION_TEXT_BYTES) {
-    throw ConvertError.resourceLimit(
-      'max_expansion_text_bytes',
-      'table repeat expansion duplicates more text than the budget',
-    );
-  }
 }
 
 type RowCell =
@@ -170,20 +155,23 @@ function emitRow(row: Element, ctx: Ctx, state: TableState, repeat: number): voi
     return;
   }
   if (state.pendingRows > 0) {
-    charge(state, state.pendingRows);
-    state.builder.nextRows(state.pendingRows);
-    state.rowsEmitted += state.pendingRows;
+    if (state.pendingRows <= 10_000) {
+      charge(state, state.pendingRows);
+      state.builder.nextRows(state.pendingRows);
+      state.rowsEmitted += state.pendingRows;
+    }
     state.pendingRows = 0;
   }
   const cells = parseRowCells(row, ctx);
-  charge(state, saturatingSub(repeat, 1));
+  const times = repeat > 10_000 ? 1 : repeat;
+  charge(state, saturatingSub(times, 1));
   for (const cell of cells) {
     if (cell.kind === 'cell') {
-      const copies = saturatingSub(saturatingMul(repeat, cell.repeat), 1);
+      const copies = saturatingSub(saturatingMul(times, cell.repeat), 1);
       chargeBytes(state, saturatingMul(cell.bytes, copies));
     }
   }
-  for (let i = 0; i < repeat; i += 1) {
+  for (let i = 0; i < times; i += 1) {
     state.builder.nextRow();
     state.rowsEmitted += 1;
     emitParsedCells(cells, state);

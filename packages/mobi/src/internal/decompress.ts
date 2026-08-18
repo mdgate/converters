@@ -5,19 +5,14 @@ export const COMPRESS_NONE = 1;
 export const COMPRESS_PALMDOC = 2;
 export const COMPRESS_HUFF = 17480;
 
-const MAX_RECORD_OUT = 1024 * 1024;
-
 export function decompressRecord(
   data: Uint8Array,
   compression: number,
   huff: HuffReader | undefined,
   remaining: number,
 ): Uint8Array {
-  const limit = Math.min(remaining, MAX_RECORD_OUT);
+  const limit = remaining < 0 ? Number.MAX_SAFE_INTEGER : remaining;
   if (compression === COMPRESS_NONE) {
-    if (data.length > limit) {
-      throw ConvertError.resourceLimit('max_entry_bytes', 'text record exceeds the read cap');
-    }
     return data;
   }
   if (compression === COMPRESS_PALMDOC) return palmdocDecompress(data, limit);
@@ -202,7 +197,7 @@ function unpackHuff(
     parts.push(phrase.data);
     total += phrase.data.length;
     if (total > limit) {
-      throw ConvertError.resourceLimit('max_entry_bytes', 'decompressed text exceeds the read cap');
+      throw ConvertError.malformed('decompressed text exceeds the remaining book length');
     }
   }
   return concatBytes(parts, total);
@@ -228,7 +223,7 @@ function shlMinus1(value: number, shift: number): number {
 
 function ensure(buf: Uint8Array, used: number, need: number, limit: number): Uint8Array {
   if (used + need > limit) {
-    throw ConvertError.resourceLimit('max_entry_bytes', 'decompressed text exceeds the read cap');
+    throw ConvertError.malformed('decompressed text exceeds the remaining book length');
   }
   if (used + need <= buf.length) return buf;
   let cap = buf.length === 0 ? 64 : buf.length;

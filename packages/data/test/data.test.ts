@@ -57,6 +57,12 @@ describe('data', () => {
     const shared = await toMarkdown(enc.encode('{"a":1}\n{"a":2}\n'), { path: 'rows.jsonl' });
     expect(shared).toBe('# rows\n\n| a |\n| --- |\n| 1 |\n| 2 |\n');
 
+    const many = Array.from({ length: 250 }, (_, i) => JSON.stringify({ n: i })).join('\n');
+    const allLines = await toMarkdown(enc.encode(many), { path: 'rows.jsonl' });
+    expect(allLines).toContain('"n": 0');
+    expect(allLines).toContain('"n": 249');
+    expect(allLines.split('```json').length - 1).toBe(250);
+
     const xml = await toMarkdown(enc.encode('<?xml version="1.0"?><root><x>1</x></root>'), {
       path: 'a.xml',
     });

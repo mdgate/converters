@@ -1,20 +1,15 @@
 import { ConvertError } from '@mdgate/core';
 
-const MAX_SNAPPY_OUT = 64 * 1024 * 1024;
-
 /**
  * Decompress a raw Snappy block (not the framing format). iWork IWA chunks
  * store one such block after a 4-byte header.
  */
-export function snappyDecode(input: Uint8Array, maxOut = MAX_SNAPPY_OUT): Uint8Array {
+export function snappyDecode(input: Uint8Array, maxOut = Number.MAX_SAFE_INTEGER): Uint8Array {
   let i = 0;
   const [uncompressedLen, afterLen] = readVarint(input, 0);
   i = afterLen;
   if (uncompressedLen > maxOut) {
-    throw ConvertError.resourceLimit(
-      'max_entry_bytes',
-      `snappy block declares ${uncompressedLen} decompressed bytes`,
-    );
+    throw ConvertError.malformed(`snappy block declares ${uncompressedLen} decompressed bytes`);
   }
   const out = new Uint8Array(uncompressedLen);
   let o = 0;

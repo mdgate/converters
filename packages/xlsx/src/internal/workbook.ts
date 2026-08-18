@@ -4,7 +4,6 @@ import {
   type Document,
   emptyDocument,
   heading,
-  MAX_EXPANSION,
   plain,
   resolveHeaderRows,
 } from '@mdgate/document';
@@ -98,7 +97,6 @@ function sheetToTable(sheet: SheetRange) {
   const origins = merges.length > 0 ? new Map<number, [number, number]>() : undefined;
   const covered = merges.length > 0 ? new Map<number, [number, number]>() : undefined;
   if (origins !== undefined && covered !== undefined) {
-    let expansion = 0n;
     for (const d of merges) {
       const row0 = Math.max(d.start[0], start[0]);
       const col0 = Math.max(d.start[1], start[1]);
@@ -112,13 +110,6 @@ function sheetToTable(sheet: SheetRange) {
       if (r1 - r0 === 1 && c1 - c0 === 1) continue;
       const colSpan = c1 - c0;
       const rowSpan = r1 - r0;
-      expansion += BigInt(colSpan) * BigInt(rowSpan) - 1n;
-      if (expansion > BigInt(MAX_EXPANSION)) {
-        throw ConvertError.resourceLimit(
-          'max_expansion',
-          'table span expansion exceeds the content budget',
-        );
-      }
       origins.set(posKey(r0, c0), [colSpan, rowSpan]);
       for (let r = r0; r < r1; r += 1) {
         for (let c = c0; c < c1; c += 1) {

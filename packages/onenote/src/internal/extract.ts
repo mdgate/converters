@@ -5,8 +5,6 @@ import { cleanText, collapseWs, isAlphanumeric } from '@mdgate/utils';
 import { headerSkip } from './header.js';
 
 const MIN_RUN = 4;
-const MAX_RUN_CHARS = 16_384;
-const MAX_STRINGS = 2_000;
 const TYPE_STREAM = 2;
 
 const GUID_RE = /^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?$/i;
@@ -71,7 +69,6 @@ function extractOle(bytes: Uint8Array): Document {
     } catch (e) {
       if (e instanceof ConvertError && e.isFatal()) throw e;
     }
-    if (texts.length >= MAX_STRINGS) break;
   }
   if (texts.length === 0) collectFromBytes(bytes, texts);
   return stringsToDocument(texts);
@@ -97,7 +94,7 @@ function extractUtf16(bytes: Uint8Array, out: string[]): void {
     const flush = (end: number): void => {
       if (start >= 0) {
         const chars = (end - start) >> 1;
-        if (chars >= MIN_RUN && chars <= MAX_RUN_CHARS && out.length < MAX_STRINGS) {
+        if (chars >= MIN_RUN) {
           pushUsable(dec.decode(bytes.subarray(start, end)), out);
         }
       }
@@ -120,12 +117,7 @@ function extractUtf8(bytes: Uint8Array, out: string[]): void {
   const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
   let start = -1;
   const flush = (end: number): void => {
-    if (
-      start >= 0 &&
-      end - start >= MIN_RUN &&
-      end - start <= MAX_RUN_CHARS &&
-      out.length < MAX_STRINGS
-    ) {
+    if (start >= 0 && end - start >= MIN_RUN) {
       pushUsable(text.slice(start, end), out);
     }
     start = -1;

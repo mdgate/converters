@@ -1,6 +1,6 @@
 /** Binary HWP: OLE BodyText streams, or classic `HWP Document File` bytes. */
 
-import { CompoundFile, hasOleMagic, MAX_ENTRY_BYTES, MAX_RECORDS } from '@mdgate/containers';
+import { CompoundFile, hasOleMagic } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import { type Document, emptyDocument, plain } from '@mdgate/document';
 import {
@@ -112,7 +112,7 @@ function extractParaText(data: Uint8Array): string[] {
   let off = 0;
   let records = 0;
   let consumed = 0;
-  while (off + 4 <= data.length && records < MAX_RECORDS) {
+  while (off + 4 <= data.length) {
     const header = dv.getUint32(off, true);
     const tag = header & 0x3ff;
     const sizeField = (header >>> 20) & 0xfff;
@@ -172,10 +172,10 @@ function maybeDecompress(data: Uint8Array, compressed: boolean | undefined): Uin
 
 function tryInflate(data: Uint8Array): Uint8Array | undefined {
   try {
-    return inflateZlib(data, MAX_ENTRY_BYTES);
+    return inflateZlib(data, Number.MAX_SAFE_INTEGER);
   } catch (e) {
     if (e instanceof InflateLimitError) {
-      throw ConvertError.resourceLimit('max_entry_bytes', e.message);
+      throw ConvertError.malformed(e.message);
     }
     if (e instanceof ConvertError && e.isFatal()) throw e;
     return undefined;

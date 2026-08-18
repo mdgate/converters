@@ -1,13 +1,4 @@
-import { ConvertError } from '@mdgate/core';
 import { asciiStartsWith, decode, trim } from '@mdgate/utils';
-import { MAX_ENTRY_BYTES } from './limits.js';
-
-/** Nested multipart / message parts. */
-const MAX_MIME_DEPTH = 32;
-/** Total parts visited in one parse, including containers. */
-const MAX_MIME_PARTS = 10_000;
-/** Header block of a single part. */
-const MAX_MIME_HEADER_BYTES = 256 * 1024;
 
 export interface MimeHeader {
   name: string;
@@ -135,14 +126,8 @@ function parseMessage(bytes: Uint8Array, depth: number, tally: Tally): MimePart 
   return { contentType: parsed.type, headers, filename, bytes: decoded, parts: [] };
 }
 
-function bumpPart(tally: Tally, depth: number): void {
-  if (depth > MAX_MIME_DEPTH) {
-    throw ConvertError.resourceLimit('max_mime_depth', `part nesting exceeds ${MAX_MIME_DEPTH}`);
-  }
+function bumpPart(tally: Tally, _depth: number): void {
   tally.parts += 1;
-  if (tally.parts > MAX_MIME_PARTS) {
-    throw ConvertError.resourceLimit('max_mime_parts', `message exceeds ${MAX_MIME_PARTS} parts`);
-  }
 }
 
 function isMultipartType(type: string): boolean {
@@ -289,19 +274,7 @@ function nextLine(bytes: Uint8Array, i: number): number {
 function splitHeaders(bytes: Uint8Array): { headers: Uint8Array; body: Uint8Array } {
   const blank = findBlankLine(bytes);
   if (blank !== undefined) {
-    if (blank.sep > MAX_MIME_HEADER_BYTES) {
-      throw ConvertError.resourceLimit(
-        'max_mime_headers',
-        `header block exceeds ${MAX_MIME_HEADER_BYTES} bytes`,
-      );
-    }
     return { headers: bytes.subarray(0, blank.sep), body: bytes.subarray(blank.body) };
-  }
-  if (bytes.length > MAX_MIME_HEADER_BYTES && looksLikeHeaders(bytes)) {
-    throw ConvertError.resourceLimit(
-      'max_mime_headers',
-      `header block exceeds ${MAX_MIME_HEADER_BYTES} bytes`,
-    );
   }
   if (looksLikeHeaders(bytes)) {
     return { headers: bytes, body: bytes.subarray(bytes.length) };
@@ -310,7 +283,7 @@ function splitHeaders(bytes: Uint8Array): { headers: Uint8Array; body: Uint8Arra
 }
 
 function findBlankLine(bytes: Uint8Array): { sep: number; body: number } | undefined {
-  const limit = Math.min(bytes.length, MAX_MIME_HEADER_BYTES + 4);
+  const limit = bytes.length;
   for (let i = 0; i < limit; i += 1) {
     const b = bytes[i]!;
     if (b === 0x0a && i + 1 < bytes.length && bytes[i + 1] === 0x0a) {
@@ -617,12 +590,6 @@ function decodeTransfer(body: Uint8Array, cte: string): Uint8Array {
 }
 
 function decodeQuotedPrintable(bytes: Uint8Array): Uint8Array {
-  if (bytes.length > MAX_ENTRY_BYTES) {
-    throw ConvertError.resourceLimit(
-      'max_entry_bytes',
-      'quoted-printable body exceeds the read cap',
-    );
-  }
   const out = new Uint8Array(bytes.length);
   let w = 0;
   for (let i = 0; i < bytes.length; i += 1) {
@@ -669,11 +636,7 @@ const BASE64_TABLE = /* @__PURE__ */ (() => {
 })();
 
 function decodeBase64(bytes: Uint8Array): Uint8Array {
-  const maxOut = Math.floor(bytes.length / 4) * 3 + 3;
-  if (maxOut > MAX_ENTRY_BYTES && bytes.length > MAX_ENTRY_BYTES) {
-    throw ConvertError.resourceLimit('max_entry_bytes', 'base64 body exceeds the read cap');
-  }
-  const cap = Math.min(maxOut, MAX_ENTRY_BYTES + 1);
+  const cap = Math.floor(bytes.length / 4) * 3 + 3;
   const out = new Uint8Array(cap);
   let acc = 0;
   let bits = 0;
@@ -688,15 +651,9 @@ function decodeBase64(bytes: Uint8Array): Uint8Array {
     bits += 6;
     if (bits >= 8) {
       bits -= 8;
-      if (w >= cap) {
-        throw ConvertError.resourceLimit('max_entry_bytes', 'base64 body exceeds the read cap');
-      }
       out[w] = (acc >> bits) & 0xff;
       w += 1;
     }
-  }
-  if (w > MAX_ENTRY_BYTES) {
-    throw ConvertError.resourceLimit('max_entry_bytes', 'base64 body exceeds the read cap');
   }
   return out.subarray(0, w);
 }
@@ -718,9 +675,6 @@ function splitMultipart(body: Uint8Array, boundary: string): Uint8Array[] {
     const after = at + delim.length;
     isClose.push(body[after] === 0x2d && body[after + 1] === 0x2d);
     from = after;
-    if (positions.length > MAX_MIME_PARTS + 2) {
-      throw ConvertError.resourceLimit('max_mime_parts', `message exceeds ${MAX_MIME_PARTS} parts`);
-    }
   }
   const parts: Uint8Array[] = [];
   for (let n = 0; n < positions.length; n += 1) {

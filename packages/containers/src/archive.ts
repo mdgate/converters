@@ -1,7 +1,6 @@
 import { ConvertError } from '@mdgate/core';
-import { decode, InflateLimitError, inflateRaw, warn } from '@mdgate/utils';
+import { decode, inflateRaw, warn } from '@mdgate/utils';
 import { CompoundFile, hasOleMagic } from './cfb.js';
-import { MAX_ENTRY_BYTES, MAX_ENTRY_COUNT, MAX_TOTAL_BYTES } from './limits.js';
 import { type Element, parseXml } from './xml.js';
 
 const SIG_LOCAL = 0x04034b50;
@@ -54,9 +53,6 @@ class ZipArchive {
         cdSize = z64.cdSize;
         cdOffset = z64.cdOffset;
       }
-    }
-    if (entryCount > MAX_ENTRY_COUNT) {
-      // Count is checked again in Package.open; still reject a lying CD.
     }
     if (cdOffset + cdSize > bytes.length) {
       throw ConvertError.malformed('not a readable zip archive: truncated central directory');
@@ -138,7 +134,6 @@ class ZipArchive {
 /** A ZIP-based document package (OOXML, ODF, EPUB). */
 export class Package {
   private readonly zip: ZipArchive;
-  private totalRead = 0;
   private readonly cache = new Map<string, Uint8Array>();
 
   private constructor(zip: ZipArchive) {
@@ -154,9 +149,6 @@ export class Package {
       const msg = e instanceof Error ? e.message : String(e);
       throw ConvertError.malformed(`not a readable zip archive: ${msg}`);
     }
-    if (zip.length > MAX_ENTRY_COUNT) {
-      throw ConvertError.resourceLimit('max_entry_count', `archive contains ${zip.length} entries`);
-    }
     return new Package(zip);
   }
 
@@ -170,37 +162,19 @@ export class Package {
     if (cached !== undefined) return cached;
     const entry = this.zip.indexForName(name);
     if (entry === undefined) return undefined;
-    if (entry.uncompressedSize > MAX_ENTRY_BYTES) {
-      throw ConvertError.resourceLimit(
-        'max_entry_bytes',
-        `${name} declares ${entry.uncompressedSize} decompressed bytes`,
-      );
-    }
-    const remainingTotal = Math.max(0, MAX_TOTAL_BYTES - this.totalRead);
-    const cap = Math.min(MAX_ENTRY_BYTES, remainingTotal);
     let bytes: Uint8Array;
     try {
-      bytes = this.decompress(entry, cap + 1);
+      bytes = this.decompress(entry, Number.MAX_SAFE_INTEGER);
     } catch (e) {
       if (e instanceof ConvertError) throw e;
       const msg = e instanceof Error ? e.message : String(e);
       throw ConvertError.malformedPart(name, `corrupt archive entry: ${msg}`);
     }
-    if (bytes.length > cap) {
-      if (remainingTotal < MAX_ENTRY_BYTES) {
-        throw ConvertError.resourceLimit(
-          'max_total_bytes',
-          `${name} exceeds the archive's remaining decompression budget`,
-        );
-      }
-      throw ConvertError.resourceLimit('max_entry_bytes', `${name} exceeds the decompression cap`);
-    }
-    this.totalRead += bytes.length;
     this.cache.set(name, bytes);
     return bytes;
   }
 
-  /** True when a part exists, without reading (or budget-charging) it. */
+  /** True when a part exists, without reading it. */
   hasPart(name: string): boolean {
     return this.zip.indexForName(trimLeadingSlash(name)) !== undefined;
   }
@@ -260,7 +234,7 @@ export class Package {
     let out: Uint8Array;
     if (entry.method === METHOD_STORE) {
       const expected = entry.uncompressedSize > 0 ? entry.uncompressedSize : compressed.length;
-      out = compressed.subarray(0, Math.min(expected, maxOut, compressed.length));
+      out = compressed.subarray(0, Math.min(expected, compressed.length));
     } else if (entry.method === METHOD_DEFLATE) {
       out = inflateCapped(compressed, maxOut);
     } else {
@@ -293,12 +267,7 @@ export function probeOle(bytes: Uint8Array): ConvertError | undefined {
 }
 
 function inflateCapped(data: Uint8Array, maxOut: number): Uint8Array {
-  try {
-    return inflateRaw(data, maxOut);
-  } catch (e) {
-    if (e instanceof InflateLimitError) return new Uint8Array(maxOut);
-    throw e;
-  }
+  return inflateRaw(data, maxOut);
 }
 
 function findEocd(bytes: Uint8Array): number {

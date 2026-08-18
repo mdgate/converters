@@ -23,7 +23,7 @@ export function decodeBlip(
   verInst: number,
   recType: number,
   body: Uint8Array,
-  maxBytes: number,
+  maxBytes = Number.MAX_SAFE_INTEGER,
 ): Blip | undefined {
   const instance = verInst >>> 4;
   if (recType === 0xf01d || recType === 0xf01e) {
@@ -67,9 +67,8 @@ export function decodeBlip(
  * Find and decode the first blip in a run of OfficeArt records, descending
  * into containers.
  */
-export function firstBlip(data: Uint8Array, maxBytes: number): Blip | undefined {
+export function firstBlip(data: Uint8Array, maxBytes = Number.MAX_SAFE_INTEGER): Blip | undefined {
   const stack: Array<[number, number]> = [[0, data.length]];
-  let visited = 0;
   for (;;) {
     const top = stack[stack.length - 1];
     if (top === undefined) return undefined;
@@ -87,8 +86,6 @@ export function firstBlip(data: Uint8Array, maxBytes: number): Blip | undefined 
     const bodyStart = cursor + 8;
     const bodyEnd = bodyStart + body.length;
     top[0] = bodyEnd;
-    visited += 1;
-    if (visited > 10_000 || stack.length > 16) return undefined;
     const blip = decodeBlip(verInst, recType, body, maxBytes);
     if (blip !== undefined) return blip;
     if (recType === 0xf007) {
@@ -107,7 +104,7 @@ function fbseBlipOffset(body: Uint8Array): number | undefined {
 }
 
 /** Decode the blip embedded in an FBSE (0xF007) record body, if present. */
-export function fbseBlip(body: Uint8Array, maxBytes: number): Blip | undefined {
+export function fbseBlip(body: Uint8Array, maxBytes = Number.MAX_SAFE_INTEGER): Blip | undefined {
   const offset = fbseBlipOffset(body);
   if (offset === undefined) return undefined;
   const rec = recordAt(body, offset);

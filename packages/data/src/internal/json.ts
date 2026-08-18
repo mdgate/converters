@@ -6,8 +6,6 @@ import { bulletList, dataTable, fencedDocument, titledDocument } from './doc.js'
 const MAX_SMALL_KEYS = 24;
 const MAX_SMALL_ROWS = 50;
 const MAX_SMALL_COLS = 12;
-const MAX_JSONL_LINES = 200;
-const MAX_JSONL_FENCES = 80;
 
 export function jsonDocument(text: string, title: string | undefined): Document {
   let value: unknown;
@@ -39,8 +37,7 @@ export function jsonlDocument(text: string, title: string | undefined): Document
   }
 
   const doc = titledDocument(title, () => undefined);
-  const limit = Math.min(values.length, MAX_JSONL_FENCES);
-  for (let i = 0; i < limit; i += 1) {
+  for (let i = 0; i < values.length; i += 1) {
     doc.blocks.push({
       type: 'codeBlock',
       lang: 'json',
@@ -67,7 +64,6 @@ function parseJsonl(text: string): unknown[] {
     if (line.endsWith('\r')) line = line.slice(0, -1);
     const trimmed = line.trim();
     if (trimmed.length === 0) continue;
-    if (values.length >= MAX_JSONL_LINES) break;
     try {
       values.push(JSON.parse(trimmed));
     } catch (err) {
