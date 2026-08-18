@@ -6,7 +6,7 @@
 
 TypeScript converters that turn documents — Word, PowerPoint, Excel, OpenDocument, Apple iWork, PDF, HTML, email, notebooks, ebooks, and more — into clean GitHub-Flavored Markdown.
 
-Works in Node, Edge, and the browser. No native addons, no WASM. Pass file bytes; get Markdown.
+Works in Node, Edge, and the browser. No native addons, no WASM, no external dependencies. Pass file bytes; get Markdown.
 
 **[Try it in your browser](https://demo.mdgate.dev)**: the demo runs the library in a Web Worker, so files are converted locally and never leave your machine.
 
@@ -59,25 +59,28 @@ const convert = create([docx(), pdf()]);
 const markdown = await convert(bytes);
 ```
 
-### Images the local converters cannot read
+### Images and video the local converters cannot read
 
-Raster images, and images embedded in a PDF, need a vision callback. SVG converts locally.
+Raster images, and images embedded in a PDF, need a vision callback. SVG converts locally. Video
+files need a callback that accepts the whole file.
 
 ```ts
 import { create } from '@mdgate/core';
 import { image } from '@mdgate/image';
+import { video } from '@mdgate/video';
 import { ai } from '@mdgate/ai';
 import { pdf } from '@mdgate/pdf';
 
+const media = ai({
+  baseURL: 'https://api.example.com/v1',
+  apiKey: process.env.MY_KEY!,
+  model: 'my-vision-model',
+});
+
 const convert = create([
   pdf(),
-  image(
-    ai({
-      baseURL: 'https://api.example.com/v1',
-      apiKey: process.env.MY_KEY!,
-      model: 'my-vision-model',
-    }).convertImage,
-  ),
+  image(media.convertImage),
+  video(media.convertVideo),
 ]);
 ```
 
@@ -86,7 +89,7 @@ const convert = create([
 - **One output for every format.** Official converters share one Markdown dialect — same escaping, tables, heading anchors, and footnotes — whether the input was a `.doc` from 2003 or a `.xlsx` from yesterday.
 - **Full document structure.** Headings, bold/italic/strikethrough, inline code and code blocks, links, bulleted/numbered/nested lists, tables with merged cells, block quotes, footnotes and endnotes, and speaker notes.
 - **Content-based format detection.** The format is read from the bytes (PDF header, RTF open group, OLE stream names, ZIP package mimetype), so mislabeled files still convert. CSV and plain text have no such marker — pass `hint.path` for those.
-- **Portable TypeScript.** No native addons, no WASM, no Node builtins. The same `toMarkdown(bytes)` call works in Node, Cloudflare Workers, and the browser.
+- **Portable TypeScript.** No native addons, no WASM, no Node builtins, no external dependencies. The same `toMarkdown(bytes)` call works in Node, Cloudflare Workers, and the browser.
 - **Install only what you need.** One package per format, or `@mdgate/converters` for the full set.
 - **Nested conversion.** A ZIP of emails of Word docs converts through the same registry, up to a small depth limit.
 - **PDF support built in.** Text is extracted locally. Embedded images are handed to the converter pool — register `image()` if you have a vision model.
@@ -116,9 +119,10 @@ const convert = create([
 | Subtitles | `.srt`, `.vtt`, `.webvtt` |
 | Archives | `.zip`, `.zipx`, `.jar` |
 | Images | `.jpeg`\*, `.png`\*, `.webp`\*, `.gif`\*, `.tiff`\*, `.heic`\*, `.bmp`\*, `.svg` |
-| Audio | `.mp3`\*, `.wav`\*, `.m4a`\*, `.aac`\*, `.ogg`\*, `.flac`\*, `.webm`\* |
+| Audio | `.mp3`\*, `.wav`\*, `.m4a`\*, `.aac`\*, `.ogg`\*, `.flac`\*, `.weba`\* |
+| Video | `.mp4`\*, `.m4v`\*, `.mov`\*, `.webm`\*, `.mkv`\*, `.avi`\* |
 
-\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`). Not registered by `all()`. SVG converts locally.
+\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`), video understanding for `video()`. Not registered by `all()`. SVG converts locally.
 
 ## How it works
 
@@ -132,7 +136,7 @@ file bytes
   │         ├─► Document → shared model: blocks, inlines, tables,
   │         │              notes, assets → GFM serializer
   │         │
-  │         └─► Markdown directly (PDF text; images/audio via callback)
+  │         └─► Markdown directly (PDF text; images/audio/video via callback)
   │
   └─► nested convert     → zip / eml / … can hand inner bytes back
 ```
@@ -221,10 +225,11 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
 | `@mdgate/zip` | zip, zipx, jar |
 | `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg |
-| `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, webm\* |
-| `@mdgate/ai` | Optional `image(ai({ baseURL, apiKey, model }).convertImage)` |
+| `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, weba\* |
+| `@mdgate/video` | mp4\*, m4v\*, mov\*, webm\*, mkv\*, avi\* |
+| `@mdgate/ai` | Optional `image` / `audio` / `video` callbacks |
 
-\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`). Not registered by `all()`. SVG converts locally.
+\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`), video understanding for `video()`. Not registered by `all()`. SVG converts locally.
 
 Contract and shared layers:
 

@@ -2,7 +2,6 @@ export type AudioMime =
   | 'audio/mpeg'
   | 'audio/wav'
   | 'audio/x-wav'
-  | 'audio/mp4'
   | 'audio/m4a'
   | 'audio/aac'
   | 'audio/ogg'

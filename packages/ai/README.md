@@ -5,6 +5,7 @@ One `image` implementation for mdgate: an OpenAI-compatible vision model. No def
 ```ts
 import { create } from '@mdgate/core';
 import { image } from '@mdgate/image';
+import { video } from '@mdgate/video';
 import { ai } from '@mdgate/ai';
 import { pdf } from '@mdgate/pdf';
 
@@ -17,10 +18,12 @@ const vision = ai({
 const convert = create([
   pdf(),
   image(vision.convertImage),
+  video(vision.convertVideo),
 ]);
 
-// Same chat/completions endpoint; audio is sent as a data URL.
+// Same chat/completions endpoint; audio and video are sent as data URLs.
 await vision.convertAudio({ bytes, mime: 'audio/mpeg' });
+await vision.convertVideo({ bytes, mime: 'video/mp4' });
 ```
 
-`baseURL` is the OpenAI-compatible API root (the same value the OpenAI SDK uses). Requests go to `{baseURL}/chat/completions`. Raster images include JPEG, PNG, WebP, GIF, TIFF, HEIC, and BMP. SVG is converted locally by `@mdgate/image`.
+`baseURL` is the OpenAI-compatible API root (the same value the OpenAI SDK uses). Requests go to `{baseURL}/chat/completions`. Raster images include JPEG, PNG, WebP, GIF, TIFF, HEIC, and BMP. SVG is converted locally by `@mdgate/image`. Video includes MP4, MOV, WebM, Matroska, and AVI.

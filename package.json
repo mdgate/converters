@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "bun run --filter @mdgate/core --filter @mdgate/utils build && bun run --filter @mdgate/document --filter @mdgate/containers build && bun run --filter @mdgate/office-common --filter @mdgate/iwork-common --filter @mdgate/image build && bun run --filter @mdgate/ai --filter @mdgate/html --filter @mdgate/csv --filter @mdgate/xlsx --filter @mdgate/docx --filter @mdgate/doc --filter @mdgate/rtf --filter @mdgate/pptx --filter @mdgate/ppt --filter @mdgate/odf --filter @mdgate/pages --filter @mdgate/numbers --filter @mdgate/keynote --filter @mdgate/pdf --filter @mdgate/text --filter @mdgate/data --filter @mdgate/subtitle --filter @mdgate/ipynb --filter @mdgate/fb2 --filter @mdgate/latex --filter @mdgate/visio --filter @mdgate/onenote --filter @mdgate/hwp --filter @mdgate/zip --filter @mdgate/audio build && bun run --filter @mdgate/epub --filter @mdgate/email --filter @mdgate/mobi --filter @mdgate/wps build && bun run --filter @mdgate/converters build",
+    "build": "bun run --filter @mdgate/core --filter @mdgate/utils build && bun run --filter @mdgate/document --filter @mdgate/containers build && bun run --filter @mdgate/office-common --filter @mdgate/iwork-common --filter @mdgate/image --filter @mdgate/audio --filter @mdgate/video build && bun run --filter @mdgate/ai --filter @mdgate/html --filter @mdgate/csv --filter @mdgate/xlsx --filter @mdgate/docx --filter @mdgate/doc --filter @mdgate/rtf --filter @mdgate/pptx --filter @mdgate/ppt --filter @mdgate/odf --filter @mdgate/pages --filter @mdgate/numbers --filter @mdgate/keynote --filter @mdgate/pdf --filter @mdgate/text --filter @mdgate/data --filter @mdgate/subtitle --filter @mdgate/ipynb --filter @mdgate/fb2 --filter @mdgate/latex --filter @mdgate/visio --filter @mdgate/onenote --filter @mdgate/hwp --filter @mdgate/zip build && bun run --filter @mdgate/epub --filter @mdgate/email --filter @mdgate/mobi --filter @mdgate/wps build && bun run --filter @mdgate/converters build",
     "dev:demo": "bun run --filter @mdgate/demo dev",
     "build:demo": "bun run --filter @mdgate/demo build",
     "deploy:demo": "bun run --filter @mdgate/demo deploy",
@@ -56,6 +56,7 @@
     "@mdgate/subtitle": "workspace:*",
     "@mdgate/text": "workspace:*",
     "@mdgate/utils": "workspace:*",
+    "@mdgate/video": "workspace:*",
     "@mdgate/visio": "workspace:*",
     "@mdgate/wps": "workspace:*",
     "@mdgate/xlsx": "workspace:*",

@@ -48,6 +48,7 @@
     "@mdgate/rtf": "0.4.1",
     "@mdgate/subtitle": "0.4.1",
     "@mdgate/text": "0.4.1",
+    "@mdgate/video": "0.4.1",
     "@mdgate/visio": "0.4.1",
     "@mdgate/wps": "0.4.1",
     "@mdgate/xlsx": "0.4.1",
@@ -90,6 +91,7 @@
     "zip",
     "text",
     "json",
-    "srt"
+    "srt",
+    "video"
   ]
 }

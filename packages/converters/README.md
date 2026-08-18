@@ -19,8 +19,9 @@ import { all, create } from '@mdgate/converters';
 const convert = create(all());
 ```
 
-`all()` registers every converter that needs no configuration. `image()` and
-`audio()` need callbacks, so they are exported but not included in `all()`.
+`all()` registers every converter that needs no configuration. `image()`,
+`audio()`, and `video()` need callbacks, so they are exported but not included
+in `all()`.
 
 Only need one format? Install just that package instead — for example
 `@mdgate/docx` — and call its identical `toMarkdown`.
@@ -56,6 +57,7 @@ Only need one format? Install just that package instead — for example
 | `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
 | `@mdgate/zip` | zip, zipx, jar |
 | `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg |
-| `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, webm\* |
+| `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, weba\* |
+| `@mdgate/video` | mp4\*, m4v\*, mov\*, webm\*, mkv\*, avi\* |
 
-\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`). Not registered by `all()`. SVG converts locally.
+\* Needs a callback — vision for raster images (`image()`), transcription for audio (`audio()`), video understanding for `video()`. Not registered by `all()`. SVG converts locally.
