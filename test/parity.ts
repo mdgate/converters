@@ -2,7 +2,7 @@
  * Fixture-corpus parity harness.
  *
  * Walks every file under test/fixtures except abuse/, converts with
- * toMarkdown, and compares against the corresponding insta snapshot
+ * toMarkdown, and compares against the corresponding snapshot
  * (ERROR: {message} on failure).
  */
 import { relative } from 'node:path';
@@ -130,7 +130,7 @@ async function run(): Promise<{
     `# fixture corpus parity`,
     '',
     `Converted ${rows.length} fixtures under \`test/fixtures\` (excluding \`abuse/\`).`,
-    `Compared each result to the insta snapshot in \`test/snapshots/\`.`,
+    `Compared each result to the snapshot in \`test/snapshots/\`.`,
     '',
     `**Totals:** passed=${passed}  failed=${failed}  skipped=${skipped}`,
     '',

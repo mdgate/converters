@@ -1,7 +1,7 @@
 import { cleanText } from '@mdgate/utils';
 import type { CellFormat } from './numfmt.js';
 
-/** One typed spreadsheet cell, matching calamine `Data`. */
+/** One typed spreadsheet cell. */
 export type CellValue =
   | { kind: 'empty' }
   | { kind: 'string'; value: string }
@@ -19,7 +19,7 @@ export function isEmptyValue(v: CellValue): boolean {
   return v.kind === 'empty';
 }
 
-/** Apply a cell's number format to a float, as calamine `format_excel_f64`. */
+/** Apply a cell's number format to a float. */
 export function formatExcelF64(
   value: number,
   format: CellFormat | undefined,
@@ -34,7 +34,7 @@ export function formatExcelF64(
   return { kind: 'float', value };
 }
 
-/** Apply a cell's number format to an integer, as calamine `format_excel_i64`. */
+/** Apply a cell's number format to an integer. */
 export function formatExcelI64(
   value: number,
   format: CellFormat | undefined,
@@ -83,8 +83,8 @@ export function errorFromText(text: string): CellValue {
 }
 
 /**
- * Render a cell the way anydoc `format_data` does. Strings are cleaned but
- * not trimmed: leading/trailing whitespace is source content.
+ * Render a cell as display text. Strings are cleaned but not trimmed:
+ * leading/trailing whitespace is source content.
  */
 export function formatData(data: CellValue): string {
   switch (data.kind) {
@@ -171,8 +171,8 @@ const MS_MULTIPLIER = 24 * 60 * 60 * 1000;
 const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
 
 /**
- * calamine `ExcelDateTime::as_datetime` + chrono `NaiveDateTime` Display,
- * then anydoc's strip of sub-seconds and a midnight clock.
+ * Format an Excel serial as `YYYY-MM-DD HH:MM:SS`, dropping a midnight clock
+ * and any sub-second fraction.
  */
 function formatDateTime(serial: number, is1904: boolean): string | undefined {
   let f = is1904 ? serial + EXCEL_1900_1904_DIFF : serial;

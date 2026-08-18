@@ -1,5 +1,5 @@
 /**
- * Deterministic mutation smoke test, ported from anydoc tests/robustness.rs.
+ * Deterministic mutation smoke test.
  * Conversions may fail; they must not hang or throw an untyped error.
  */
 

@@ -95,7 +95,7 @@ describe('detect', () => {
     expect(detectOleDoc(Buffer.from(''))).toBeUndefined();
   });
 
-  it('classifies anydoc fixtures from bytes', () => {
+  it('classifies fixtures from bytes', () => {
     const zipCases: Array<[string, string]> = [
       ['docx/text.docx', 'docx'],
       ['odt/text.odt', 'odt'],

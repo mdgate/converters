@@ -1,4 +1,4 @@
-/** Unicode White_Space — matches Rust `char::is_whitespace`. */
+/** Unicode White_Space (not JS whitespace). */
 export function isWhitespace(c: string): boolean {
   const cp = c.codePointAt(0) ?? 0;
   return (
@@ -16,13 +16,13 @@ export function isWhitespace(c: string): boolean {
   );
 }
 
-/** General category Cc — matches Rust `char::is_control`. */
+/** General category Cc. */
 export function isControl(c: string): boolean {
   const cp = c.codePointAt(0) ?? 0;
   return cp <= 0x1f || (cp >= 0x7f && cp <= 0x9f);
 }
 
-/** General categories L* and N* — matches Rust `char::is_alphanumeric`. */
+/** General categories L* and N*. */
 export function isAlphanumeric(c: string): boolean {
   return /^\p{L}$/u.test(c) || /^\p{N}$/u.test(c);
 }
@@ -40,7 +40,7 @@ export function toAsciiLower(c: string): string {
   return c;
 }
 
-/** Matches Rust `str::trim` (Unicode White_Space only; not JS BOM). */
+/** Trim Unicode White_Space only (not JS BOM). */
 export function trim(s: string): string {
   return trimEnd(trimStart(s));
 }
@@ -61,7 +61,7 @@ export function trimEnd(s: string): string {
   return chars.slice(0, end).join('');
 }
 
-/** Matches Rust `str::trim_matches(char)`. */
+/** Strip `ch` from both ends. */
 export function trimMatches(s: string, ch: string): string {
   const chars = [...s];
   let start = 0;
@@ -71,7 +71,7 @@ export function trimMatches(s: string, ch: string): string {
   return chars.slice(start, end).join('');
 }
 
-/** Matches Rust `str::trim_end_matches(char)`. */
+/** Strip `ch` from the end. */
 export function trimEndMatches(s: string, ch: string): string {
   const chars = [...s];
   let end = chars.length;
@@ -80,8 +80,8 @@ export function trimEndMatches(s: string, ch: string): string {
 }
 
 /**
- * Matches Rust `str::lines()`: split on `\n` / `\r\n`, no trailing empty
- * line when the string ends with a newline.
+ * Split on `\n` / `\r\n`. No trailing empty line when the string ends with
+ * a newline.
  */
 export function lines(s: string): string[] {
   if (s.length === 0) return [];

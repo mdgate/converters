@@ -1,6 +1,5 @@
-//! PDF frontend. anydoc routes PDFs through pdf-inspector, which emits
-//! Markdown directly — there is no document model. This port extracts
-//! positioned text and converts it with the same error contract.
+//! PDF frontend. Extracts positioned text and writes Markdown directly —
+//! there is no document model.
 
 import { type Convert, ConvertError } from '@mdgate/core';
 import { InflateLimitError, inflateRaw, inflateZlib } from '@mdgate/utils';
@@ -168,7 +167,7 @@ function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): strin
 }
 
 // ---------------------------------------------------------------------------
-// Validation / errors (pdf-inspector PdfError → ConvertError)
+// Validation / errors
 // ---------------------------------------------------------------------------
 
 type PdfTypeName = 'TextBased' | 'Scanned' | 'ImageBased' | 'Mixed';
@@ -2101,7 +2100,7 @@ function collectHttpLinkRects(doc: PdfDocument, page: PdfDict): Rect[] {
       if (u instanceof Uint8Array) uri = latin1Decode(u);
       else if (typeof u === 'string') uri = u;
     }
-    // pdf-inspector leaves http(s) link text undecorated; internal/relative
+    // http(s) link text is left undecorated; internal/relative
     // links keep the drawn underline as `<u>`.
     if (!uri || !/^https?:/i.test(uri)) continue;
     const rect = dictGet(doc, ad, '/Rect');
@@ -2198,7 +2197,7 @@ function dedupeOverlappingItems(items: TextItem[]): TextItem[] {
 }
 
 // ---------------------------------------------------------------------------
-// Superscript merge (pdf-inspector merge_subscript_items)
+// Superscript merge
 // ---------------------------------------------------------------------------
 
 const SUP = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
@@ -2251,7 +2250,7 @@ function mergeScriptItems(items: TextItem[]): TextItem[] {
 }
 
 // ---------------------------------------------------------------------------
-// Line grouping + markdown (pdf-inspector convert / types)
+// Line grouping + markdown
 // ---------------------------------------------------------------------------
 
 function groupIntoLines(items: TextItem[]): TextItem[][] {

@@ -10,8 +10,7 @@ export type ConvertErrorCode =
 /**
  * Why a conversion could not produce a useful result.
  *
- * Messages match anydoc `ConvertError`'s `Display`. Bindings publish
- * {@link ConvertError.code} as the branch key.
+ * Bindings publish {@link ConvertError.code} as the branch key.
  */
 export class ConvertError extends Error {
   readonly code: ConvertErrorCode;

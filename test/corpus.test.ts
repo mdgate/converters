@@ -41,7 +41,7 @@ const all = listFixtures();
 const corpus = all.filter((path) => !fixtureRel(path).startsWith('abuse/'));
 const abuse = all.filter((path) => fixtureRel(path).startsWith('abuse/'));
 
-describe('anydoc fixture corpus', () => {
+describe('fixture corpus', () => {
   it('has 69 fixtures and 61 non-abuse snapshots', () => {
     expect(all).toHaveLength(69);
     expect(corpus).toHaveLength(61);

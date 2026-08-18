@@ -33,7 +33,7 @@ export interface SheetRange {
   merges: MergeRegion[];
 }
 
-/** Build a dense used-range from non-empty cells, as calamine `Range::from_sparse`. */
+/** Build a dense used-range from non-empty cells. */
 export function fromSparse(cells: SparseCell[]):
   | {
       start: [number, number];
@@ -63,7 +63,7 @@ export function fromSparse(cells: SparseCell[]):
   return { start: [rowStart, colStart], height, width, values };
 }
 
-/** anydoc `sheet::parse` after the workbook has been opened and each sheet read. */
+/** Convert opened sheet ranges into a document. */
 export function sheetsToDocument(sheets: SheetRange[]): Document {
   const doc = emptyDocument();
   const multiSheet = sheets.length > 1;

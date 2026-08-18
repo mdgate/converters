@@ -236,7 +236,7 @@ function clampInt(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
-/** Rust `str::parse::<u64>()`: the whole string is a decimal integer in 0..=u64::MAX. */
+/** Parse a whole-string decimal integer in 0..=2^64-1. */
 export function parseDecimalU64(v: string): number | undefined {
   if (v.length === 0 || !/^[0-9]+$/.test(v)) return undefined;
   let n: bigint;

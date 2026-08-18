@@ -8,8 +8,8 @@ import { parseXlsxPackage } from './xlsx.js';
 
 /**
  * Parse an Excel workbook (xlsx, xlsm, xlsb, xls) into the document model.
- * Output matches anydoc `formats::sheet::parse`: per-sheet headings when
- * multi-sheet, merged cells, header-row detection, typed cell text.
+ * Multi-sheet workbooks get per-sheet headings; merged cells, header-row
+ * detection, and typed cell text are preserved.
  */
 export function parse(bytes: Uint8Array): Document {
   try {

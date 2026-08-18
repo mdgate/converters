@@ -1,6 +1,6 @@
 /**
- * Shared helpers for the transplanted anydoc fixture corpus.
- * Fixtures and insta snapshots live next to this file.
+ * Shared helpers for the fixture corpus.
+ * Fixtures and snapshots live next to this file.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';

@@ -1,4 +1,4 @@
-/** Port of calamine `src/formats.rs` number-format classification. */
+/** Excel number-format classification: other, datetime, or timedelta. */
 
 export type CellFormat = 'other' | 'datetime' | 'timedelta';
 

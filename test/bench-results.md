@@ -141,7 +141,7 @@ Startup is not in these numbers: both sides loop inside one already-warm process
 
 **Why**
 
-- **PDF** (`pdf/text.pdf`): Rust 1.538 ms vs TS 2.039 ms (1.33×). Rust uses native `pdf-inspector` / `lopdf`; the TypeScript port walks objects and streams in JS. This is the slowest single file on both sides, but the gap is small because the fixture is a one-page text PDF.
+- **PDF** (`pdf/text.pdf`): Rust 1.538 ms vs TS 2.039 ms (1.33×). Rust walks the PDF natively; the TypeScript converter walks objects and streams in JS. This is the slowest single file on both sides, but the gap is small because the fixture is a one-page text PDF.
 - **ZIP / OOXML / ODF / EPUB** (docx, pptx, xlsx, odt, ods, odp, epub): folder medians ~4.93×. Rust inflates with native `flate2`/`zlib-rs` and parses XML with `quick-xml`; TS inflates with pure-JS `fflate` and walks XML in a hand-rolled parser. The extra cost is inflate + the JS XML/relationship/style walk, not process startup.
 - **Regex / RTF**: RTF is a token stream. Rust median 0.0322 ms vs TS 0.2752 ms (8.56×). `text.rtf` is 4.5×; the lexer is allocation-heavy in JS. No regex engine is on the hot path the way a Turndown-style HTML convertor would be — the port is a character lexer.
 - **OLE / CFB** (doc, ppt, xls): TypeScript is 3.50× the Rust median. Binary sector walks and encoding (iconv-lite vs encoding_rs) show up more than zip, because there is no shared native inflate to hide behind.
