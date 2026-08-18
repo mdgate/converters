@@ -36,7 +36,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run build
-      - run: bun test
+      - run: bun run test
       - run: bun run pack:check
       - run: bun run version -- ${{ inputs.increment }}
       - run: bun scripts/commit-release.ts
