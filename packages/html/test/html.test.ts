@@ -8,19 +8,27 @@ describe('html', () => {
   it('sniffs content, extension, and unrelated bytes', () => {
     const converter = html();
     expect(converter.id).toBe('html');
-    expect(converter.sniff(enc.encode('<!DOCTYPE html><html></html>'))).toBe(2);
-    expect(converter.sniff(enc.encode('<html lang="en"></html>'))).toBe(2);
-    expect(converter.sniff(enc.encode('<HTML></HTML>'))).toBe(2);
+    expect(converter.sniff(enc.encode('<!DOCTYPE html><html></html>'))).toBe(3);
+    expect(converter.sniff(enc.encode('<html lang="en"></html>'))).toBe(3);
+    expect(converter.sniff(enc.encode('<HTML></HTML>'))).toBe(3);
     const bom = new Uint8Array([0xef, 0xbb, 0xbf, ...enc.encode('<html></html>')]);
-    expect(converter.sniff(bom)).toBe(2);
+    expect(converter.sniff(bom)).toBe(3);
     expect(converter.sniff(enc.encode('<html xmlns="http://www.w3.org/1999/xhtml"></html>'))).toBe(
-      2,
+      3,
     );
+    expect(
+      converter.sniff(
+        enc.encode(
+          'From: a@b\r\nMIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=x\r\nContent-Location: cid:body\r\n\r\n--x\r\n',
+        ),
+      ),
+    ).toBe(3);
+    expect(converter.sniff(enc.encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>'))).toBe(0);
     expect(converter.sniff(new Uint8Array([1]), { path: 'a.htm' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'page.html' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'ch.xhtml' })).toBe(1);
-    expect(converter.sniff(new Uint8Array([1]), { path: 'saved.mhtml' })).toBe(1);
-    expect(converter.sniff(new Uint8Array([1]), { path: 'saved.mht' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'saved.mhtml' })).toBe(3);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'saved.mht' })).toBe(3);
     expect(converter.sniff(new Uint8Array([1]))).toBe(0);
     expect(
       converter.sniff(

@@ -83,8 +83,8 @@ describe('svg', () => {
   it('sniffs magic and extensions', () => {
     const converter = svg();
     expect(converter.id).toBe('svg');
-    expect(converter.sniff(SVG_HI)).toBe(2);
-    expect(converter.sniff(enc.encode('<?xml version="1.0"?><svg></svg>'))).toBe(2);
+    expect(converter.sniff(SVG_HI)).toBe(3);
+    expect(converter.sniff(enc.encode('<?xml version="1.0"?><svg></svg>'))).toBe(3);
     expect(converter.sniff(new Uint8Array([1]), { path: 'icon.svg' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]))).toBe(0);
     expect(converter.sniff(PNG)).toBe(0);

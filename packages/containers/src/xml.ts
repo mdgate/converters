@@ -268,6 +268,32 @@ export function normalizeOoxmlUri(uri: string): string | undefined {
   return `http://schemas.openxmlformats.org/${family}/2006/${tail}`;
 }
 
+/** StarOffice 6 / OpenOffice.org 1.x vocabularies map onto ODF 1.0 names. */
+export function normalizeStarOfficeUri(uri: string): string | undefined {
+  switch (uri) {
+    case 'http://openoffice.org/2000/office':
+    case 'http://openoffice.org/2001/office':
+      return ns.OFFICE;
+    case 'http://openoffice.org/2000/text':
+      return ns.TEXT;
+    case 'http://openoffice.org/2000/table':
+      return ns.TABLE;
+    case 'http://openoffice.org/2000/drawing':
+      return ns.DRAW;
+    case 'http://openoffice.org/2000/presentation':
+      return ns.PRESENTATION;
+    case 'http://openoffice.org/2000/style':
+      return ns.STYLE;
+    case 'http://openoffice.org/2001/manifest':
+    case 'http://openoffice.org/2000/manifest':
+      return ns.MANIFEST;
+    case 'http://www.w3.org/1999/XSL/Format':
+      return ns.FO;
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Parse an XML part into a synthetic root element containing the top-level
  * nodes. Encoding comes from the BOM or XML declaration.
@@ -367,7 +393,7 @@ function pushText(stack: Element[], root: Element, text: string): void {
 function intern(interner: Map<string, string>, uri: string): string {
   const hit = interner.get(uri);
   if (hit !== undefined) return hit;
-  const normalized = normalizeOoxmlUri(uri) ?? uri;
+  const normalized = normalizeOoxmlUri(uri) ?? normalizeStarOfficeUri(uri) ?? uri;
   interner.set(uri, normalized);
   return normalized;
 }

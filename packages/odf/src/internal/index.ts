@@ -81,6 +81,17 @@ function parseBody(body: Element, ctx: Ctx, part: string | undefined): Block[] {
   if (pres !== undefined) return parsePages(pres, ctx);
   if (drawing !== undefined) return parsePages(drawing, ctx);
 
+  const pages = body.findAll(ns.DRAW, 'page');
+  if (pages.length > 0) return parsePages(body, ctx);
+  if (body.find(ns.TABLE, 'table') !== undefined) return parseSpreadsheet(body, ctx);
+  if (
+    body.find(ns.TEXT, 'p') !== undefined ||
+    body.find(ns.TEXT, 'h') !== undefined ||
+    body.find(ns.TEXT, 'list') !== undefined
+  ) {
+    return parseContainer(body, ctx);
+  }
+
   const detail = 'no recognized office body (text, spreadsheet, presentation, or drawing)';
   if (part !== undefined) throw ConvertError.malformedPart(part, detail);
   throw ConvertError.malformed(detail);
@@ -135,14 +146,23 @@ function walkShapes(
 ): void {
   for (const child of parent.childElems()) {
     if (child.is(ns.PRESENTATION, 'notes')) {
-      for (const frame of child.descendants(ns.DRAW, 'frame')) {
-        const textBox = frame.find(ns.DRAW, 'text-box');
-        if (textBox !== undefined) notes.push(...parseContainer(textBox, ctx));
+      for (const box of child.descendants(ns.DRAW, 'text-box')) {
+        notes.push(...parseContainer(box, ctx));
       }
       continue;
     }
     if (child.ns !== ns.DRAW) continue;
     switch (child.local) {
+      case 'text-box': {
+        const cls = child.attr(ns.PRESENTATION, 'class') ?? '';
+        if (cls === 'page-number' || cls === 'date-time' || cls === 'footer' || cls === 'header') {
+          continue;
+        }
+        const inner = parseContainer(child, ctx);
+        if (cls === 'title') pushTitleHeading(inner, title);
+        else body.push(...inner);
+        break;
+      }
       case 'frame': {
         const cls = child.attr(ns.PRESENTATION, 'class') ?? '';
         if (cls === 'page-number' || cls === 'date-time' || cls === 'footer' || cls === 'header') {

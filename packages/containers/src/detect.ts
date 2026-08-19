@@ -226,6 +226,14 @@ function mimetypeKind(mime: string): ZipDocKind | undefined {
       return 'odp';
     case 'application/vnd.oasis.opendocument.graphics':
       return 'odg';
+    case 'application/vnd.sun.xml.writer':
+      return 'odt';
+    case 'application/vnd.sun.xml.calc':
+      return 'ods';
+    case 'application/vnd.sun.xml.impress':
+      return 'odp';
+    case 'application/vnd.sun.xml.draw':
+      return 'odg';
     case 'application/hwp+zip':
     case 'application/vnd.hancom.hwpx':
       return 'hwpx';

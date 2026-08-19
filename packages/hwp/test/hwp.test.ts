@@ -1,6 +1,8 @@
 import { ConvertError } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
 import { hwp, toMarkdown } from '../src/index.js';
+import { aes128EcbDecrypt } from '../src/internal/aes.js';
+import { unwrapDistributionKey } from '../src/internal/hwp.js';
 
 const enc = new TextEncoder();
 
@@ -31,6 +33,21 @@ describe('hwp', () => {
 
   it('converts classic HWP signature bytes via UTF-16 strings', async () => {
     await expect(toMarkdown(hwpSignatureFile('Hello Hangul'))).resolves.toContain('Hello Hangul');
+  });
+
+  it('decrypts AES-128 ECB and unwraps a distribution key', () => {
+    const key = hex('000102030405060708090a0b0c0d0e0f');
+    const cipher = hex('69c4e0d86a7b0430d8cdb78070b4c55a');
+    const plain = hex('00112233445566778899aabbccddeeff');
+    expect(aes128EcbDecrypt(cipher, key)).toEqual(plain);
+
+    const planted = new Uint8Array(16);
+    for (let i = 0; i < 16; i += 1) planted[i] = i + 1;
+    const block = new Uint8Array(256);
+    block[0] = 0;
+    block.set(planted, 4);
+    applySrandXor(block);
+    expect(unwrapDistributionKey(block)).toEqual(planted);
   });
 
   it('refuses a PDF or office file', async () => {
@@ -125,6 +142,32 @@ function tinyDocx(text: string): Uint8Array {
 </Relationships>`,
     'word/document.xml': xml,
   });
+}
+
+function hex(s: string): Uint8Array {
+  const out = new Uint8Array(s.length / 2);
+  for (let i = 0; i < out.length; i += 1) {
+    out[i] = Number.parseInt(s.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}
+
+function applySrandXor(data: Uint8Array): void {
+  const seed = new DataView(data.buffer, data.byteOffset, 4).getInt32(0, true);
+  let xor = 0;
+  let n = 0;
+  let state = seed | 0;
+  const rand = (): number => {
+    state = (Math.imul(state, 214013) + 2531011) | 0;
+    return (state >>> 16) & 0x7fff;
+  };
+  for (let i = 0; i < 256; i += 1, n -= 1) {
+    if (n === 0) {
+      xor = rand() & 0xff;
+      n = (rand() & 0xf) + 1;
+    }
+    if (i >= 4) data[i] = data[i]! ^ xor;
+  }
 }
 
 function zipStore(files: Record<string, string>): Uint8Array {

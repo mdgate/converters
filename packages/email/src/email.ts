@@ -17,7 +17,7 @@ export function email(): Converter {
         if (hint?.path !== undefined && fileExtension(hint.path) === 'msg') return 1;
         return 0;
       }
-      if (looksLikeRfc822(bytes)) return 2;
+      if (looksLikeRfc822(bytes)) return 3;
       if (hint?.path !== undefined && EXTS.has(fileExtension(hint.path) ?? '')) return 1;
       return 0;
     },
@@ -38,17 +38,28 @@ function refuseForeign(bytes: Uint8Array): void {
 
 function looksLikeRfc822(bytes: Uint8Array): boolean {
   let i = skipBomAndWs(bytes);
+  if (isYamlDocStart(bytes, i)) return false;
   i = skipEmlxLengthLine(bytes, i);
   if (isFromSpace(bytes, i)) i = nextLine(bytes, i);
   const limit = Math.min(bytes.length, i + 4096);
   while (i < limit) {
     const end = lineEnd(bytes, i, limit);
     if (end.line === i) break;
+    if (bytes[i] === 0x20 || bytes[i] === 0x09) {
+      i = end.next;
+      continue;
+    }
     const name = headerName(bytes, i, end.line);
     if (name === 'from' || name === 'mime-version') return true;
     i = end.next;
   }
   return false;
+}
+
+function isYamlDocStart(bytes: Uint8Array, i: number): boolean {
+  if (!startsWithAscii(bytes, '---', i)) return false;
+  const next = bytes[i + 3];
+  return next === undefined || next === 0x0a || next === 0x0d || next === 0x20 || next === 0x09;
 }
 
 function skipEmlxLengthLine(bytes: Uint8Array, start: number): number {

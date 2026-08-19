@@ -15,6 +15,10 @@ export function parse(bytes: Uint8Array): Document {
   const text = stripBom(decodeText(bytes)).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const rows = lines(text);
   const doc = emptyDocument();
+  if (isAssDocument(rows)) {
+    parseAss(rows, doc);
+    return doc;
+  }
   let i = 0;
 
   if (isWebvttHeader(rows[0])) {
@@ -86,6 +90,79 @@ function parseStart(line: string): string | undefined {
 function isWebvttHeader(line: string | undefined): boolean {
   if (line === undefined) return false;
   return /^WEBVTT(?:$|[\s\uFEFF])/.test(line);
+}
+
+function isAssDocument(rows: string[]): boolean {
+  for (const row of rows) {
+    const t = trim(row);
+    if (t.length === 0) continue;
+    const lower = t.toLowerCase();
+    return (
+      lower === '[script info]' ||
+      lower === '[v4+ styles]' ||
+      lower === '[v4 styles]' ||
+      lower === '[events]'
+    );
+  }
+  return false;
+}
+
+function parseAss(rows: string[], doc: Document): void {
+  let inEvents = false;
+  let startIdx = 1;
+  let textIdx = 9;
+  for (const row of rows) {
+    const t = trim(row);
+    if (t.length === 0) continue;
+    if (t.startsWith('[') && t.endsWith(']')) {
+      inEvents = t.toLowerCase() === '[events]';
+      continue;
+    }
+    if (!inEvents) continue;
+    const colon = t.indexOf(':');
+    if (colon <= 0) continue;
+    const kind = t.slice(0, colon).trim().toLowerCase();
+    const rest = t.slice(colon + 1).trim();
+    if (kind === 'format') {
+      const fields = rest.split(',').map((f) => trim(f).toLowerCase());
+      startIdx = fields.indexOf('start');
+      textIdx = fields.indexOf('text');
+      if (startIdx < 0) startIdx = 1;
+      continue;
+    }
+    if (kind !== 'dialogue') continue;
+    const fields = splitAssFields(rest, Math.max(startIdx, textIdx) + 1);
+    const start = parseAssStart(fields[startIdx] ?? '');
+    const cue = cleanCueText(
+      (fields[textIdx >= 0 ? textIdx : fields.length - 1] ?? '').replace(/\\N/g, ' '),
+    );
+    if (start === undefined || cue.length === 0) continue;
+    doc.blocks.push({ type: 'paragraph', inlines: cueInlines(start, cue) });
+  }
+}
+
+function splitAssFields(line: string, minFields: number): string[] {
+  const out: string[] = [];
+  let start = 0;
+  for (let i = 0; i < line.length; i += 1) {
+    if (line[i] !== ',') continue;
+    out.push(line.slice(start, i));
+    start = i + 1;
+    if (out.length + 1 >= minFields && minFields > 0) break;
+  }
+  out.push(line.slice(start));
+  return out;
+}
+
+function parseAssStart(raw: string): string | undefined {
+  const m = /^\s*(\d+):(\d{1,2}):(\d{2})\.(\d{1,2})\s*$/.exec(raw);
+  if (m === null) return undefined;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2]);
+  const seconds = Number(m[3]);
+  const cs = Number(m[4]);
+  if (!Number.isFinite(hours + minutes + seconds + cs)) return undefined;
+  return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(seconds, 2)}.${pad(cs * 10, 3)}`;
 }
 
 function isSkippableBlock(line: string): boolean {

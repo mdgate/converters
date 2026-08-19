@@ -12,8 +12,12 @@ export function html(): Converter {
   return {
     id: 'html',
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {
+      const ext = hint?.path !== undefined ? fileExtension(hint.path) : undefined;
+      if (looksLikeMhtml(bytes) || (ext !== undefined && MHTML_EXTS.has(ext))) return 3;
+      if (looksLikeSvg(bytes)) return 0;
+      if (isStrongHtml(bytes) && !isFlatOdf(bytes)) return 3;
       if (looksLikeHtml(bytes) && !isFlatOdf(bytes)) return 2;
-      if (hint?.path !== undefined && EXTS.has(fileExtension(hint.path) ?? '')) return 1;
+      if (ext !== undefined && EXTS.has(ext)) return 1;
       return 0;
     },
     convert(bytes: Uint8Array, options?: ConvertOptions): ConvertResult {
@@ -50,16 +54,28 @@ function isPdf(bytes: Uint8Array): boolean {
 }
 
 function looksLikeHtml(bytes: Uint8Array): boolean {
-  const start = skipBomAndWs(bytes);
-  if (startsWithCi(bytes, '<!doctype html', start) && !isNameByte(bytes[start + 14])) return true;
-  if (startsWithCi(bytes, '<html', start) && !isNameByte(bytes[start + 5])) return true;
+  if (isStrongHtml(bytes)) return true;
   const head = utf8Lossy(bytes.subarray(0, Math.min(bytes.length, 4096)));
   return head.includes('http://www.w3.org/1999/xhtml');
 }
 
+function isStrongHtml(bytes: Uint8Array): boolean {
+  const start = skipBomAndWs(bytes);
+  if (startsWithCi(bytes, '<!doctype html', start) && !isNameByte(bytes[start + 14])) return true;
+  return startsWithCi(bytes, '<html', start) && !isNameByte(bytes[start + 5]);
+}
+
+function looksLikeSvg(bytes: Uint8Array): boolean {
+  const start = skipBomAndWs(bytes);
+  if (startsWithCi(bytes, '<svg', start) && !isNameByte(bytes[start + 4])) return true;
+  if (!startsWithCi(bytes, '<?xml', start)) return false;
+  const head = utf8Lossy(bytes.subarray(0, Math.min(bytes.length, 8192)));
+  return /<svg\b/i.test(head);
+}
+
 function looksLikeMhtml(bytes: Uint8Array): boolean {
-  const head = utf8Lossy(bytes.subarray(0, Math.min(bytes.length, 512))).toLowerCase();
-  return head.includes('multipart/related') || head.includes('content-location:');
+  const head = utf8Lossy(bytes.subarray(0, Math.min(bytes.length, 4096))).toLowerCase();
+  return head.includes('content-location:');
 }
 
 /** Flat ODF (`office:document`) belongs to `@mdgate/odf`. */

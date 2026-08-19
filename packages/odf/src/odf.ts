@@ -19,6 +19,14 @@ const EXTS = new Set([
   'fods',
   'fodp',
   'fodg',
+  'sxw',
+  'sxc',
+  'sxi',
+  'sxd',
+  'stw',
+  'stc',
+  'sti',
+  'std',
 ]);
 
 const OFFICE_NS = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';

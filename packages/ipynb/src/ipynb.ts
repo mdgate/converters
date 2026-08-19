@@ -8,7 +8,7 @@ export function ipynb(): Converter {
   return {
     id: 'ipynb',
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {
-      if (looksLikeNotebook(bytes)) return 2;
+      if (looksLikeNotebook(bytes)) return 3;
       if (hint?.path !== undefined && fileExtension(hint.path) === 'ipynb') return 1;
       return 0;
     },
