@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/latex",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "mdgate LaTeX converter",
   "type": "module",
   "license": "MIT",
@@ -22,9 +22,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.5.0",
-    "@mdgate/document": "0.5.0",
-    "@mdgate/utils": "0.5.0"
+    "@mdgate/core": "0.5.1",
+    "@mdgate/document": "0.5.1",
+    "@mdgate/utils": "0.5.1"
   },
   "publishConfig": {
     "access": "public"
