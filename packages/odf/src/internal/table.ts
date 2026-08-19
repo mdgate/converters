@@ -1,16 +1,12 @@
 /** ODF tables: canonical grid construction with covered-cell consumption. */
 
 import { type Element, ns } from '@mdgate/containers';
-import { ConvertError } from '@mdgate/core';
 import {
   type Block,
   cellSpanning,
   GridBuilder,
   heading,
-  type Inline,
   inlinesAreEmpty,
-  MAX_EXPANSION,
-  MAX_EXPANSION_TEXT_BYTES,
   plain,
   resolveHeaderRows,
 } from '@mdgate/document';
@@ -21,8 +17,6 @@ import { type Ctx, parseContainer } from './text.js';
 export function parseTable(elem: Element, ctx: Ctx): Block[] {
   const state: TableState = {
     builder: new GridBuilder(),
-    expansion: 0,
-    expansionBytes: 0,
     pendingRows: 0,
     headerRows: 0,
     rowsEmitted: 0,
@@ -36,31 +30,9 @@ export function parseTable(elem: Element, ctx: Ctx): Block[] {
 
 interface TableState {
   builder: GridBuilder;
-  expansion: number;
-  expansionBytes: number;
   pendingRows: number;
   headerRows: number;
   rowsEmitted: number;
-}
-
-function charge(state: TableState, cells: number): void {
-  state.expansion = saturatingAdd(state.expansion, cells);
-  if (state.expansion > MAX_EXPANSION) {
-    throw ConvertError.resourceLimit(
-      'max_expansion',
-      'table repeat expansion exceeds the content budget',
-    );
-  }
-}
-
-function chargeBytes(state: TableState, bytes: number): void {
-  state.expansionBytes = saturatingAdd(state.expansionBytes, bytes);
-  if (state.expansionBytes > MAX_EXPANSION_TEXT_BYTES) {
-    throw ConvertError.resourceLimit(
-      'max_expansion_text_bytes',
-      'table repeat expansion duplicates more text than the budget',
-    );
-  }
 }
 
 type RowCell =
@@ -71,70 +43,10 @@ type RowCell =
       colSpan: number;
       rowSpan: number;
       blocks: Block[];
-      bytes: number;
     };
 
-function inlineBytes(inlines: readonly Inline[]): number {
-  let sum = 0;
-  for (const i of inlines) {
-    switch (i.type) {
-      case 'text':
-        sum += i.text.length;
-        break;
-      case 'link': {
-        const targetLen =
-          i.target.type === 'external' || i.target.type === 'relative'
-            ? i.target.url.length
-            : i.target.id.length;
-        sum += inlineBytes(i.content) + targetLen;
-        break;
-      }
-      case 'image':
-        sum += i.alt.length;
-        break;
-      case 'anchor':
-      case 'noteRef':
-        sum += i.id.length;
-        break;
-      case 'lineBreak':
-        sum += 1;
-        break;
-    }
-  }
-  return sum;
-}
-
-function blockBytes(blocks: readonly Block[]): number {
-  let sum = 0;
-  for (const b of blocks) {
-    switch (b.type) {
-      case 'paragraph':
-        sum += inlineBytes(b.inlines);
-        break;
-      case 'heading':
-        sum += inlineBytes(b.content);
-        break;
-      case 'list':
-        for (const item of b.list.items) sum += blockBytes(item.blocks);
-        break;
-      case 'table':
-        for (const row of b.table.grid) {
-          for (const slot of row) {
-            if (slot.type === 'origin') sum += blockBytes(slot.cell.blocks);
-          }
-        }
-        break;
-      case 'blockQuote':
-        sum += blockBytes(b.blocks);
-        break;
-      case 'codeBlock':
-        sum += b.text.length;
-        break;
-      case 'rule':
-        break;
-    }
-  }
-  return sum;
+function emitTimes(repeat: number): number {
+  return repeat > 10_000 ? 1 : repeat;
 }
 
 function walkRows(container: Element, ctx: Ctx, state: TableState, top: boolean): void {
@@ -170,20 +82,15 @@ function emitRow(row: Element, ctx: Ctx, state: TableState, repeat: number): voi
     return;
   }
   if (state.pendingRows > 0) {
-    charge(state, state.pendingRows);
-    state.builder.nextRows(state.pendingRows);
-    state.rowsEmitted += state.pendingRows;
+    if (state.pendingRows <= 10_000) {
+      state.builder.nextRows(state.pendingRows);
+      state.rowsEmitted += state.pendingRows;
+    }
     state.pendingRows = 0;
   }
   const cells = parseRowCells(row, ctx);
-  charge(state, saturatingSub(repeat, 1));
-  for (const cell of cells) {
-    if (cell.kind === 'cell') {
-      const copies = saturatingSub(saturatingMul(repeat, cell.repeat), 1);
-      chargeBytes(state, saturatingMul(cell.bytes, copies));
-    }
-  }
-  for (let i = 0; i < repeat; i += 1) {
+  const times = emitTimes(repeat);
+  for (let i = 0; i < times; i += 1) {
     state.builder.nextRow();
     state.rowsEmitted += 1;
     emitParsedCells(cells, state);
@@ -202,8 +109,7 @@ function parseRowCells(row: Element, ctx: Ctx): RowCell[] {
     const colSpan = parseSpan(cell.attr(ns.TABLE, 'number-columns-spanned'));
     const rowSpan = parseSpan(cell.attr(ns.TABLE, 'number-rows-spanned'));
     const blocks = cellBlocks(cell, ctx);
-    const bytes = blockBytes(blocks);
-    out.push({ kind: 'cell', repeat, colSpan, rowSpan, blocks, bytes });
+    out.push({ kind: 'cell', repeat, colSpan, rowSpan, blocks });
   }
   return out;
 }
@@ -214,8 +120,8 @@ function emitParsedCells(cells: readonly RowCell[], state: TableState): void {
     if (cell.kind === 'covered') {
       flushGap(state, pendingCells);
       pendingCells = 0;
-      charge(state, cell.repeat);
-      for (let i = 0; i < cell.repeat; i += 1) {
+      const times = emitTimes(cell.repeat);
+      for (let i = 0; i < times; i += 1) {
         if (!state.builder.covered()) {
           debug('covered table cell without a spanning origin');
         }
@@ -227,9 +133,9 @@ function emitParsedCells(cells: readonly RowCell[], state: TableState): void {
       }
       flushGap(state, pendingCells);
       pendingCells = 0;
-      charge(state, saturatingMul(cell.repeat, cell.colSpan));
-      for (let i = 0; i < cell.repeat; i += 1) {
-        const blocks = cell.repeat === 1 ? cell.blocks : cloneBlocks(cell.blocks);
+      const times = emitTimes(cell.repeat);
+      for (let i = 0; i < times; i += 1) {
+        const blocks = times === 1 ? cell.blocks : cloneBlocks(cell.blocks);
         state.builder.place(cellSpanning(blocks, cell.colSpan, cell.rowSpan));
       }
     }
@@ -237,8 +143,7 @@ function emitParsedCells(cells: readonly RowCell[], state: TableState): void {
 }
 
 function flushGap(state: TableState, pending: number): void {
-  if (pending === 0) return;
-  charge(state, pending);
+  if (pending === 0 || pending > 10_000) return;
   state.builder.placeEmptyRun(pending);
 }
 
@@ -436,17 +341,6 @@ function cloneBlocks(blocks: Block[]): Block[] {
 
 function saturatingAdd(a: number, b: number): number {
   const s = a + b;
-  if (!Number.isFinite(s) || s > Number.MAX_SAFE_INTEGER) return Number.MAX_SAFE_INTEGER;
-  return s;
-}
-
-function saturatingSub(a: number, b: number): number {
-  const s = a - b;
-  return s < 0 ? 0 : s;
-}
-
-function saturatingMul(a: number, b: number): number {
-  const s = a * b;
   if (!Number.isFinite(s) || s > Number.MAX_SAFE_INTEGER) return Number.MAX_SAFE_INTEGER;
   return s;
 }

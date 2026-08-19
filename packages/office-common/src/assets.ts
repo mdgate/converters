@@ -1,8 +1,6 @@
 import type { Package } from '@mdgate/containers';
 import { type Relationships, relTargetBytes } from '@mdgate/containers';
-import { ConvertError } from '@mdgate/core';
 import type { Asset, AssetId, ImageSource } from '@mdgate/document';
-import { MAX_ASSET_TOTAL_BYTES } from '@mdgate/document';
 
 export class AssetSink {
   assets: Asset[] = [];
@@ -13,12 +11,6 @@ export class AssetSink {
     const existing = this.byPart.get(originPart);
     if (existing !== undefined) return existing;
     this.total += bytes.length;
-    if (this.total > MAX_ASSET_TOTAL_BYTES) {
-      throw ConvertError.resourceLimit(
-        'max_asset_total_bytes',
-        'embedded assets exceed the retained-bytes cap',
-      );
-    }
     const id = this.assets.length;
     this.byPart.set(originPart, id);
     this.assets.push({

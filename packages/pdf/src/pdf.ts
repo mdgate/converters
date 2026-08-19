@@ -1,7 +1,7 @@
 //! PDF frontend. Reconstructs reading order from positioned text.
 
 import { type Convert, ConvertError } from '@mdgate/core';
-import { InflateLimitError, inflateRaw, inflateZlib } from '@mdgate/utils';
+import { inflateRaw, inflateZlib } from '@mdgate/utils';
 import { adobeOrderingKey, fillAdobeCidMap } from './adobe-cid.js';
 import { normalizeCjkText } from './cjk.js';
 import {
@@ -15,7 +15,6 @@ import {
 } from './encoding-cmap.js';
 import { applyDifferences, applyNamedEncoding } from './encodings.js';
 import { xObjectToImage } from './images.js';
-import { MAX_ENTRY_BYTES } from './limits.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
 
@@ -677,27 +676,16 @@ function inflateOne(
   data: Uint8Array,
   maxOut: number,
 ): Uint8Array {
-  try {
-    const out = fn(data, maxOut);
-    if (out.length === 0) throw new Error('flate decode produced no output');
-    return out;
-  } catch (e) {
-    if (e instanceof InflateLimitError) {
-      throw ConvertError.resourceLimit(
-        'max_entry_bytes',
-        `decompressed PDF stream exceeds ${maxOut} bytes`,
-      );
-    }
-    throw e;
-  }
+  const out = fn(data, maxOut);
+  if (out.length === 0) throw new Error('flate decode produced no output');
+  return out;
 }
 
 function inflateCapped(data: Uint8Array, maxOut: number): Uint8Array {
   // PDF FlateDecode is zlib-wrapped; a few producers emit raw DEFLATE.
   try {
     return inflateOne(inflateZlib, data, maxOut);
-  } catch (e) {
-    if (e instanceof ConvertError) throw e;
+  } catch {
     return inflateOne(inflateRaw, data, maxOut);
   }
 }
@@ -729,9 +717,8 @@ function decodeStream(doc: PdfDocument, obj: PdfValue | undefined): Uint8Array {
     const name = nameOf(deref(doc, f));
     if (name === '/FlateDecode' || name === '/Fl') {
       try {
-        data = inflateCapped(data, MAX_ENTRY_BYTES);
-      } catch (e) {
-        if (e instanceof ConvertError && e.code === 'resourceLimit') throw e;
+        data = inflateCapped(data, Number.MAX_SAFE_INTEGER);
+      } catch {
         // Producer quirks: skip an unreadable stream rather than fail the file.
         return new Uint8Array();
       }

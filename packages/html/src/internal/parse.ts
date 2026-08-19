@@ -57,8 +57,8 @@ function parseMarkupText(text: string, bytes: Uint8Array): Element {
   if (isWellFormedXmlMarkup(text)) {
     try {
       return parseXml(bytes);
-    } catch (e) {
-      if (e instanceof ConvertError && e.code === 'resourceLimit') throw e;
+    } catch {
+      // parse as HTML
     }
   }
   return parseHtml(text);

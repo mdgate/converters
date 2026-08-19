@@ -8,15 +8,6 @@ export {
   type ZipDocKind,
 } from './detect.js';
 export {
-  MAX_ENTRY_BYTES,
-  MAX_ENTRY_COUNT,
-  MAX_RECORD_DEPTH,
-  MAX_RECORDS,
-  MAX_TOTAL_BYTES,
-  MAX_XML_DEPTH,
-  MAX_XML_NODES,
-} from './limits.js';
-export {
   type MimeHeader,
   type MimePart,
   mimeAttachments,

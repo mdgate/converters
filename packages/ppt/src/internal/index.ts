@@ -8,14 +8,7 @@
  * (fixed policy), rendered as a quote after their slide.
  */
 
-import {
-  CompoundFile,
-  getU32,
-  MAX_ENTRY_BYTES,
-  MAX_RECORD_DEPTH,
-  MAX_RECORDS,
-  readOleStream,
-} from '@mdgate/containers';
+import { CompoundFile, getU32, readOleStream } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import {
   type Block,
@@ -113,9 +106,7 @@ function collectPictures(ole: CompoundFile): Document['assets'] {
     const [verInst, recType, body] = rec;
     pos += 8 + body.length;
     index += 1;
-    if (index > 100_000) break;
-    const cap = MAX_ENTRY_BYTES;
-    const blip = recType === 0xf007 ? fbseBlip(body, cap) : decodeBlip(verInst, recType, body, cap);
+    const blip = recType === 0xf007 ? fbseBlip(body) : decodeBlip(verInst, recType, body);
     if (blip !== undefined) {
       sink.add(blip.mediaType, `pictures/${index}.${blip.extension}`, blip.bytes);
     } else {
@@ -392,12 +383,6 @@ class Extractor {
         // Only instance 0 of SlideListWithText holds slide text here.
         continue;
       }
-      if (stack.length >= MAX_RECORD_DEPTH) {
-        throw ConvertError.resourceLimit(
-          'max_record_depth',
-          `record nesting exceeds ${MAX_RECORD_DEPTH}`,
-        );
-      }
       stack.push({ buf: body, pos: 0 });
     }
   }
@@ -424,12 +409,6 @@ class Extractor {
 
   chargeRecord(): void {
     this.records += 1;
-    if (this.records > MAX_RECORDS) {
-      throw ConvertError.resourceLimit(
-        'max_records',
-        `record stream exceeds ${MAX_RECORDS} records`,
-      );
-    }
   }
 
   atom(recType: number, body: Uint8Array): void {

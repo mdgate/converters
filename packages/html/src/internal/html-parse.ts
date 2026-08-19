@@ -1,5 +1,4 @@
-import { type Attr, Element, MAX_XML_DEPTH, MAX_XML_NODES } from '@mdgate/containers';
-import { ConvertError } from '@mdgate/core';
+import { type Attr, Element } from '@mdgate/containers';
 
 const VOID_HTML = new Set([
   'area',
@@ -115,15 +114,7 @@ export function isWellFormedXmlMarkup(s: string): boolean {
 export function parseHtml(s: string): Element {
   const root = new Element(undefined, '');
   const stack: Element[] = [root];
-  let nodes = 0;
   let i = 0;
-
-  const bump = (): void => {
-    nodes += 1;
-    if (nodes > MAX_XML_NODES) {
-      throw ConvertError.resourceLimit('max_xml_nodes', `part exceeds ${MAX_XML_NODES} xml nodes`);
-    }
-  };
 
   while (i < s.length) {
     if (s.charCodeAt(i) !== 60) {
@@ -132,7 +123,6 @@ export function parseHtml(s: string): Element {
       i = next < 0 ? s.length : next;
       const text = decodeEntities(s.slice(start, i));
       if (text.length > 0) {
-        bump();
         pushText(stack[stack.length - 1]!, text);
       }
       continue;
@@ -147,7 +137,6 @@ export function parseHtml(s: string): Element {
       const end = s.indexOf(']]>', i + 9);
       const body = end < 0 ? s.slice(i + 9) : s.slice(i + 9, end);
       if (body.length > 0) {
-        bump();
         pushText(stack[stack.length - 1]!, body);
       }
       i = end < 0 ? s.length : end + 3;
@@ -168,7 +157,6 @@ export function parseHtml(s: string): Element {
       i += 2;
       const name = readHtmlName(s, i).toLowerCase();
       if (name.length === 0) {
-        bump();
         pushText(stack[stack.length - 1]!, '</');
         continue;
       }
@@ -180,7 +168,6 @@ export function parseHtml(s: string): Element {
     }
 
     if (!isNameStart(s.charCodeAt(i + 1))) {
-      bump();
       pushText(stack[stack.length - 1]!, '<');
       i += 1;
       continue;
@@ -194,7 +181,6 @@ export function parseHtml(s: string): Element {
     i = parsed.next;
 
     autoclose(stack, name);
-    bump();
     const elem = new Element(undefined, name, parsed.attrs);
     stack[stack.length - 1]!.children.push({ type: 'elem', elem });
 
@@ -204,7 +190,6 @@ export function parseHtml(s: string): Element {
       const closeAt = findRawClose(s, i, name);
       const body = closeAt < 0 ? s.slice(i) : s.slice(i, closeAt);
       if (body.length > 0) {
-        bump();
         elem.children.push({ type: 'text', text: body });
       }
       if (closeAt < 0) {
@@ -216,9 +201,6 @@ export function parseHtml(s: string): Element {
       continue;
     }
 
-    if (stack.length >= MAX_XML_DEPTH) {
-      throw ConvertError.resourceLimit('max_xml_depth', `element nesting exceeds ${MAX_XML_DEPTH}`);
-    }
     stack.push(elem);
   }
 

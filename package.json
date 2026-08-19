@@ -12,7 +12,7 @@
     "dev:demo": "bun run --filter @mdgate/demo dev",
     "build:demo": "bun run --filter @mdgate/demo build",
     "deploy:demo": "bun run --filter @mdgate/demo deploy",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--max-old-space-size=4096 vitest run",
     "test:parity": "bun test/parity.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

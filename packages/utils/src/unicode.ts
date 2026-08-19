@@ -54,29 +54,41 @@ export function trimStart(s: string): string {
   return s.slice(i);
 }
 
+function lastCodePointStart(s: string, end: number): number {
+  if (end <= 1) return 0;
+  const c = s.charCodeAt(end - 1);
+  if (c >= 0xdc00 && c <= 0xdfff) {
+    const prev = s.charCodeAt(end - 2);
+    if (prev >= 0xd800 && prev <= 0xdbff) return end - 2;
+  }
+  return end - 1;
+}
+
 export function trimEnd(s: string): string {
-  const chars = [...s];
-  let end = chars.length;
-  while (end > 0 && isWhitespace(chars[end - 1]!)) end -= 1;
-  return chars.slice(0, end).join('');
+  let end = s.length;
+  while (end > 0) {
+    const start = lastCodePointStart(s, end);
+    if (!isWhitespace(s.slice(start, end))) break;
+    end = start;
+  }
+  return end === s.length ? s : s.slice(0, end);
 }
 
 /** Strip `ch` from both ends. */
 export function trimMatches(s: string, ch: string): string {
-  const chars = [...s];
   let start = 0;
-  let end = chars.length;
-  while (start < end && chars[start] === ch) start += 1;
-  while (end > start && chars[end - 1] === ch) end -= 1;
-  return chars.slice(start, end).join('');
+  let end = s.length;
+  while (start < end && s.startsWith(ch, start)) start += ch.length;
+  while (end > start && s.endsWith(ch, end)) end -= ch.length;
+  if (start === 0 && end === s.length) return s;
+  return s.slice(start, end);
 }
 
 /** Strip `ch` from the end. */
 export function trimEndMatches(s: string, ch: string): string {
-  const chars = [...s];
-  let end = chars.length;
-  while (end > 0 && chars[end - 1] === ch) end -= 1;
-  return chars.slice(0, end).join('');
+  let end = s.length;
+  while (end >= ch.length && s.endsWith(ch, end)) end -= ch.length;
+  return end === s.length ? s : s.slice(0, end);
 }
 
 /**

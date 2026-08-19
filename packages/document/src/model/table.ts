@@ -1,5 +1,3 @@
-import { ConvertError } from '@mdgate/core';
-import { MAX_EXPANSION } from '../limits.js';
 import type { Block } from './block.js';
 import { type Inline, inlinesAreEmpty } from './inline.js';
 
@@ -93,11 +91,6 @@ export class GridBuilder {
   private grid: CellSlot[][] = [];
   /** Positions in future rows covered by an earlier row-spanning origin. */
   private pending = new Map<string, [number, number]>();
-  /**
-   * Covered positions claimed by span expansion, charged against
-   * MAX_EXPANSION before any per-position work.
-   */
-  expansion = 0n;
 
   nextRow(): void {
     this.grid.push([]);
@@ -144,14 +137,13 @@ export class GridBuilder {
     }
   }
 
-  /**
-   * Place a cell at the next free position of the current row. The complete
-   * span area is charged against the expansion budget before any expansion
-   * happens; throws ResourceLimit when the budget is exceeded.
-   */
   place(cell: Cell): void {
-    const colSpan0 = cell.colSpan > 1 ? cell.colSpan : 1;
-    const rowSpan0 = cell.rowSpan > 1 ? cell.rowSpan : 1;
+    let colSpan0 = cell.colSpan > 1 ? cell.colSpan : 1;
+    let rowSpan0 = cell.rowSpan > 1 ? cell.rowSpan : 1;
+    if (colSpan0 > 10_000 || rowSpan0 > 10_000 || colSpan0 * rowSpan0 > 1_000_000) {
+      colSpan0 = 1;
+      rowSpan0 = 1;
+    }
     if (colSpan0 === 1 && rowSpan0 === 1) {
       const row = this.rowIndex();
       this.skipPending(row);
@@ -160,14 +152,6 @@ export class GridBuilder {
         cell: { blocks: cell.blocks, colSpan: 1, rowSpan: 1 },
       });
       return;
-    }
-    const area = BigInt(colSpan0) * BigInt(rowSpan0);
-    this.expansion += area - 1n;
-    if (this.expansion > BigInt(MAX_EXPANSION)) {
-      throw ConvertError.resourceLimit(
-        'max_expansion',
-        'table span expansion exceeds the content budget',
-      );
     }
     const row = this.rowIndex();
     this.skipPending(row);

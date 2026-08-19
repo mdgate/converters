@@ -3,7 +3,7 @@
  * `Prm`s, CHPX/PAPX runs over the STSH style chains, and PlfLst/PlfLfo.
  */
 
-import { CompoundFile, getU16, getU32, MAX_ENTRY_BYTES, readOleStream } from '@mdgate/containers';
+import { CompoundFile, getU16, getU32, readOleStream } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import {
   type Block,
@@ -148,7 +148,7 @@ function tryOleStream(ole: CompoundFile, name: string): Uint8Array | undefined {
   try {
     return readOleStream(ole, name);
   } catch (e) {
-    if (e instanceof ConvertError && e.code === 'resourceLimit') throw e;
+    if (e instanceof ConvertError && e.isFatal()) throw e;
     return undefined;
   }
 }
@@ -1055,7 +1055,7 @@ class Assembler {
     }
     const picf = this.data.subarray(offset, offset + lcb);
     const art = picf.subarray(Math.min(cbHeader, picf.length));
-    const blip = firstBlip(art, MAX_ENTRY_BYTES);
+    const blip = firstBlip(art);
     if (blip === undefined) {
       debug('skipping picture with no supported blip payload');
       return undefined;

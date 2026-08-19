@@ -10,6 +10,16 @@ describe('text helpers', () => {
     expect(cleanText('a\u{ad}b\u{200b}c\u{feff}d\u{a0}e')).toBe('abcd e');
   });
 
+  it('trims without copying a clean string', async () => {
+    const { trim, trimEnd, trimEndMatches, trimMatches } = await import('../src/unicode.js');
+    const text = 'hello';
+    expect(trimEnd(text)).toBe(text);
+    expect(trimEnd('hello  \n')).toBe('hello');
+    expect(trim('  hello  ')).toBe('hello');
+    expect(trimEndMatches('foo\n\n', '\n')).toBe('foo');
+    expect(trimMatches('--x--', '-')).toBe('x');
+  });
+
   it('classifies uris', () => {
     expect(isAbsoluteUri('https://e.com')).toBe(true);
     expect(isAbsoluteUri('C:\\docs\\a.doc')).toBe(false);

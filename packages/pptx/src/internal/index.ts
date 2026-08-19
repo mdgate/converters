@@ -343,7 +343,7 @@ function baseProps(
   return mergeTextProps(props, shapeStyles.level(lvl));
 }
 
-/** Load an internal relationship target's bytes, resolved against this part. Failures degrade (log + undefined); resource-limit errors always propagate. */
+/** Load an internal relationship target's bytes, resolved against this part. Failures degrade (log + undefined). */
 function relPart(ctx: SlideCtx, relId: string): RelTarget | undefined {
   return relTargetBytes(ctx.pkg, ctx.rels, ctx.basePart, relId);
 }

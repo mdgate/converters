@@ -14,7 +14,7 @@ export function extractProprietary(bytes: Uint8Array): Document {
     else if (hasOleMagic(bytes)) collectOle(bytes, texts);
     else collectFromBytes(bytes, texts);
   } catch (e) {
-    if (e instanceof ConvertError && (e.code === 'encrypted' || e.code === 'resourceLimit')) {
+    if (e instanceof ConvertError && (e.code === 'encrypted' || e.isFatal())) {
       throw e;
     }
     collectFromBytes(bytes, texts);

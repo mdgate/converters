@@ -67,7 +67,7 @@ function isZip(bytes: Uint8Array): boolean {
 
 function mapOpenError(e: unknown): ConvertError {
   if (e instanceof ConvertError) {
-    if (e.code === 'encrypted' || e.code === 'resourceLimit' || e.code === 'io') return e;
+    if (e.code === 'encrypted' || e.isFatal() || e.code === 'io') return e;
     if (e.code === 'malformed') {
       if (e.message.toLowerCase().includes('password')) return ConvertError.encrypted();
       if (e.message.startsWith('malformed document: unreadable workbook:')) return e;

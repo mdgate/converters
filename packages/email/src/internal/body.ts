@@ -1,5 +1,4 @@
 import { type Element, type MimePart, mimeHeader, parseXml } from '@mdgate/containers';
-import { ConvertError } from '@mdgate/core';
 import {
   type Block,
   heading,
@@ -130,8 +129,8 @@ function parseHtmlTree(html: string): Element | undefined {
   for (const text of attempts) {
     try {
       return parseXml(new TextEncoder().encode(text));
-    } catch (e) {
-      if (e instanceof ConvertError && e.code === 'resourceLimit') throw e;
+    } catch {
+      // try the next wrapper
     }
   }
   return undefined;

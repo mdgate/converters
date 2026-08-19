@@ -33,12 +33,6 @@ export function parseIwa(bytes: Uint8Array): IwaObject[] {
     if (chunkType !== 0) continue;
     const plain = snappyDecode(chunk);
     total += plain.length;
-    if (total > MAX_IWA_PLAIN) {
-      throw ConvertError.resourceLimit(
-        'max_entry_bytes',
-        `IWA stream exceeds ${MAX_IWA_PLAIN} decompressed bytes`,
-      );
-    }
     plains.push(plain);
   }
   if (plains.length === 0) return objects;
@@ -55,8 +49,6 @@ export function parseIwa(bytes: Uint8Array): IwaObject[] {
   parseIwaPlain(joined, objects);
   return objects;
 }
-
-const MAX_IWA_PLAIN = 64 * 1024 * 1024;
 
 function parseIwaPlain(plain: Uint8Array, objects: IwaObject[]): void {
   let i = 0;

@@ -1,6 +1,4 @@
-import { ConvertError } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
-import { MAX_EXPANSION } from '../src/limits.js';
 import {
   cellFromInlines,
   cellSpanning,
@@ -71,31 +69,29 @@ describe('GridBuilder', () => {
     expect(widths(b.finish('data'))).toEqual([2]);
   });
 
-  it('hits the expansion budget before expanding a huge span', () => {
+  it('places a huge declared span as a single cell', () => {
     const b = new GridBuilder();
     b.nextRow();
-    try {
-      b.place(cellSpanning([], 0xffffffff, 0xffffffff));
-      throw new Error('expected resourceLimit');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConvertError);
-      expect((err as ConvertError).code).toBe('resourceLimit');
-      expect((err as ConvertError).limit).toBe('max_expansion');
+    b.place(cellSpanning(textCell('keep').blocks, 0xffffffff, 0xffffffff));
+    const table = b.finish('data');
+    expect(table.grid).toHaveLength(1);
+    expect(table.grid[0]).toHaveLength(1);
+    const slot = table.grid[0]![0]!;
+    expect(slot.type).toBe('origin');
+    if (slot.type === 'origin') {
+      expect(slot.cell.colSpan).toBe(1);
+      expect(slot.cell.rowSpan).toBe(1);
+      expect(slot.cell.blocks.length).toBe(1);
     }
   });
 
-  it('hits the expansion budget on accumulated spans', () => {
+  it('keeps placing after a large span', () => {
     const b = new GridBuilder();
-    b.expansion = BigInt(MAX_EXPANSION) - 10n;
     b.nextRow();
-    b.place(cellSpanning([], 3, 3));
-    try {
-      b.place(cellSpanning([], 2, 2));
-      throw new Error('expected resourceLimit');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConvertError);
-      expect((err as ConvertError).code).toBe('resourceLimit');
-    }
+    b.place(cellSpanning(textCell('a').blocks, 3, 3));
+    b.place(cellSpanning(textCell('b').blocks, 2, 2));
+    const table = b.finish('data');
+    expect(table.grid[0]!.length).toBeGreaterThanOrEqual(2);
   });
 
   it('trims trailing empty rows', () => {

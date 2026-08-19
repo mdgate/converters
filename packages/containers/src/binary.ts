@@ -1,6 +1,5 @@
 import { ConvertError } from '@mdgate/core';
 import type { CompoundFile } from './cfb.js';
-import { MAX_ENTRY_BYTES } from './limits.js';
 
 /** Little-endian `u16` at `off`; `undefined` when out of bounds. */
 export function getU16(b: Uint8Array, off: number): number | undefined {
@@ -16,7 +15,7 @@ export function getU32(b: Uint8Array, off: number): number | undefined {
 
 /**
  * Read a named stream from an OLE2 compound file. A missing stream is
- * `missingPart`; the read is hard-capped at `MAX_ENTRY_BYTES`.
+ * `missingPart`.
  */
 export function readOleStream(ole: CompoundFile, name: string): Uint8Array {
   try {
@@ -27,5 +26,3 @@ export function readOleStream(ole: CompoundFile, name: string): Uint8Array {
     throw ConvertError.malformedPart(name, `unreadable stream: ${msg}`);
   }
 }
-
-export { MAX_ENTRY_BYTES };

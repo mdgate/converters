@@ -71,7 +71,7 @@ describe('create', () => {
     expect(seen).toEqual(['inner']);
   });
 
-  it('allows three nested hops and refuses a fourth', async () => {
+  it('keeps converting nested hops', async () => {
     const convert = create([
       {
         id: 'nest',
@@ -85,9 +85,6 @@ describe('create', () => {
       },
     ]);
     await expect(convert(new Uint8Array([3]))).resolves.toBe('3+2+1+leaf');
-    await expect(convert(new Uint8Array([4]))).rejects.toMatchObject({
-      name: 'ConvertError',
-      code: 'unsupported',
-    });
+    await expect(convert(new Uint8Array([4]))).resolves.toBe('4+3+2+1+leaf');
   });
 });
