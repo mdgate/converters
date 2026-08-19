@@ -207,6 +207,25 @@ describe('mime', () => {
     expect(dec.decode(b64.bytes)).toBe('hello world');
   });
 
+  it('keeps the last multipart part when the closing delimiter is missing', () => {
+    const raw = enc.encode(
+      [
+        'MIME-Version: 1.0',
+        'Content-Type: multipart/related; boundary="x"',
+        '',
+        '--x',
+        'Content-Type: text/html; charset="utf-8"',
+        '',
+        '<p>Saved page</p>',
+        '',
+      ].join('\n'),
+    );
+    const part = parseMime(raw);
+    expect(part.parts).toHaveLength(1);
+    expect(mimeTextHtml(part)?.contentType).toBe('text/html');
+    expect(dec.decode(mimeTextHtml(part)!.bytes)).toContain('Saved page');
+  });
+
   it('picks html, plain, and attachments from multipart mail', () => {
     const raw = enc.encode(
       [

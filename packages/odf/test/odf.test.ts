@@ -82,6 +82,12 @@ describe('odf', () => {
     expect(md).toContain('# Heading 1');
     expect(md).toContain('Example Text');
   });
+
+  it('converts StarOffice 6 impress text-boxes', async () => {
+    const md = await toMarkdown(starOfficeImpress(), { path: 'talk.sxi' });
+    expect(md).toContain('# Example Bullet Problems');
+    expect(md).toContain('Level 1');
+  });
 });
 
 function starOfficeWriter(text: string): Uint8Array {
@@ -97,6 +103,31 @@ function starOfficeWriter(text: string): Uint8Array {
   <office:body>
     <text:h text:style-name="Heading 1">Heading 1</text:h>
     <text:p>${text}</text:p>
+  </office:body>
+</office:document-content>`,
+  });
+}
+
+function starOfficeImpress(): Uint8Array {
+  return zipStore({
+    'META-INF/manifest.xml': `<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="http://openoffice.org/2001/manifest">
+  <manifest:file-entry manifest:media-type="application/vnd.sun.xml.impress" manifest:full-path="/"/>
+</manifest:manifest>`,
+    'content.xml': `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="http://openoffice.org/2000/office"
+    xmlns:text="http://openoffice.org/2000/text"
+    xmlns:draw="http://openoffice.org/2000/drawing"
+    xmlns:presentation="http://openoffice.org/2000/presentation">
+  <office:body>
+    <draw:page draw:name="page1">
+      <draw:text-box presentation:class="title"><text:p>Example Bullet Problems</text:p></draw:text-box>
+      <draw:text-box presentation:class="outline">
+        <text:unordered-list>
+          <text:list-item><text:p>Level 1</text:p></text:list-item>
+        </text:unordered-list>
+      </draw:text-box>
+    </draw:page>
   </office:body>
 </office:document-content>`,
   });

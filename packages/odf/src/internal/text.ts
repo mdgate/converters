@@ -101,6 +101,8 @@ function parseBlockElem(elem: Element, ctx: Ctx, blocks: Block[], run: StyledRun
         return;
       }
       case 'list':
+      case 'unordered-list':
+      case 'ordered-list':
         blocks.push(...parseList(elem, ctx, 0, undefined, []));
         return;
       case 'section':

@@ -669,8 +669,7 @@ function splitMultipart(body: Uint8Array, boundary: string): Uint8Array[] {
   for (let n = 0; n < positions.length; n += 1) {
     if (isClose[n]) break;
     const start = skipDelimLine(body, positions[n]! + delim.length);
-    const next = n + 1 < positions.length ? positions[n + 1]! : -1;
-    if (next < 0) break;
+    const next = n + 1 < positions.length ? positions[n + 1]! : body.length;
     parts.push(body.subarray(start, trimTrailingEol(body, start, next)));
   }
   return parts;
