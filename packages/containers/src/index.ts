@@ -32,6 +32,7 @@ export {
   type Attr,
   Element,
   normalizeOoxmlUri,
+  normalizeStarOfficeUri,
   ns,
   parseXml,
   type XmlNode,

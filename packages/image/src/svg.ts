@@ -7,7 +7,7 @@ export function svg(): Converter {
   return {
     id: 'svg',
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {
-      if (mimeFromBytes(bytes) === 'image/svg+xml') return 2;
+      if (mimeFromBytes(bytes) === 'image/svg+xml') return 3;
       if (hint?.path !== undefined && mimeFromPath(hint.path) === 'image/svg+xml') return 1;
       return 0;
     },

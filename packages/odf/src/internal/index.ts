@@ -81,6 +81,17 @@ function parseBody(body: Element, ctx: Ctx, part: string | undefined): Block[] {
   if (pres !== undefined) return parsePages(pres, ctx);
   if (drawing !== undefined) return parsePages(drawing, ctx);
 
+  const pages = body.findAll(ns.DRAW, 'page');
+  if (pages.length > 0) return parsePages(body, ctx);
+  if (body.find(ns.TABLE, 'table') !== undefined) return parseSpreadsheet(body, ctx);
+  if (
+    body.find(ns.TEXT, 'p') !== undefined ||
+    body.find(ns.TEXT, 'h') !== undefined ||
+    body.find(ns.TEXT, 'list') !== undefined
+  ) {
+    return parseContainer(body, ctx);
+  }
+
   const detail = 'no recognized office body (text, spreadsheet, presentation, or drawing)';
   if (part !== undefined) throw ConvertError.malformedPart(part, detail);
   throw ConvertError.malformed(detail);

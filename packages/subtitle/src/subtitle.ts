@@ -4,12 +4,13 @@ import { documentToMarkdown } from '@mdgate/document';
 import { fileExtension } from '@mdgate/utils';
 import { parse } from './internal/parse.js';
 
-const EXTS = new Set(['srt', 'vtt', 'webvtt']);
+const EXTS = new Set(['srt', 'vtt', 'webvtt', 'ass', 'ssa']);
 
 export function subtitle(): Converter {
   return {
     id: 'subtitle',
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {
+      if (startsWithAss(bytes)) return 3;
       if (startsWithWebvtt(bytes)) return 2;
       if (hint?.path !== undefined && EXTS.has(fileExtension(hint.path) ?? '')) return 1;
       return 0;
@@ -25,6 +26,27 @@ function startsWithWebvtt(bytes: Uint8Array): boolean {
   const start = skipBom(bytes);
   if (!startsWithAscii(bytes, 'WEBVTT', start)) return false;
   return !isNameByte(bytes[start + 6]);
+}
+
+function startsWithAss(bytes: Uint8Array): boolean {
+  const start = skipBomAndWs(bytes);
+  if (startsWithCi(bytes, '[script info]', start)) return true;
+  if (startsWithCi(bytes, '[v4+ styles]', start)) return true;
+  if (startsWithCi(bytes, '[v4 styles]', start)) return true;
+  return startsWithCi(bytes, '[events]', start);
+}
+
+function startsWithCi(bytes: Uint8Array, prefix: string, offset: number): boolean {
+  if (offset + prefix.length > bytes.length) return false;
+  for (let i = 0; i < prefix.length; i += 1) {
+    const a = bytes[offset + i]!;
+    const b = prefix.charCodeAt(i);
+    if (a === b) continue;
+    const al = a >= 65 && a <= 90 ? a + 32 : a;
+    const bl = b >= 65 && b <= 90 ? b + 32 : b;
+    if (al !== bl) return false;
+  }
+  return true;
 }
 
 function refuseForeign(bytes: Uint8Array): void {

@@ -28,8 +28,13 @@ describe('email', () => {
   it('sniffs content, extension, and unrelated bytes', () => {
     const converter = email();
     expect(converter.id).toBe('email');
-    expect(converter.sniff(EML)).toBe(2);
-    expect(converter.sniff(enc.encode('MIME-Version: 1.0\r\n\r\nbody\n'))).toBe(2);
+    expect(converter.sniff(EML)).toBe(3);
+    expect(converter.sniff(enc.encode('MIME-Version: 1.0\r\n\r\nbody\n'))).toBe(3);
+    expect(
+      converter.sniff(enc.encode("---\n- name: x\n  from: '@perlpunk'\ntags: mapping\n"), {
+        path: '26DV.yaml',
+      }),
+    ).toBe(0);
     expect(converter.sniff(new Uint8Array([1]), { path: 'note.eml' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'note.msg' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'inbox.mbox' })).toBe(1);
@@ -108,7 +113,7 @@ describe('email', () => {
         '',
       ].join('\r\n'),
     );
-    expect(email().sniff(bytes)).toBe(2);
+    expect(email().sniff(bytes)).toBe(3);
     const md = await toMarkdown(bytes, { path: 'inbox.mbox' });
     expect(md).toContain('# First');
     expect(md).toContain('# Second');

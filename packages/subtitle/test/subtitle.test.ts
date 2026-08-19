@@ -29,6 +29,7 @@ describe('subtitle', () => {
   it('sniffs content, extension, and unrelated bytes', () => {
     const converter = subtitle();
     expect(converter.id).toBe('subtitle');
+    expect(converter.sniff(enc.encode('[Script Info]\nTitle: x\n'))).toBe(3);
     expect(converter.sniff(enc.encode('WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHi\n'))).toBe(2);
     expect(converter.sniff(enc.encode('WEBVTT - captions\n'))).toBe(2);
     const bom = new Uint8Array([0xef, 0xbb, 0xbf, ...enc.encode('WEBVTT\n')]);
@@ -37,6 +38,8 @@ describe('subtitle', () => {
     expect(converter.sniff(new Uint8Array([1]), { path: 'a.srt' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'track.vtt' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'captions.webvtt' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'clip.ass' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'clip.ssa' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]))).toBe(0);
     expect(converter.sniff(enc.encode('hello'), { path: 'note.txt' })).toBe(0);
   });
@@ -45,6 +48,20 @@ describe('subtitle', () => {
     const expected = '*\\[00:00:01.000]* Hello world\n\n*\\[00:00:05.000]* Next line\n';
     await expect(toMarkdown(enc.encode(VTT))).resolves.toBe(expected);
     await expect(toMarkdown(enc.encode(SRT), { path: 'clip.srt' })).resolves.toBe(expected);
+  });
+
+  it('converts ASS dialogue text', async () => {
+    const ass = `[Script Info]
+Title: test
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:04.00,Default,,0,0,0,,Hello{\\i1} world
+Dialogue: 0,0:00:05.00,0:00:06.50,Default,,0,0,0,,Next\\Nline
+`;
+    await expect(toMarkdown(enc.encode(ass))).resolves.toBe(
+      '*\\[00:00:01.000]* Hello world\n\n*\\[00:00:05.000]* Next line\n',
+    );
   });
 
   it('refuses a PDF and office file', async () => {

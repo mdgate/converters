@@ -23,7 +23,7 @@ describe('ipynb', () => {
     const converter = ipynb();
     expect(converter.id).toBe('ipynb');
     expect(converter.sniff(notebook([{ cell_type: 'markdown', source: 'Hi', metadata: {} }]))).toBe(
-      2,
+      3,
     );
     expect(converter.sniff(new Uint8Array([1]), { path: 'note.ipynb' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'Note.IPYNB' })).toBe(1);

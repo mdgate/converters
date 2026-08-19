@@ -14,7 +14,7 @@ import {
   walkMimeParts,
 } from '../src/mime.js';
 import { resolve } from '../src/path.js';
-import { normalizeOoxmlUri, ns, parseXml } from '../src/xml.js';
+import { normalizeOoxmlUri, normalizeStarOfficeUri, ns, parseXml } from '../src/xml.js';
 
 const FIXTURES = join(fileURLToPath(new URL('../../../test/fixtures', import.meta.url)));
 
@@ -47,10 +47,16 @@ describe('xml', () => {
 
   it('normalizes Strict OOXML namespaces', () => {
     expect(normalizeOoxmlUri('http://purl.oclc.org/ooxml/wordprocessingml/main')).toBe(ns.W);
+    expect(normalizeStarOfficeUri('http://openoffice.org/2000/office')).toBe(ns.OFFICE);
+    expect(normalizeStarOfficeUri('http://openoffice.org/2001/manifest')).toBe(ns.MANIFEST);
     const xml =
       '<w:document xmlns:w="http://purl.oclc.org/ooxml/wordprocessingml/main"><w:body/></w:document>';
     const root = parseXml(Buffer.from(xml));
     expect(root.find(ns.W, 'document')?.find(ns.W, 'body')).toBeTruthy();
+    const star =
+      '<office:document-content xmlns:office="http://openoffice.org/2000/office"><office:body/></office:document-content>';
+    const starRoot = parseXml(Buffer.from(star));
+    expect(starRoot.find(ns.OFFICE, 'document-content')?.find(ns.OFFICE, 'body')).toBeTruthy();
   });
 
   it('resolves Requires prefixes in lexical scope', () => {
@@ -152,6 +158,14 @@ describe('detect', () => {
       'Contents/content.hpf': '<hpf/>',
     });
     expect(detectZipDoc(hwpxByPart)).toBe('hwpx');
+
+    const sxw = zipStore({
+      'META-INF/manifest.xml': `<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="http://openoffice.org/2001/manifest">
+  <manifest:file-entry manifest:media-type="application/vnd.sun.xml.writer" manifest:full-path="/"/>
+</manifest:manifest>`,
+    });
+    expect(detectZipDoc(sxw)).toBe('odt');
   });
 
   it('reads a zip part with limits', () => {

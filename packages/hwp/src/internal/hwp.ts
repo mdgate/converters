@@ -3,7 +3,8 @@
 import { CompoundFile, hasOleMagic } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import { type Document, emptyDocument, plain } from '@mdgate/document';
-import { cleanText, collapseWs, inflateZlib, isAlphanumeric } from '@mdgate/utils';
+import { cleanText, collapseWs, inflateRaw, inflateZlib, isAlphanumeric } from '@mdgate/utils';
+import { aes128EcbDecrypt } from './aes.js';
 
 const HWP_SIG = 'HWP Document File';
 const MIN_RUN = 2;
@@ -42,21 +43,13 @@ function parseOle(bytes: Uint8Array): Document {
 
   const header = tryRead(ole, 'FileHeader');
   const flags = header !== undefined ? readHeaderFlags(header) : undefined;
-  if (flags?.encrypted || flags?.distribution) throw ConvertError.encrypted();
+  if (flags?.encrypted) throw ConvertError.encrypted();
 
   const texts: string[] = [];
-  let sawSection = false;
-  for (let i = 0; ; i += 1) {
-    const name = `BodyText/Section${i}`;
-    if (!ole.exists(name)) {
-      if (sawSection || i > 0) break;
-      continue;
-    }
-    sawSection = true;
-    const stream = readStream(ole, name);
-    if (stream === undefined) continue;
-    const data = maybeDecompress(stream, flags?.compressed);
-    collectSectionText(data, texts);
+  if (flags?.distribution) {
+    collectSections(ole, 'ViewText', flags.compressed, texts, true);
+  } else {
+    collectSections(ole, 'BodyText', flags?.compressed, texts, false);
   }
 
   if (texts.length === 0) {
@@ -72,6 +65,78 @@ function parseOle(bytes: Uint8Array): Document {
   }
 
   return paragraphsOrThrow(texts);
+}
+
+function collectSections(
+  ole: CompoundFile,
+  folder: string,
+  compressed: boolean | undefined,
+  texts: string[],
+  distribution: boolean,
+): void {
+  let sawSection = false;
+  for (let i = 0; ; i += 1) {
+    const name = `${folder}/Section${i}`;
+    if (!ole.exists(name)) {
+      if (sawSection || i > 0) break;
+      continue;
+    }
+    sawSection = true;
+    const stream = readStream(ole, name);
+    if (stream === undefined) continue;
+    const payload = distribution ? decryptDistributionSection(stream) : stream;
+    if (payload === undefined) continue;
+    const data = distribution
+      ? maybeDecompressView(payload, compressed)
+      : maybeDecompress(payload, compressed);
+    collectSectionText(data, texts);
+  }
+}
+
+function decryptDistributionSection(stream: Uint8Array): Uint8Array | undefined {
+  if (stream.length < 260) return undefined;
+  const key = unwrapDistributionKey(stream.subarray(4, 260));
+  if (key === undefined) return undefined;
+  return aes128EcbDecrypt(stream.subarray(260), key);
+}
+
+export function unwrapDistributionKey(block: Uint8Array): Uint8Array | undefined {
+  if (block.length < 256) return undefined;
+  const data = block.subarray(0, 256).slice();
+  const seed = new DataView(data.buffer, data.byteOffset, 4).getInt32(0, true);
+  let xor = 0;
+  let n = 0;
+  let state = seed | 0;
+  const rand = (): number => {
+    state = (Math.imul(state, 214013) + 2531011) | 0;
+    return (state >>> 16) & 0x7fff;
+  };
+  for (let i = 0; i < 256; i += 1, n -= 1) {
+    if (n === 0) {
+      xor = rand() & 0xff;
+      n = (rand() & 0xf) + 1;
+    }
+    if (i >= 4) data[i] = data[i]! ^ xor;
+  }
+  const offset = 4 + (data[0]! & 0xf);
+  if (offset + 16 > data.length) return undefined;
+  return data.subarray(offset, offset + 16);
+}
+
+function maybeDecompressView(data: Uint8Array, compressed: boolean | undefined): Uint8Array {
+  if (compressed !== true) return data;
+  const raw = tryInflateRaw(data);
+  if (raw !== undefined) return raw;
+  return maybeDecompress(data, true);
+}
+
+function tryInflateRaw(data: Uint8Array): Uint8Array | undefined {
+  if (data.length === 0) return undefined;
+  try {
+    return inflateRaw(data, Number.MAX_SAFE_INTEGER);
+  } catch {
+    return undefined;
+  }
 }
 
 function readHeaderFlags(
