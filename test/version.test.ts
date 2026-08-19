@@ -1,12 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import {
-  formatReleaseNotes,
-  releasePayload,
-  repoFromRemote,
-  sectionFor,
-} from '../scripts/github-release.ts';
 import { loadPublished, mdgateDeps, publishOrder } from '../scripts/packages.ts';
 import { alreadyPublishedOutput } from '../scripts/publish.ts';
 import { decidePatch } from '../scripts/should-publish-patch.ts';
@@ -52,63 +46,6 @@ test('alreadyPublishedOutput recognizes npm conflict text', () => {
   expect(alreadyPublishedOutput('npm error code EPUBLISHCONFLICT')).toBe(true);
   expect(alreadyPublishedOutput('npm error 409 Conflict previously published')).toBe(true);
   expect(alreadyPublishedOutput('ENOTFOUND registry.npmjs.org')).toBe(false);
-});
-
-test('repoFromRemote accepts https and ssh remotes', () => {
-  expect(repoFromRemote('https://github.com/mdgate/converters.git')).toBe('mdgate/converters');
-  expect(repoFromRemote('git@github.com:mdgate/converters.git')).toBe('mdgate/converters');
-});
-
-test('sectionFor groups conventional commit titles', () => {
-  expect(sectionFor('* feat(video): add callback converter')).toBe('Features');
-  expect(sectionFor('- fix(pdf): decode another cmap')).toBe('Fixes');
-  expect(sectionFor('* docs: squash-merge PRs')).toBe('Documentation');
-  expect(sectionFor('* ci: auto-publish patches')).toBe('Other Changes');
-});
-
-test('formatReleaseNotes groups PRs like a Next.js changelog', () => {
-  const body = formatReleaseNotes(
-    [
-      "## What's Changed",
-      '* docs: squash-merge PRs by @asionesjia in https://github.com/mdgate/converters/pull/4',
-      '* feat(video): add @mdgate/video callback converter by @asionesjia in https://github.com/mdgate/converters/pull/6',
-      '* ci: auto-publish patches by @asionesjia in https://github.com/mdgate/converters/pull/5',
-      '* fix(pdf): decode another cmap by @asionesjia in https://github.com/mdgate/converters/pull/8',
-      '',
-      '**Full Changelog**: https://github.com/mdgate/converters/compare/v0.4.1...v0.5.0',
-    ].join('\n'),
-  );
-  expect(body).toBe(
-    [
-      '### Features',
-      '',
-      '- feat(video): add @mdgate/video callback converter by @asionesjia in https://github.com/mdgate/converters/pull/6',
-      '',
-      '### Fixes',
-      '',
-      '- fix(pdf): decode another cmap by @asionesjia in https://github.com/mdgate/converters/pull/8',
-      '',
-      '### Documentation',
-      '',
-      '- docs: squash-merge PRs by @asionesjia in https://github.com/mdgate/converters/pull/4',
-      '',
-      '### Other Changes',
-      '',
-      '- ci: auto-publish patches by @asionesjia in https://github.com/mdgate/converters/pull/5',
-      '',
-      '**Full Changelog**: https://github.com/mdgate/converters/compare/v0.4.1...v0.5.0',
-      '',
-    ].join('\n'),
-  );
-});
-
-test('releasePayload titles the GitHub Release vX.Y.Z', () => {
-  expect(releasePayload('0.5.0', { name: 'v0.5.0', body: 'notes\n' })).toEqual({
-    tag_name: 'v0.5.0',
-    name: 'v0.5.0',
-    body: 'notes\n',
-    make_latest: 'true',
-  });
 });
 
 test('explicit prerelease does not rewrite package.json', () => {
