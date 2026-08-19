@@ -59,6 +59,7 @@ const CL_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 
 
 const FIXED_LITLEN = makeFixedLitLen();
 const FIXED_DIST = makeFixedDist();
+const MAX_TYPED_ARRAY = 0x7fff_ff00;
 
 type Huffman = {
   counts: Uint16Array;
@@ -321,9 +322,17 @@ class OutBuffer {
   }
 
   private grow(needed: number): void {
+    const limit = this.maxOut < MAX_TYPED_ARRAY ? this.maxOut : MAX_TYPED_ARRAY;
     let cap = this.buf.length === 0 ? 256 : this.buf.length;
-    while (cap < needed) cap *= 2;
-    if (cap > this.maxOut) cap = this.maxOut;
+    while (cap < needed) {
+      const doubled = cap * 2;
+      if (doubled <= cap || doubled > limit) {
+        cap = limit;
+        break;
+      }
+      cap = doubled;
+    }
+    if (cap > limit) cap = limit;
     if (cap < needed) throw new InflateLimitError(this.maxOut);
     const next = new Uint8Array(cap);
     next.set(this.buf.subarray(0, this.len));

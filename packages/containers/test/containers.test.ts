@@ -5,7 +5,6 @@ import { ConvertError } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
 import { Package } from '../src/archive.js';
 import { detectOleDoc, detectZipDoc } from '../src/detect.js';
-import { MAX_XML_DEPTH } from '../src/limits.js';
 import {
   mimeAttachments,
   mimeHeader,
@@ -74,7 +73,7 @@ describe('xml', () => {
   });
 
   it('parses deeper than the old xml depth cap', () => {
-    const depth = MAX_XML_DEPTH + 2;
+    const depth = 258;
     const xml = `${'<d>'.repeat(depth)}x${'</d>'.repeat(depth)}`;
     const root = parseXml(Buffer.from(xml));
     expect(root.text()).toBe('x');

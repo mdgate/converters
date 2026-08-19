@@ -85,9 +85,8 @@ describe('GridBuilder', () => {
     }
   });
 
-  it('keeps placing after many accumulated spans', () => {
+  it('keeps placing after a large span', () => {
     const b = new GridBuilder();
-    b.expansion = 9_000_000_000_000_000n;
     b.nextRow();
     b.place(cellSpanning(textCell('a').blocks, 3, 3));
     b.place(cellSpanning(textCell('b').blocks, 2, 2));

@@ -13,30 +13,24 @@ export interface MimePart {
   parts: MimePart[];
 }
 
-interface Tally {
-  parts: number;
-}
-
 /**
  * Parse an RFC 822 / MIME document (`.eml`, `.mhtml`) or an mbox of such
  * documents into a part tree. Transfer encodings are decoded; charset is not.
  */
 export function parseMime(bytes: Uint8Array): MimePart {
-  const tally: Tally = { parts: 0 };
   if (isMbox(bytes)) {
     const messages = splitMbox(bytes);
     if (messages.length > 1 || (messages.length === 1 && asciiStartsWith(bytes, 'From '))) {
-      const parts = messages.map((msg) => parseMessage(msg, 1, tally));
       return {
         contentType: 'application/mbox',
         headers: [],
         filename: undefined,
         bytes: new Uint8Array(0),
-        parts,
+        parts: messages.map((msg) => parseMessage(msg)),
       };
     }
   }
-  return parseMessage(stripBom(bytes), 1, tally);
+  return parseMessage(stripBom(bytes));
 }
 
 /** Preorder walk including `root`. */
@@ -98,8 +92,7 @@ export function mimeHeader(part: MimePart, name: string): string | undefined {
   return undefined;
 }
 
-function parseMessage(bytes: Uint8Array, depth: number, tally: Tally): MimePart {
-  bumpPart(tally, depth);
+function parseMessage(bytes: Uint8Array): MimePart {
   const split = splitHeaders(bytes);
   const headers = parseHeaders(split.headers);
   const ctRaw = headerValue(headers, 'content-type') ?? 'text/plain';
@@ -114,20 +107,16 @@ function parseMessage(bytes: Uint8Array, depth: number, tally: Tally): MimePart 
       return { contentType: parsed.type, headers, filename, bytes: decoded, parts: [] };
     }
     const chunks = splitMultipart(decoded, boundary);
-    const parts = chunks.map((chunk) => parseMessage(chunk, depth + 1, tally));
+    const parts = chunks.map((chunk) => parseMessage(chunk));
     return { contentType: parsed.type, headers, filename, bytes: new Uint8Array(0), parts };
   }
 
   if (isRfc822Type(parsed.type)) {
-    const child = parseMessage(decoded, depth + 1, tally);
+    const child = parseMessage(decoded);
     return { contentType: parsed.type, headers, filename, bytes: decoded, parts: [child] };
   }
 
   return { contentType: parsed.type, headers, filename, bytes: decoded, parts: [] };
-}
-
-function bumpPart(tally: Tally, _depth: number): void {
-  tally.parts += 1;
 }
 
 function isMultipartType(type: string): boolean {

@@ -192,7 +192,7 @@ export class Package {
 
   /**
    * Absent is valid (`undefined`, silent); an unreadable part is skipped
-   * with a log; fatal resource-limit errors always propagate.
+   * with a log.
    */
   optionalPart(name: string): Uint8Array | undefined {
     try {

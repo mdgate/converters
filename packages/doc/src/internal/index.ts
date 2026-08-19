@@ -148,7 +148,7 @@ function tryOleStream(ole: CompoundFile, name: string): Uint8Array | undefined {
   try {
     return readOleStream(ole, name);
   } catch (e) {
-    if (e instanceof ConvertError && e.code === 'resourceLimit') throw e;
+    if (e instanceof ConvertError && e.isFatal()) throw e;
     return undefined;
   }
 }

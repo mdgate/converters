@@ -91,7 +91,6 @@ export class GridBuilder {
   private grid: CellSlot[][] = [];
   /** Positions in future rows covered by an earlier row-spanning origin. */
   private pending = new Map<string, [number, number]>();
-  expansion = 0n;
 
   nextRow(): void {
     this.grid.push([]);
@@ -154,8 +153,6 @@ export class GridBuilder {
       });
       return;
     }
-    const area = BigInt(colSpan0) * BigInt(rowSpan0);
-    this.expansion += area - 1n;
     const row = this.rowIndex();
     this.skipPending(row);
     const col = this.grid[row]!.length;

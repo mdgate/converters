@@ -6,10 +6,12 @@ import { isControl } from './unicode.js';
  * CRLF pair is one break. U+200C (ZWNJ) and U+200D (ZWJ) are preserved.
  */
 export function cleanText(text: string): string {
+  if (!needsClean(text)) return text;
   let out = '';
-  const chars = [...text];
-  for (let i = 0; i < chars.length; i += 1) {
-    const c = chars[i]!;
+  for (let i = 0; i < text.length; ) {
+    const cp = text.codePointAt(i)!;
+    const c = String.fromCodePoint(cp);
+    i += c.length;
     if (c === '\u00a0') {
       out += ' ';
     } else if (c === '\u00ad' || c === '\u200b' || c === '\ufeff') {
@@ -17,7 +19,7 @@ export function cleanText(text: string): string {
     } else if (c === '\t') {
       out += '\t';
     } else if (c === '\r') {
-      if (chars[i + 1] === '\n') i += 1;
+      if (text.charCodeAt(i) === 10) i += 1;
       out += ' ';
     } else if (c === '\n') {
       out += ' ';
@@ -28,6 +30,16 @@ export function cleanText(text: string): string {
     }
   }
   return out;
+}
+
+function needsClean(text: string): boolean {
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text.charCodeAt(i);
+    if (c < 0x20 && c !== 0x09) return true;
+    if (c === 0x7f || (c >= 0x80 && c <= 0x9f)) return true;
+    if (c === 0xa0 || c === 0xad || c === 0x200b || c === 0xfeff) return true;
+  }
+  return false;
 }
 
 /** XML 1.0 S production. */

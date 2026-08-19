@@ -3,13 +3,7 @@
 import { CompoundFile, hasOleMagic } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import { type Document, emptyDocument, plain } from '@mdgate/document';
-import {
-  cleanText,
-  collapseWs,
-  InflateLimitError,
-  inflateZlib,
-  isAlphanumeric,
-} from '@mdgate/utils';
+import { cleanText, collapseWs, inflateZlib, isAlphanumeric } from '@mdgate/utils';
 
 const HWP_SIG = 'HWP Document File';
 const MIN_RUN = 2;
@@ -52,7 +46,7 @@ function parseOle(bytes: Uint8Array): Document {
 
   const texts: string[] = [];
   let sawSection = false;
-  for (let i = 0; i < 256; i += 1) {
+  for (let i = 0; ; i += 1) {
     const name = `BodyText/Section${i}`;
     if (!ole.exists(name)) {
       if (sawSection || i > 0) break;
@@ -173,11 +167,7 @@ function maybeDecompress(data: Uint8Array, compressed: boolean | undefined): Uin
 function tryInflate(data: Uint8Array): Uint8Array | undefined {
   try {
     return inflateZlib(data, Number.MAX_SAFE_INTEGER);
-  } catch (e) {
-    if (e instanceof InflateLimitError) {
-      throw ConvertError.malformed(e.message);
-    }
-    if (e instanceof ConvertError && e.isFatal()) throw e;
+  } catch {
     return undefined;
   }
 }

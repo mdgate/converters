@@ -32,9 +32,41 @@ export function escapeOpts(partial: Partial<EscapeOpts> = {}): EscapeOpts {
   return { ...DEFAULT_ESCAPE_OPTS, ...partial };
 }
 
+function mightNeedEscape(text: string, ctx: InlineContext, opts: EscapeOpts): boolean {
+  for (let i = 0; i < text.length; i += 1) {
+    switch (text.charCodeAt(i)) {
+      case 33:
+      case 35:
+      case 38:
+      case 42:
+      case 43:
+      case 45:
+      case 61:
+      case 62:
+      case 91:
+      case 92:
+      case 93:
+      case 95:
+      case 96:
+      case 126:
+        return true;
+      case 60:
+        return true;
+      case 124:
+        if (ctx === 'tableCell') return true;
+        break;
+      default:
+        if (opts.atLineStart && i === 0 && isAsciiDigit(text[i]!)) return true;
+        break;
+    }
+  }
+  return false;
+}
+
 /** Escape Markdown syntax in document text. */
 export function escapeText(text: string, ctx: InlineContext, opts: EscapeOpts): string {
   const { atLineStart, styled, trailingActive, inLabel } = opts;
+  if (!mightNeedEscape(text, ctx, opts)) return text;
   const chars = [...text];
   const last: Array<number | undefined> = [undefined, undefined, undefined, undefined, undefined];
   for (let j = 0; j < chars.length; j += 1) {

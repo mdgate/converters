@@ -2,11 +2,7 @@ import type { Convert, Converter, ConvertHint, ConvertOptions } from './converte
 import { ConvertError } from './error.js';
 
 export function create(converters: readonly Converter[]): Convert {
-  const run = async (
-    bytes: Uint8Array,
-    hint: ConvertHint | undefined,
-    depth: number,
-  ): Promise<string> => {
+  const run = async (bytes: Uint8Array, hint: ConvertHint | undefined): Promise<string> => {
     if (!(bytes instanceof Uint8Array)) {
       throw ConvertError.unsupported('input must be a Uint8Array');
     }
@@ -31,11 +27,11 @@ export function create(converters: readonly Converter[]): Convert {
 
     const options: ConvertOptions = {
       ...hint,
-      convert: (inner, innerHint) => run(inner, innerHint, depth + 1),
+      convert: (inner, innerHint) => run(inner, innerHint),
     };
     const result = await best.convert(bytes, options);
     return result.markdown;
   };
 
-  return (bytes, hint) => run(bytes, hint, 0);
+  return (bytes, hint) => run(bytes, hint);
 }

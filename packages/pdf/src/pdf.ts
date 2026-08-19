@@ -685,8 +685,7 @@ function inflateCapped(data: Uint8Array, maxOut: number): Uint8Array {
   // PDF FlateDecode is zlib-wrapped; a few producers emit raw DEFLATE.
   try {
     return inflateOne(inflateZlib, data, maxOut);
-  } catch (e) {
-    if (e instanceof ConvertError) throw e;
+  } catch {
     return inflateOne(inflateRaw, data, maxOut);
   }
 }
