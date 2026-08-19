@@ -76,7 +76,7 @@ Review every prose output against these rules before delivering.
   bunx vitest run packages/html/test/html.test.ts
   bunx vitest run test/to-markdown.test.ts
   ```
-- Workspace tests under `test/` (corpus, parity, portable, robustness) import `@mdgate/*` from `dist/`. If those fail after a source change, `bun run build` then re-run. Do not run `bun run build` otherwise, and never `bun run deploy:demo` / `bun run publish:all` / `bun run version --`, unless the user asks to publish. Patch publishes itself after a green CI on `main`. Minor and major go through `release.yml` (see Releasing).
+- Workspace tests under `test/` (corpus, parity, portable, robustness) import `@mdgate/*` from `dist/`. If those fail after a source change, `bun run build` then re-run. Do not run `bun run build` otherwise, and never `bun run deploy:demo` / `bun run publish:all` / `bun run version --`, unless the user asks to publish. Patch publishes itself as the `publish` job after `check` on `main`. Minor and major go through the `release` job (see Releasing).
 - If you create or modify a test file, run it and iterate until it passes.
 - If a converter output change is intentional, update the matching snapshot under `test/snapshots`. Do not weaken assertions to make a test pass.
 - Fixture-corpus parity: `bun run test:parity`.
@@ -107,9 +107,9 @@ All published `@mdgate/*` packages share one version. `@mdgate/converters@0.4.1`
 | Change | During 0.x | After 1.0 | Who publishes |
 | --- | --- | --- | --- |
 | Bugfix. Public TypeScript API unchanged. Converted Markdown may change. | patch | patch | CI, after green `main` |
-| New format, new published package, or new public API | minor | minor | Human, `release.yml` |
-| Breaking public API or `Converter` contract | minor | major | Human, `release.yml` |
-| First API freeze | `1.0.0` | - | Human, `release.yml` |
+| New format, new published package, or new public API | minor | minor | Human, CI `release` |
+| Breaking public API or `Converter` contract | minor | major | Human, CI `release` |
+| First API freeze | `1.0.0` | - | Human, CI `release` |
 
 A mixed release takes the highest row. Do not infer minor vs major from commit messages. Ask if that increment is unclear.
 
@@ -119,9 +119,9 @@ Do not unpublish. Do not reuse a version. Pre-`0.4.0` versions are the old indep
 
 ### What agents do
 
-- Fix a converter, change output, land the PR on `main`. After CI is green, `publish-patch.yml` bumps patch, commits `release: x.y.z`, tags, publishes, and writes a GitHub Release from the merged PRs. Do not bump in the PR.
-- Add a format, add a published package, or change the public API. Label the PR `release:minor` (or `release:major`). After merge, run `gh workflow run release.yml -f increment=minor` from `main`. Auto-patch will not fire.
-- A new `packages/<name>/package.json` that is public also blocks auto-patch, even if the label is missing. Then run Release with `minor`.
+- Fix a converter, change output, land the PR on `main`. After `check` is green, the `publish` job bumps patch, commits `release: x.y.z`, tags, publishes, and writes a GitHub Release from the merged PRs. Do not bump in the PR.
+- Add a format, add a published package, or change the public API. Label the PR `release:minor` (or `release:major`). After merge, run `gh workflow run ci.yml -f increment=minor` from `main`. Auto-patch will not fire.
+- A new `packages/<name>/package.json` that is public also blocks auto-patch, even if the label is missing. Then run CI with `minor`.
 - Docs, AGENTS, CI, or demo only: no publish.
 - Put `[skip publish]` in the commit message to skip auto-patch for a `packages/` change that must not ship yet.
 
@@ -129,18 +129,20 @@ Repo secret `NPM_TOKEN` is an npm Automation token with publish rights on `@mdga
 
 ### Workflows
 
-| Workflow | Trigger | What it does |
+One workflow, `ci.yml`. Three jobs, in order. `publish` and `release` are mutually exclusive.
+
+| Job | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | PR and push to `main` | `lint`, `build`, `test`, `pack:check`. Skips `release:` commits. |
-| `publish-patch.yml` | CI succeeded on a `main` push | Patch bump + publish + GitHub Release, unless skipped (see above). |
-| `release.yml` | `workflow_dispatch` on `main` | `minor` / `major` (or a forced `patch`). Test, bump, commit, tag, publish, GitHub Release. |
+| `check` | PR, push to `main`, and `workflow_dispatch` | `lint`, `build`, `test`, `pack:check`. Skips `release:` commits on push. |
+| `publish` | push to `main`, after `check` | Patch bump + publish + GitHub Release, unless skipped (see above). |
+| `release` | `workflow_dispatch` on `main`, after `check` | `minor` / `major` (or a forced `patch`). Bump, commit, tag, publish, GitHub Release. |
 
 ```bash
-gh workflow run release.yml -f increment=minor
-gh workflow run release.yml -f increment=major
+gh workflow run ci.yml -f increment=minor
+gh workflow run ci.yml -f increment=major
 ```
 
-If publish dies halfway, re-run the same workflow. Do not bump again. Already-published packages are skipped. Agents still do not push to `main` themselves; only these workflows do, and only for `release: x.y.z`.
+If publish dies halfway, re-run the same workflow. Do not bump again. Already-published packages are skipped. Agents still do not push to `main` themselves; only these jobs do, and only for `release: x.y.z`.
 
 ### Local fallback
 

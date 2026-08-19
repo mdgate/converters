@@ -4,10 +4,23 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      increment:
+        description: Semver increment (patch is usually automatic; use minor or major for large updates)
+        required: true
+        type: choice
+        options:
+          - minor
+          - major
+          - patch
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'pull_request' && format('ci-{0}', github.ref) || 'publish' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -29,3 +42,77 @@ jobs:
       - run: bun run build
       - run: bun run test
       - run: bun run pack:check
+
+  publish:
+    needs: check
+    if: >
+      github.repository == 'mdgate/converters' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - id: decide
+        run: bun scripts/should-publish-patch.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.decide.outputs.publish != 'true'
+        run: echo "${{ steps.decide.outputs.reason }}"
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun install --frozen-lockfile
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun run version -- patch
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun scripts/commit-release.ts
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun run publish:all
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - if: steps.decide.outputs.publish == 'true'
+        run: bun scripts/github-release.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    needs: check
+    if: >
+      github.repository == 'mdgate/converters' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: bun install --frozen-lockfile
+      - run: bun run version -- ${{ inputs.increment }}
+      - run: bun scripts/commit-release.ts
+      - run: bun run publish:all
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: bun scripts/github-release.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

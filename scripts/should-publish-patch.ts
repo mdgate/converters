@@ -31,12 +31,12 @@ export function decidePatch(input: {
     (label) => input.labels.includes(label) || message.includes(label),
   );
   if (manual) {
-    return { publish: false, reason: `${manual} set; run Release with that increment` };
+    return { publish: false, reason: `${manual} set; run CI with that increment` };
   }
   if (input.addedPublicPackages.length > 0) {
     return {
       publish: false,
-      reason: `new published package ${input.addedPublicPackages.join(', ')}; run Release with increment=minor`,
+      reason: `new published package ${input.addedPublicPackages.join(', ')}; run CI with increment=minor`,
     };
   }
   if (!input.changedFiles.some((file) => file.startsWith('packages/'))) {
