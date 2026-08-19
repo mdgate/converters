@@ -235,3 +235,12 @@ When closing issues via commit:
 ## User Override
 
 If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. Only then execute their instructions.
+
+## Cursor Cloud specific instructions
+
+The startup update script already ran `bun install`, so dependencies are hydrated when you start.
+
+- Toolchain: Bun `1.3.4` lives at `~/.bun/bin/bun`. It is on `PATH` in login shells only. A plain non-login `bash -c` will not find `bun`, so scripted calls should use a login shell or the full path. Node 22 is present but the project runs on Bun.
+- Demo app: `bun run dev:demo` serves the SPA on port `5173`. The converter runs in a Web Worker; the "Try a sample" buttons (letter.docx, sheet.xlsx, page.html, note.eml, notes.rtf, report.csv) convert without any file upload, so they are the quickest way to smoke-test end to end.
+- Workspace tests under `test/` import `@mdgate/*` from `dist/`. Run `bun run build` once before `bun test` after a fresh checkout, and rebuild after changing package source (see Commands). Package tests import `../src` and need no build.
+- Standard lint/test/build/run commands are in Commands above; do not duplicate them here.
