@@ -18,6 +18,6 @@ git(['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.
 git(['add', ...loadPublished().map((pkg) => pkg.path)]);
 git(['commit', '-m', `release: ${version}`]);
 git(['tag', `v${version}`]);
-git(['push', 'origin', 'HEAD']);
+git(['push', 'origin', 'HEAD:refs/heads/main']);
 git(['push', 'origin', `v${version}`]);
 console.log(`tagged v${version}`);
