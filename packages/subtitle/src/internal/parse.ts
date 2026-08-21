@@ -1,6 +1,7 @@
 import { type Document, emptyDocument, type Inline, PLAIN, type Style } from '@mdgate/document';
 import { cleanText, collapseWs, decode, lines, trim } from '@mdgate/utils';
 import {
+  decodeEntities,
   isJacosubDocument,
   isLrcDocument,
   isMicrodvdDocument,
@@ -20,7 +21,6 @@ const TIMING =
 const ASS_TAG = /\{[^}]*\}/g;
 const AN_TAG = /\\an\d+/gi;
 const MARKUP_TAG = /<[^>]*>/g;
-const ENTITY = /&(?:amp|lt|gt|quot|apos|nbsp|lrm|rlm|#\d+|#x[\da-f]+);/gi;
 
 export function parse(bytes: Uint8Array): Document {
   const text = stripBom(decodeText(bytes)).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -210,40 +210,6 @@ function isXmlSpace(c: number): boolean {
 function cleanCueText(raw: string): string {
   const stripped = raw.replace(ASS_TAG, '').replace(AN_TAG, '').replace(MARKUP_TAG, '');
   return trim(collapseWs(cleanText(decodeEntities(stripped))));
-}
-
-function decodeEntities(text: string): string {
-  return text.replace(ENTITY, (entity) => {
-    const lower = entity.toLowerCase();
-    switch (lower) {
-      case '&amp;':
-        return '&';
-      case '&lt;':
-        return '<';
-      case '&gt;':
-        return '>';
-      case '&quot;':
-        return '"';
-      case '&apos;':
-        return "'";
-      case '&nbsp;':
-        return ' ';
-      case '&lrm;':
-      case '&rlm;':
-        return '';
-      default:
-        break;
-    }
-    if (lower.startsWith('&#x')) {
-      const n = Number.parseInt(lower.slice(3, -1), 16);
-      return Number.isFinite(n) ? String.fromCodePoint(n) : '';
-    }
-    if (lower.startsWith('&#')) {
-      const n = Number.parseInt(lower.slice(2, -1), 10);
-      return Number.isFinite(n) ? String.fromCodePoint(n) : '';
-    }
-    return '';
-  });
 }
 
 function decodeText(bytes: Uint8Array): string {
