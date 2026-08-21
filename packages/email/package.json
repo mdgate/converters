@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/email",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "mdgate email converter (eml, msg, mbox)",
   "type": "module",
   "license": "MIT",
@@ -22,11 +22,11 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.5.5",
-    "@mdgate/core": "0.5.5",
-    "@mdgate/document": "0.5.5",
-    "@mdgate/html": "0.5.5",
-    "@mdgate/utils": "0.5.5"
+    "@mdgate/containers": "0.5.6",
+    "@mdgate/core": "0.5.6",
+    "@mdgate/document": "0.5.6",
+    "@mdgate/html": "0.5.6",
+    "@mdgate/utils": "0.5.6"
   },
   "publishConfig": {
     "access": "public"
