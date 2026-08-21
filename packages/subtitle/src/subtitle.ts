@@ -4,7 +4,19 @@ import { documentToMarkdown } from '@mdgate/document';
 import { fileExtension } from '@mdgate/utils';
 import { parse } from './internal/parse.js';
 
-const EXTS = new Set(['srt', 'vtt', 'webvtt', 'ass', 'ssa']);
+const EXTS = new Set([
+  'srt',
+  'vtt',
+  'webvtt',
+  'ass',
+  'ssa',
+  'lrc',
+  'sub',
+  'sbv',
+  'ttml',
+  'jss',
+  'jacosub',
+]);
 
 export function subtitle(): Converter {
   return {
@@ -12,6 +24,11 @@ export function subtitle(): Converter {
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {
       if (startsWithAss(bytes)) return 3;
       if (startsWithWebvtt(bytes)) return 2;
+      if (startsWithTtml(bytes)) return 2;
+      if (startsWithLrc(bytes)) return 2;
+      if (startsWithMicrodvd(bytes)) return 2;
+      if (startsWithSbv(bytes)) return 2;
+      if (startsWithJacosub(bytes)) return 2;
       if (hint?.path !== undefined && EXTS.has(fileExtension(hint.path) ?? '')) return 1;
       return 0;
     },
@@ -34,6 +51,70 @@ function startsWithAss(bytes: Uint8Array): boolean {
   if (startsWithCi(bytes, '[v4+ styles]', start)) return true;
   if (startsWithCi(bytes, '[v4 styles]', start)) return true;
   return startsWithCi(bytes, '[events]', start);
+}
+
+function startsWithTtml(bytes: Uint8Array): boolean {
+  const head = utf8Head(bytes);
+  if (!/<tt\b/i.test(head)) return false;
+  return /ttml/i.test(head) || /<tt\b[^>]*xmlns/i.test(head) || /<p\b[^>]*\bbegin=/i.test(head);
+}
+
+function startsWithLrc(bytes: Uint8Array): boolean {
+  let i = skipBomAndWs(bytes);
+  if (bytes[i] !== 0x5b) return false;
+  i += 1;
+  if (bytes[i] === 0x2d) i += 1;
+  if (isDigit(bytes[i])) {
+    while (isDigit(bytes[i])) i += 1;
+    return bytes[i] === 0x3a;
+  }
+  if (!isLetter(bytes[i])) return false;
+  while (isLetter(bytes[i]) || bytes[i] === 0x5f) i += 1;
+  return bytes[i] === 0x3a;
+}
+
+function startsWithMicrodvd(bytes: Uint8Array): boolean {
+  let i = skipBomAndWs(bytes);
+  if (bytes[i] !== 0x7b) return false;
+  i += 1;
+  if (!isDigit(bytes[i])) return false;
+  while (isDigit(bytes[i])) i += 1;
+  if (bytes[i] !== 0x7d || bytes[i + 1] !== 0x7b) return false;
+  return true;
+}
+
+function startsWithSbv(bytes: Uint8Array): boolean {
+  return /^\s*\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}\s*,\s*\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}\b/m.test(
+    utf8Head(bytes),
+  );
+}
+
+function startsWithJacosub(bytes: Uint8Array): boolean {
+  const head = utf8Head(bytes);
+  for (const raw of head.split(/\r?\n/)) {
+    const t = raw.trim();
+    if (t.length === 0 || t.startsWith('#')) continue;
+    return (
+      /^\d{1,2}:\d{2}:\d{2}[.,]\d{1,2}\s+\d{1,2}:\d{2}:\d{2}[.,]\d{1,2}\b/.test(t) ||
+      /^@\d+\s+@\d+\b/.test(t)
+    );
+  }
+  return false;
+}
+
+function utf8Head(bytes: Uint8Array): string {
+  const start = skipBom(bytes);
+  return new TextDecoder('utf-8', { fatal: false }).decode(
+    bytes.subarray(start, Math.min(bytes.length, start + 4096)),
+  );
+}
+
+function isDigit(b: number | undefined): boolean {
+  return b !== undefined && b >= 0x30 && b <= 0x39;
+}
+
+function isLetter(b: number | undefined): boolean {
+  return b !== undefined && ((b >= 65 && b <= 90) || (b >= 97 && b <= 122));
 }
 
 function startsWithCi(bytes: Uint8Array, prefix: string, offset: number): boolean {

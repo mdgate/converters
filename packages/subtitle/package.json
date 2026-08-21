@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/subtitle",
   "version": "0.5.3",
-  "description": "mdgate SRT and WebVTT converter",
+  "description": "mdgate subtitle and caption converter",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
@@ -38,6 +38,9 @@
     "srt",
     "vtt",
     "webvtt",
+    "ass",
+    "lrc",
+    "ttml",
     "subtitle"
   ]
 }

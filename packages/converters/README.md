@@ -38,7 +38,7 @@ Only need one format? Install just that package instead — for example
 | `@mdgate/csv` | csv |
 | `@mdgate/text` | txt, md, and source files |
 | `@mdgate/data` | json, jsonl, xml, yaml |
-| `@mdgate/subtitle` | srt, vtt, webvtt |
+| `@mdgate/subtitle` | srt, vtt, webvtt, ass, lrc, sub, sbv, ttml, jss |
 | `@mdgate/html` | html, htm, xhtml, mhtml, mht |
 | `@mdgate/email` | eml, msg, mbox, emlx |
 | `@mdgate/ipynb` | ipynb (Jupyter) |

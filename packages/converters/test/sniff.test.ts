@@ -78,4 +78,13 @@ describe('sniff routing', () => {
     );
     await expect(convert(bytes, { path: 'clip.ass' })).resolves.toContain('Hello');
   });
+
+  it('sends LRC and MicroDVD to subtitle, not data', async () => {
+    await expect(
+      convert(enc.encode('[ti:Demo]\n[00:01.00]Hello\n'), { path: 'clip.lrc' }),
+    ).resolves.toContain('Hello');
+    await expect(convert(enc.encode('{0}{25}Hello\n'), { path: 'clip.sub' })).resolves.toContain(
+      'Hello',
+    );
+  });
 });

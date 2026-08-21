@@ -1,9 +1,10 @@
 # @mdgate/subtitle
 
-Convert SRT and WebVTT subtitle files to Markdown. Outputs GitHub-Flavored Markdown. Works in Node,
+Convert subtitle and caption files to Markdown. Outputs GitHub-Flavored Markdown. Works in Node,
 Edge, and browsers. No native addons.
 
-Handles: `.srt`, `.vtt`, `.webvtt`
+Handles: `.srt`, `.vtt`, `.webvtt`, `.ass`, `.ssa`, `.lrc`, `.sub` (MicroDVD), `.sbv`, `.ttml`,
+`.jss`
 
 ## Usage
 

@@ -50,7 +50,67 @@ export function startsWithJsonOpen(bytes: Uint8Array): boolean {
   const start = skipBomAndWs(bytes);
   if (start >= bytes.length) return false;
   const b = bytes[start]!;
-  return b === 0x7b || b === 0x5b;
+  if (b === 0x7b) return jsonObjectLooksOpen(bytes, start + 1);
+  if (b === 0x5b) return jsonArrayLooksOpen(bytes, start + 1);
+  return false;
+}
+
+function skipWs(bytes: Uint8Array, i: number): number {
+  while (i < bytes.length) {
+    const b = bytes[i]!;
+    if (b !== 0x09 && b !== 0x0a && b !== 0x0d && b !== 0x20) break;
+    i += 1;
+  }
+  return i;
+}
+
+/** `{` then a string key or `}`. `{0}{25}cue` is MicroDVD, not JSON. */
+function jsonObjectLooksOpen(bytes: Uint8Array, after: number): boolean {
+  const i = skipWs(bytes, after);
+  if (i >= bytes.length) return true;
+  const c = bytes[i]!;
+  return c === 0x22 || c === 0x7d;
+}
+
+/**
+ * `[` then a JSON value. `[ti:Title]` and `[00:35.62]lyric` are LRC, not JSON.
+ */
+function jsonArrayLooksOpen(bytes: Uint8Array, after: number): boolean {
+  const i = skipWs(bytes, after);
+  if (i >= bytes.length) return true;
+  const c = bytes[i]!;
+  if (c === 0x5d || c === 0x7b || c === 0x5b || c === 0x22) return true;
+  if (c === 0x74) return startsWithAscii(bytes, 'true', i);
+  if (c === 0x66) return startsWithAscii(bytes, 'false', i);
+  if (c === 0x6e) return startsWithAscii(bytes, 'null', i);
+  if (c === 0x2d || (c >= 0x30 && c <= 0x39)) return jsonNumberThenArraySep(bytes, i);
+  return false;
+}
+
+function jsonNumberThenArraySep(bytes: Uint8Array, start: number): boolean {
+  let i = start;
+  if (bytes[i] === 0x2d) i += 1;
+  if (i >= bytes.length || bytes[i]! < 0x30 || bytes[i]! > 0x39) return false;
+  if (bytes[i] === 0x30) i += 1;
+  else {
+    while (i < bytes.length && bytes[i]! >= 0x30 && bytes[i]! <= 0x39) i += 1;
+  }
+  if (bytes[i] === 0x2e) {
+    i += 1;
+    if (i >= bytes.length || bytes[i]! < 0x30 || bytes[i]! > 0x39) return false;
+    while (i < bytes.length && bytes[i]! >= 0x30 && bytes[i]! <= 0x39) i += 1;
+  }
+  const exp = bytes[i];
+  if (exp === 0x65 || exp === 0x45) {
+    i += 1;
+    if (bytes[i] === 0x2b || bytes[i] === 0x2d) i += 1;
+    if (i >= bytes.length || bytes[i]! < 0x30 || bytes[i]! > 0x39) return false;
+    while (i < bytes.length && bytes[i]! >= 0x30 && bytes[i]! <= 0x39) i += 1;
+  }
+  i = skipWs(bytes, i);
+  if (i >= bytes.length) return true;
+  const n = bytes[i]!;
+  return n === 0x2c || n === 0x5d;
 }
 
 /** Content that would be claimed as XML (never a score-2 signature). */
