@@ -304,6 +304,46 @@ export function sampleKeynote(title = 'Hello Keynote'): Uint8Array {
   });
 }
 
+/** Keynote 2013-style slideTree: slide nodes are repeated refs on field 2. */
+export function sampleKeynoteField2(title = 'Hello Field Two'): Uint8Array {
+  const showId = 2;
+  const rootNodeId = 3;
+  const slideId = 4;
+  const shapeId = 5;
+  const storageId = 6;
+
+  const docPayload = Uint8Array.from([...refField(3, 99), ...refField(2, showId)]);
+  const slideTree = encodeMessageField(2, ref(rootNodeId));
+  const showPayload = Uint8Array.from([
+    ...refField(2, 98),
+    ...encodeBytesField(3, Uint8Array.from(slideTree)),
+  ]);
+  const nodePayload = Uint8Array.from([...refField(2, slideId), ...encodeVarintField(4, 0)]);
+  const storagePayload = Uint8Array.from([
+    ...encodeVarintField(1, 3),
+    ...encodeStringField(3, `${title}\n`),
+    ...encodeMessageField(5, [...encodeMessageField(1, [...encodeVarintField(1, 0)])]),
+  ]);
+  const shapePayload = Uint8Array.from([...refField(1, 96), ...refField(2, storageId)]);
+  const slidePayload = Uint8Array.from([
+    ...refField(1, 95),
+    ...refField(5, shapeId),
+    ...encodeVarintField(19, 1),
+  ]);
+  const iwa = buildIwa([
+    { id: 1, type: TYPE.KN_DOCUMENT, payload: docPayload },
+    { id: showId, type: TYPE.KN_SHOW, payload: showPayload },
+    { id: rootNodeId, type: TYPE.KN_SLIDE_NODE, payload: nodePayload },
+    { id: slideId, type: TYPE.KN_SLIDE, payload: slidePayload },
+    { id: shapeId, type: TYPE.TSWP_SHAPE_INFO, payload: shapePayload },
+    { id: storageId, type: TYPE.TSWP_STORAGE, payload: storagePayload },
+  ]);
+  return zipStore({
+    'Index/Document.iwa': iwa,
+    'Index/Slide-00001.iwa': buildIwa([]),
+  });
+}
+
 function writeU16(out: number[], value: number): void {
   out.push(value & 0xff, (value >> 8) & 0xff);
 }

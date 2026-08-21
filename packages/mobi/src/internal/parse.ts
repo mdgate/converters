@@ -1,4 +1,4 @@
-import { type Element, parseXml } from '@mdgate/containers';
+import type { Element } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import {
   type Block,
@@ -10,7 +10,7 @@ import {
   type LinkTarget,
   plain,
 } from '@mdgate/document';
-import { type HtmlCtx, Stylesheet, toBlocks } from '@mdgate/html';
+import { type HtmlCtx, parseHtml, Stylesheet, toBlocks } from '@mdgate/html';
 import { decode, isAbsoluteUri, trim } from '@mdgate/utils';
 import { asciiAt, asciiEq, concatBytes, u16, u32 } from './binary.js';
 import {
@@ -24,7 +24,6 @@ import {
 
 const PDB_HEADER = 78;
 const NONE = 0xffffffff;
-const enc = new TextEncoder();
 
 const HTML_CTX: HtmlCtx = {
   linkTarget(href: string): LinkTarget | undefined {
@@ -285,7 +284,7 @@ function loadHuff(
 function htmlPartToBlocks(markup: string): Block[] {
   const wrapped = wrapIfNeeded(markup);
   try {
-    const tree = parseXml(enc.encode(selfCloseVoids(wrapped)));
+    const tree = parseHtml(wrapped);
     const host = findBodyOrRoot(tree);
     const css = collectStyles(tree);
     const blocks = toBlocks(host, css, HTML_CTX);
@@ -295,10 +294,6 @@ function htmlPartToBlocks(markup: string): Block[] {
   }
   const text = stripMarkup(markup);
   return text.length === 0 ? [] : [{ type: 'paragraph', inlines: [plain(text)] }];
-}
-
-function selfCloseVoids(markup: string): string {
-  return markup.replace(/<(br|hr|img|meta|link|mbp:pagebreak)(\s[^>/]*)?\s*\/?>/gi, '<$1$2/>');
 }
 
 function findBodyOrRoot(tree: Element): Element {

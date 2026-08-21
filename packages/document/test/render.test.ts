@@ -209,6 +209,36 @@ describe('documentToMarkdown', () => {
     ).toBe('chart\n');
   });
 
+  it('renders an embedded image with empty alt as a picture when it is the only content', () => {
+    expect(
+      documentToMarkdown({
+        blocks: [
+          {
+            type: 'paragraph',
+            inlines: [{ type: 'image', alt: '', source: { type: 'asset', id: 0 } }],
+          },
+        ],
+        notes: [],
+        assets: [
+          { id: 0, mediaType: 'image/jpeg', originPart: 'pic.jpg', bytes: new Uint8Array() },
+        ],
+      }),
+    ).toBe('![]()\n');
+  });
+
+  it('emits unused image assets', () => {
+    expect(
+      documentToMarkdown({
+        blocks: [],
+        notes: [],
+        assets: [
+          { id: 0, mediaType: 'image/jpeg', originPart: 'a.jpg', bytes: new Uint8Array() },
+          { id: 1, mediaType: 'image/png', originPart: 'b.png', bytes: new Uint8Array() },
+        ],
+      }),
+    ).toBe('![]()\n\n![]()\n');
+  });
+
   it('escapes composite marker labels', () => {
     const list: List = {
       marker: 'decimal',

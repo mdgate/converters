@@ -36,7 +36,7 @@ function parsePackage(bytes: Uint8Array): Document {
     throw ConvertError.malformedPart('content.xml', 'no office:body');
   }
 
-  return finish(body, styles, pkg, 'content.xml');
+  return finish(body, styles, pkg, 'content.xml', stylesTree);
 }
 
 function parseFlat(bytes: Uint8Array): Document {
@@ -52,7 +52,7 @@ function parseFlat(bytes: Uint8Array): Document {
 
   const styles = new OdfStyles();
   styles.collect(tree);
-  return finish(body, styles, undefined, undefined);
+  return finish(body, styles, undefined, undefined, tree);
 }
 
 function finish(
@@ -60,13 +60,33 @@ function finish(
   styles: OdfStyles,
   pkg: Package | undefined,
   part: string | undefined,
+  stylesTree: Element | undefined,
 ): Document {
   const assets = new AssetSink();
   const ctx = new Ctx(styles, pkg, assets);
-  return { blocks: parseBody(body, ctx, part), notes: ctx.notes, assets: assets.assets };
+  return {
+    blocks: parseBody(body, ctx, part, collectMasters(stylesTree)),
+    notes: ctx.notes,
+    assets: assets.assets,
+  };
 }
 
-function parseBody(body: Element, ctx: Ctx, part: string | undefined): Block[] {
+function collectMasters(tree: Element | undefined): Map<string, Element> {
+  const out = new Map<string, Element>();
+  if (tree === undefined) return out;
+  for (const master of tree.descendants(ns.STYLE, 'master-page')) {
+    const name = master.attr(ns.STYLE, 'name');
+    if (name !== undefined) out.set(name, master);
+  }
+  return out;
+}
+
+function parseBody(
+  body: Element,
+  ctx: Ctx,
+  part: string | undefined,
+  masters: Map<string, Element>,
+): Block[] {
   const text = body.find(ns.OFFICE, 'text');
   const sheet = text === undefined ? body.find(ns.OFFICE, 'spreadsheet') : undefined;
   const pres =
@@ -78,11 +98,11 @@ function parseBody(body: Element, ctx: Ctx, part: string | undefined): Block[] {
 
   if (text !== undefined) return parseContainer(text, ctx);
   if (sheet !== undefined) return parseSpreadsheet(sheet, ctx);
-  if (pres !== undefined) return parsePages(pres, ctx);
-  if (drawing !== undefined) return parsePages(drawing, ctx);
+  if (pres !== undefined) return parsePages(pres, ctx, masters);
+  if (drawing !== undefined) return parsePages(drawing, ctx, masters);
 
   const pages = body.findAll(ns.DRAW, 'page');
-  if (pages.length > 0) return parsePages(body, ctx);
+  if (pages.length > 0) return parsePages(body, ctx, masters);
   if (body.find(ns.TABLE, 'table') !== undefined) return parseSpreadsheet(body, ctx);
   if (
     body.find(ns.TEXT, 'p') !== undefined ||
@@ -118,15 +138,24 @@ function isEncrypted(pkg: Package): boolean {
   return tree.firstDescendant(ns.MANIFEST, 'encryption-data') !== undefined;
 }
 
-function parsePages(root: Element, ctx: Ctx): Block[] {
+function parsePages(root: Element, ctx: Ctx, masters: Map<string, Element>): Block[] {
   const pages = root.findAll(ns.DRAW, 'page');
   const targets = pages.length > 0 ? pages : [root];
   const blocks: Block[] = [];
+  const fallbackMaster = masters.size === 1 ? [...masters.values()][0] : undefined;
   for (const page of targets) {
     const title: Block[] = [];
     const body: Block[] = [];
     const notes: Block[] = [];
     walkShapes(page, ctx, title, body, notes);
+    const masterName =
+      page.attr(ns.DRAW, 'master-page-name') ?? page.attr(ns.STYLE, 'master-page-name');
+    const master =
+      (masterName !== undefined ? masters.get(masterName) : undefined) ?? fallbackMaster;
+    if (master !== undefined) {
+      walkMasterChrome(master, ctx, body);
+      body.push(...masterRegions(new Map([['page', master]]), ctx));
+    }
     blocks.push(...title);
     blocks.push(...body);
     if (notes.length > 0) {
@@ -134,6 +163,42 @@ function parsePages(root: Element, ctx: Ctx): Block[] {
     }
   }
   return blocks;
+}
+
+function walkMasterChrome(master: Element, ctx: Ctx, body: Block[]): void {
+  const chrome: Block[] = [];
+  const unused: Block[] = [];
+  for (const child of master.childElems()) {
+    if (child.ns !== ns.DRAW) continue;
+    const cls = child.attr(ns.PRESENTATION, 'class') ?? '';
+    if (cls !== 'header' && cls !== 'footer' && cls !== 'header-left' && cls !== 'footer-left') {
+      continue;
+    }
+    walkShapes(child, ctx, unused, chrome, unused);
+  }
+  for (const block of chrome) {
+    if (!isPageFieldBlock(block)) body.push(block);
+  }
+}
+
+function masterRegions(masters: Map<string, Element>, ctx: Ctx): Block[] {
+  const blocks: Block[] = [];
+  for (const master of masters.values()) {
+    for (const local of ['header', 'footer', 'header-left', 'footer-left']) {
+      const region = master.find(ns.STYLE, local);
+      if (region === undefined) continue;
+      for (const block of parseContainer(region, ctx)) {
+        if (!isPageFieldBlock(block)) blocks.push(block);
+      }
+    }
+  }
+  return blocks;
+}
+
+function isPageFieldBlock(block: Block): boolean {
+  if (block.type !== 'paragraph') return false;
+  const text = inlinesToPlainText(block.inlines).trim();
+  return text.length === 0 || text === '<number>' || text === '<date>' || text === '<time>';
 }
 
 /** Walk a page's shapes in document order, recursing into `draw:g` groups. */
@@ -155,7 +220,7 @@ function walkShapes(
     switch (child.local) {
       case 'text-box': {
         const cls = child.attr(ns.PRESENTATION, 'class') ?? '';
-        if (cls === 'page-number' || cls === 'date-time' || cls === 'footer' || cls === 'header') {
+        if (cls === 'page-number' || cls === 'date-time') {
           continue;
         }
         const inner = parseContainer(child, ctx);
@@ -165,7 +230,7 @@ function walkShapes(
       }
       case 'frame': {
         const cls = child.attr(ns.PRESENTATION, 'class') ?? '';
-        if (cls === 'page-number' || cls === 'date-time' || cls === 'footer' || cls === 'header') {
+        if (cls === 'page-number' || cls === 'date-time') {
           continue;
         }
         const inner: Block[] = [];

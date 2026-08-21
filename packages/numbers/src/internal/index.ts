@@ -1,9 +1,12 @@
+import { ConvertError } from '@mdgate/core';
 import { type Block, type Document, emptyDocument, heading, plain } from '@mdgate/document';
 import {
   collectDrawableBlocks,
   getObject,
+  type IWorkArchive,
   numbersSheets,
   openIWork,
+  parsePreIwa,
   type SheetData,
   sheetsToDocument,
   TYPE,
@@ -11,7 +14,13 @@ import {
 } from '@mdgate/iwork-common';
 
 export function parse(bytes: Uint8Array): Document {
-  const archive = openIWork(bytes, 'numbers');
+  let archive: IWorkArchive;
+  try {
+    archive = openIWork(bytes, 'numbers');
+  } catch (e) {
+    if (e instanceof ConvertError && e.code === 'encrypted') throw e;
+    return parsePreIwa(bytes, 'numbers');
+  }
   const sheets = numbersSheets(archive);
   const sheetData: SheetData[] = [];
   const extra = emptyDocument();

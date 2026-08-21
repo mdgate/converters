@@ -170,12 +170,12 @@ function detectIWorkStructure(pkg: Package): ZipDocKind | undefined {
   let hasIwa = false;
   let hasIndexZip = false;
   let hasDocumentIwa = false;
+  let hasIndexXml = false;
   let keynoteHint = false;
   let numbersHint = false;
 
   for (const name of names) {
     const lower = name.toLowerCase();
-    if (lower.includes('encrypted') || lower.endsWith('.iwae')) return undefined;
     if (lower.endsWith('.iwa')) {
       hasIwa = true;
       if (lower.endsWith('/document.iwa') || lower === 'document.iwa') hasDocumentIwa = true;
@@ -183,17 +183,21 @@ function detectIWorkStructure(pkg: Package): ZipDocKind | undefined {
       if (lower.includes('calculationengine') || lower.includes('tables/')) numbersHint = true;
     }
     if (lower === 'index.zip') hasIndexZip = true;
+    if (lower === 'index.xml' || lower.endsWith('/index.xml') || lower.endsWith('index.apxl')) {
+      hasIndexXml = true;
+    }
+    if (lower.endsWith('presentation.apxl')) keynoteHint = true;
   }
 
-  if (!hasIwa && !hasIndexZip) return undefined;
-  // Nested Index.zip alone is enough to claim iWork; without opening it we
-  // cannot tell which app — leave kind to converters / extension sniff.
-  if (!hasIwa && hasIndexZip) return undefined;
-  if (!hasDocumentIwa && !hasIndexZip && !keynoteHint && !numbersHint) return undefined;
+  if (!hasIwa && !hasIndexZip && !hasIndexXml && !keynoteHint) return undefined;
+  if (!hasIwa && hasIndexZip && !hasIndexXml) return undefined;
+  if (!hasDocumentIwa && !hasIndexZip && !hasIndexXml && !keynoteHint && !numbersHint) {
+    return undefined;
+  }
 
   if (keynoteHint && !numbersHint) return 'keynote';
   if (numbersHint && !keynoteHint) return 'numbers';
-  if (hasDocumentIwa) return 'pages';
+  if (hasDocumentIwa || hasIndexXml) return 'pages';
   return undefined;
 }
 

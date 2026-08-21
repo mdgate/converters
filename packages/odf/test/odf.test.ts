@@ -83,12 +83,51 @@ describe('odf', () => {
     expect(md).toContain('Example Text');
   });
 
+  it('reads master-page footer text on an empty slide', async () => {
+    const md = await toMarkdown(odpMasterFooter('Footer on the master'), { path: 'deck.odp' });
+    expect(md).toContain('Footer on the master');
+  });
+
   it('converts StarOffice 6 impress text-boxes', async () => {
     const md = await toMarkdown(starOfficeImpress(), { path: 'talk.sxi' });
     expect(md).toContain('# Example Bullet Problems');
     expect(md).toContain('Level 1');
   });
 });
+
+function odpMasterFooter(text: string): Uint8Array {
+  return zipStore({
+    mimetype: 'application/vnd.oasis.opendocument.presentation',
+    'META-INF/manifest.xml': `<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
+  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.presentation" manifest:full-path="/"/>
+</manifest:manifest>`,
+    'styles.xml': `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+    xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0">
+  <office:master-styles>
+    <style:master-page style:name="Default">
+      <draw:frame presentation:class="footer">
+        <draw:text-box><text:p>${text}</text:p></draw:text-box>
+      </draw:frame>
+    </style:master-page>
+  </office:master-styles>
+</office:document-styles>`,
+    'content.xml': `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+    xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0">
+  <office:body>
+    <office:presentation>
+      <draw:page draw:master-page-name="Default"/>
+    </office:presentation>
+  </office:body>
+</office:document-content>`,
+  });
+}
 
 function starOfficeWriter(text: string): Uint8Array {
   return zipStore({

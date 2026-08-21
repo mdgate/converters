@@ -92,12 +92,12 @@ function rawRgbPdf(): Uint8Array {
 
 describe('pdf image handoff', () => {
   it('does not convert images when image is not registered', async () => {
-    expect(() => toMarkdownFromPdf(jpegPdf({}))).toThrow(/no extractable text/);
+    expect(toMarkdownFromPdf(jpegPdf({}))).toBe('');
     const md = toMarkdownFromPdf(jpegPdf({ withText: true }));
     expect(md).toContain('Hello');
     expect(md).not.toContain('IMG');
     const convert = create([pdf()]);
-    await expect(convert(jpegPdf({}))).rejects.toMatchObject({ code: 'unsupported' });
+    await expect(convert(jpegPdf({}))).resolves.toBe('');
     await expect(convert(jpegPdf({ withText: true }))).resolves.toContain('Hello');
   });
 
@@ -161,6 +161,22 @@ describe('xObjectToImage', () => {
       data: jpeg,
     });
     expect(out).toEqual({ bytes: jpeg, mime: 'image/jpeg' });
+  });
+
+  it('extracts text drawn only through a Form XObject', () => {
+    const formContent = 'BT /F1 12 Tf 1 0 0 1 20 50 Tm (Form Hello) Tj ET\n';
+    const pageContent = '/Fm1 Do\n';
+    const md = toMarkdownFromPdf(
+      buildPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 140] /Contents 4 0 R /Resources << /XObject << /Fm1 6 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${pageContent.length} >>\nstream\n${pageContent}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+        `6 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 200 140] /Resources << /Font << /F1 5 0 R >> >> /Length ${formContent.length} >>\nstream\n${formContent}endstream\nendobj\n`,
+      ]),
+    );
+    expect(md).toContain('Form Hello');
   });
 
   it('skips filters we cannot decode', () => {

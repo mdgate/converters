@@ -126,17 +126,7 @@ function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): strin
     extracted.pageRects,
     imageBlocks,
   );
-  if (markdown.trim().length === 0) {
-    throw ConvertError.unsupported('PDF has no extractable text');
-  }
-
-  const total = extracted.stats.mapped + extracted.stats.unmapped;
-  if (isMostlyUndecodable(extracted.stats)) {
-    throw ConvertError.unsupported(
-      `PDF text is not decodable (${extracted.stats.unmapped} of ${total} character codes have no Unicode mapping)`,
-    );
-  }
-
+  if (markdown.trim().length === 0) return '';
   return markdown.endsWith('\n') ? markdown : `${markdown}\n`;
 }
 
@@ -583,8 +573,16 @@ function parsePdf(bytes: Uint8Array): PdfDocument {
   }
 
   const trailer = findTrailer(data) ?? { d: true, map: new Map() };
-  const encrypted = trailer.map.has('/Encrypt');
-  return { bytes, objects, trailer, encrypted };
+  const doc: PdfDocument = { bytes, objects, trailer, encrypted: false };
+  expandObjectStreams(doc);
+  const xrefTrailer = loadXrefTrailer(doc);
+  if (xrefTrailer !== undefined) {
+    for (const [k, v] of xrefTrailer.map) {
+      if (!doc.trailer.map.has(k)) doc.trailer.map.set(k, v);
+    }
+  }
+  doc.encrypted = doc.trailer.map.has('/Encrypt');
+  return doc;
 }
 
 function isPdfObjStart(data: Uint8Array, i: number): boolean {
@@ -639,6 +637,180 @@ function findTrailer(data: Uint8Array): PdfDict | undefined {
   } catch {
     return undefined;
   }
+}
+
+function expandObjectStreams(doc: PdfDocument): void {
+  const seen = new Set<string>();
+  for (const [key, obj] of [...doc.objects.entries()]) {
+    if (seen.has(key) || !isDict(obj)) continue;
+    if (nameOf(obj.map.get('/Type')) !== '/ObjStm') continue;
+    seen.add(key);
+    expandOneObjStm(doc, obj);
+  }
+}
+
+function expandOneObjStm(doc: PdfDocument, stm: PdfDict): void {
+  const n = asNumber(deref(doc, stm.map.get('/N')));
+  const first = asNumber(deref(doc, stm.map.get('/First')));
+  if (n === undefined || first === undefined || n <= 0 || first < 0) return;
+  const data = decodeStream(doc, stm);
+  if (data.length === 0 || first > data.length) return;
+  const header = new Cursor(data);
+  const entries: { num: number; off: number }[] = [];
+  for (let i = 0; i < n; i += 1) {
+    header.skipWs();
+    if (header.i >= header.n) break;
+    const num = parseNumberToken(header);
+    header.skipWs();
+    const off = parseNumberToken(header);
+    if (!Number.isFinite(num) || !Number.isFinite(off)) break;
+    entries.push({ num: Math.trunc(num), off: Math.trunc(off) });
+  }
+  for (const { num, off } of entries) {
+    const start = first + off;
+    if (start < 0 || start >= data.length) continue;
+    const key = refKey(num, 0);
+    if (doc.objects.has(key)) continue;
+    try {
+      doc.objects.set(key, parseValue(new Cursor(data, start)));
+    } catch {
+      // Producer quirks.
+    }
+  }
+}
+
+function loadXrefTrailer(doc: PdfDocument): PdfDict | undefined {
+  const offset = findStartxref(doc.bytes);
+  if (offset === undefined) return undefined;
+  return parseXrefAt(doc, offset, new Set());
+}
+
+function findStartxref(data: Uint8Array): number | undefined {
+  const idx = lastIndexOfAscii(data, 'startxref');
+  if (idx < 0) return undefined;
+  const c = new Cursor(data, idx + 9);
+  c.skipWs();
+  const off = parseNumberToken(c);
+  if (!Number.isFinite(off) || off < 0) return undefined;
+  return Math.trunc(off);
+}
+
+function parseXrefAt(doc: PdfDocument, offset: number, seen: Set<number>): PdfDict | undefined {
+  if (seen.has(offset) || offset < 0 || offset >= doc.bytes.length) return undefined;
+  seen.add(offset);
+  const c = new Cursor(doc.bytes, offset);
+  c.skipWs();
+  if (startsWithAscii(doc.bytes.subarray(c.i), 'xref')) {
+    const trailerAt = indexOfAscii(doc.bytes, c.i, 'trailer');
+    if (trailerAt < 0) return undefined;
+    try {
+      const val = parseValue(new Cursor(doc.bytes, trailerAt + 7));
+      if (!isDict(val)) return undefined;
+      const prev = asNumber(val.map.get('/Prev'));
+      if (prev !== undefined) parseXrefAt(doc, prev, seen);
+      return val;
+    } catch {
+      return undefined;
+    }
+  }
+  const obj = parseIndirectAt(doc.bytes, offset);
+  if (obj === undefined || !isDict(obj.value)) return undefined;
+  if (!doc.objects.has(refKey(obj.num, obj.gen))) {
+    doc.objects.set(refKey(obj.num, obj.gen), obj.value);
+  }
+  if (nameOf(obj.value.map.get('/Type')) === '/XRef') {
+    applyXrefStream(doc, obj.value);
+  }
+  const prev = asNumber(obj.value.map.get('/Prev'));
+  if (prev !== undefined) parseXrefAt(doc, prev, seen);
+  return obj.value;
+}
+
+function parseIndirectAt(
+  data: Uint8Array,
+  offset: number,
+): { num: number; gen: number; value: PdfValue } | undefined {
+  const c = new Cursor(data, offset);
+  c.skipWs();
+  if (c.i >= c.n || c.data[c.i]! < 0x30 || c.data[c.i]! > 0x39) return undefined;
+  const num = parseNumberToken(c);
+  c.skipWs();
+  const gen = parseNumberToken(c);
+  c.skipWs();
+  if (c.data[c.i] !== 0x6f || c.data[c.i + 1] !== 0x62 || c.data[c.i + 2] !== 0x6a) {
+    return undefined;
+  }
+  c.i += 3;
+  const end = indexOfAscii(data, c.i, 'endobj');
+  if (end < 0) return undefined;
+  try {
+    return {
+      num: Math.trunc(num),
+      gen: Math.trunc(gen),
+      value: parseObjectBody(data.subarray(c.i, end)),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function applyXrefStream(doc: PdfDocument, xref: PdfDict): void {
+  const wVal = deref(doc, xref.map.get('/W'));
+  if (!Array.isArray(wVal) || wVal.length < 3) return;
+  const w = wVal.map((v) => (typeof v === 'number' && v >= 0 ? Math.trunc(v) : 0));
+  const entrySize = (w[0] ?? 0) + (w[1] ?? 0) + (w[2] ?? 0);
+  if (entrySize <= 0) return;
+  const indexVal = deref(doc, xref.map.get('/Index'));
+  const index: number[] = [];
+  if (Array.isArray(indexVal)) {
+    for (const v of indexVal) {
+      if (typeof v === 'number') index.push(Math.trunc(v));
+    }
+  }
+  if (index.length === 0) {
+    const size = asNumber(deref(doc, xref.map.get('/Size'))) ?? 0;
+    index.push(0, size);
+  }
+  const data = decodeStream(doc, xref);
+  let pos = 0;
+  const objstms = new Set<number>();
+  for (let s = 0; s + 1 < index.length; s += 2) {
+    const start = index[s]!;
+    const count = index[s + 1]!;
+    for (let i = 0; i < count; i += 1) {
+      if (pos + entrySize > data.length) return;
+      const type = w[0] === 0 ? 1 : readPacked(data, pos, w[0]!);
+      const field2 = readPacked(data, pos + (w[0] ?? 0), w[1] ?? 0);
+      const field3 = readPacked(data, pos + (w[0] ?? 0) + (w[1] ?? 0), w[2] ?? 0);
+      pos += entrySize;
+      const num = start + i;
+      if (type === 1) {
+        const key = refKey(num, field3);
+        if (doc.objects.has(key)) continue;
+        const parsed = parseIndirectAt(doc.bytes, field2);
+        if (parsed !== undefined) doc.objects.set(key, parsed.value);
+      } else if (type === 2) {
+        objstms.add(field2);
+      }
+    }
+  }
+  for (const stmNum of objstms) {
+    let stm = doc.objects.get(refKey(stmNum, 0));
+    if (!isDict(stm)) {
+      const parsed = [...doc.objects.values()].find(
+        (o) => isDict(o) && nameOf(o.map.get('/Type')) === '/ObjStm',
+      );
+      stm = parsed;
+    }
+    if (isDict(stm)) expandOneObjStm(doc, stm);
+  }
+  expandObjectStreams(doc);
+}
+
+function readPacked(data: Uint8Array, at: number, width: number): number {
+  let n = 0;
+  for (let i = 0; i < width; i += 1) n = (n << 8) | (data[at + i] ?? 0);
+  return n;
 }
 
 function lastIndexOfAscii(data: Uint8Array, s: string): number {
@@ -728,7 +900,83 @@ function decodeStream(doc: PdfDocument, obj: PdfValue | undefined): Uint8Array {
       data = decodeAscii85(data);
     }
   }
+  return applyPredictor(doc, resolved, data);
+}
+
+function applyPredictor(doc: PdfDocument, dict: PdfDict, data: Uint8Array): Uint8Array {
+  const raw = deref(doc, dict.map.get('/DecodeParms')) ?? deref(doc, dict.map.get('/DP'));
+  const parms = isDict(raw)
+    ? raw
+    : Array.isArray(raw)
+      ? raw.find((v) => isDict(deref(doc, v)))
+      : undefined;
+  const dictParms = isDict(parms)
+    ? parms
+    : isDict(deref(doc, parms))
+      ? (deref(doc, parms) as PdfDict)
+      : undefined;
+  if (!dictParms) return data;
+  const predictor = asNumber(deref(doc, dictParms.map.get('/Predictor'))) ?? 1;
+  if (predictor <= 1) return data;
+  const columns = asNumber(deref(doc, dictParms.map.get('/Columns'))) ?? 1;
+  const colors = asNumber(deref(doc, dictParms.map.get('/Colors'))) ?? 1;
+  const bpc = asNumber(deref(doc, dictParms.map.get('/BitsPerComponent'))) ?? 8;
+  const rowLen = Math.ceil((columns * colors * bpc) / 8);
+  if (rowLen <= 0) return data;
+  if (predictor === 2) return undoTiffPredictor(data, rowLen, colors);
+  if (predictor >= 10 && predictor <= 15) return undoPngPredictor(data, rowLen);
   return data;
+}
+
+function undoTiffPredictor(data: Uint8Array, rowLen: number, colors: number): Uint8Array {
+  const out = new Uint8Array(data.length);
+  const bpp = Math.max(1, colors);
+  for (let row = 0; row * rowLen < data.length; row += 1) {
+    const start = row * rowLen;
+    const end = Math.min(start + rowLen, data.length);
+    for (let i = start; i < end; i += 1) {
+      const left = i - bpp >= start ? out[i - bpp]! : 0;
+      out[i] = (data[i]! + left) & 0xff;
+    }
+  }
+  return out;
+}
+
+function undoPngPredictor(data: Uint8Array, rowLen: number): Uint8Array {
+  const stride = rowLen + 1;
+  if (stride <= 1) return data;
+  const rows = Math.floor(data.length / stride);
+  const out = new Uint8Array(rows * rowLen);
+  let prev: Uint8Array | undefined;
+  for (let r = 0; r < rows; r += 1) {
+    const filter = data[r * stride]!;
+    const src = data.subarray(r * stride + 1, r * stride + 1 + rowLen);
+    const dest = out.subarray(r * rowLen, (r + 1) * rowLen);
+    for (let i = 0; i < rowLen; i += 1) {
+      const raw = src[i] ?? 0;
+      const a = i > 0 ? dest[i - 1]! : 0;
+      const b = prev?.[i] ?? 0;
+      const c = i > 0 ? (prev?.[i - 1] ?? 0) : 0;
+      let recon = raw;
+      if (filter === 1) recon = (raw + a) & 0xff;
+      else if (filter === 2) recon = (raw + b) & 0xff;
+      else if (filter === 3) recon = (raw + ((a + b) >> 1)) & 0xff;
+      else if (filter === 4) recon = (raw + paeth(a, b, c)) & 0xff;
+      dest[i] = recon;
+    }
+    prev = dest;
+  }
+  return out;
+}
+
+function paeth(a: number, b: number, c: number): number {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  if (pb <= pc) return b;
+  return c;
 }
 
 function decodeAsciiHex(data: Uint8Array): Uint8Array {
@@ -1306,14 +1554,6 @@ interface DecodedChar {
   mapped: boolean;
 }
 
-/** Ignore a couple of ornaments; fail when at least half the real codes are lost. */
-const UNMAPPED_FAIL_MIN = 8;
-
-function isMostlyUndecodable(stats: DecodeStats): boolean {
-  const total = stats.mapped + stats.unmapped;
-  return stats.unmapped >= UNMAPPED_FAIL_MIN && stats.unmapped * 2 >= total;
-}
-
 function normalizeFontName(name: string): string {
   const plus = name.lastIndexOf('+');
   const bare = plus >= 0 ? name.slice(plus + 1) : name;
@@ -1575,6 +1815,8 @@ function extractPage(
   pageNo: number,
   wantImages: boolean,
   imageCache: Map<string, PlacedImage | null>,
+  startCtm: number[] = [1, 0, 0, 1, 0, 0],
+  depth = 0,
 ): PageExtract {
   const fonts = loadPageFonts(doc, page);
   const contents = dictGet(doc, page, '/Contents');
@@ -1598,7 +1840,7 @@ function extractPage(
   const lines: StrokeLine[] = [];
   const rects: PdfRect[] = [];
   const gs: { ctm: number[]; lw: number }[] = [];
-  let ctm = [1, 0, 0, 1, 0, 0];
+  let ctm = startCtm.slice();
   let lineWidth = 1;
   let tm = [1, 0, 0, 1, 0, 0];
   let tlm = [1, 0, 0, 1, 0, 0];
@@ -1614,6 +1856,9 @@ function extractPage(
   let artifact = 0;
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   const args: PdfValue[] = [];
+  const pageResources = dictGet(doc, page, '/Resources');
+  const xobjects = loadXObjects(doc, isDict(pageResources) ? pageResources : undefined);
+  const formFonts = fonts;
 
   const emitText = (raw: Uint8Array): void => {
     if (!font || artifact > 0) return;
@@ -1704,7 +1949,7 @@ function extractPage(
       const fname =
         typeof args[args.length - 2] === 'string' ? (args[args.length - 2] as string) : '';
       fontSize = lastNum(1);
-      font = fonts.get(fname);
+      font = formFonts.get(fname);
     } else if (op === 'Td' && args.length >= 2) {
       tlm = translateTextMatrix(tlm, lastNum(2), lastNum(1));
       tm = tlm.slice();
@@ -1796,6 +2041,24 @@ function extractPage(
         if (filled) rects.push(filled);
       }
       path = [];
+    } else if (op === 'Do' && artifact === 0) {
+      const name =
+        typeof args[args.length - 1] === 'string' ? (args[args.length - 1] as string) : '';
+      const xobj = xobjects.get(name);
+      if (xobj !== undefined) {
+        extractFormText(
+          doc,
+          xobj.dict,
+          pageResources,
+          ctm,
+          pageNo,
+          items,
+          lines,
+          rects,
+          stats,
+          depth,
+        );
+      }
     } else if (
       op === 'n' ||
       op === 'f' ||
@@ -1841,6 +2104,41 @@ function extractPage(
 
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
   return { items, lines, rects, images, stats };
+}
+
+function extractFormText(
+  doc: PdfDocument,
+  form: PdfDict,
+  parentResources: PdfValue | undefined,
+  ctm: number[],
+  pageNo: number,
+  items: TextItem[],
+  lines: StrokeLine[],
+  rects: PdfRect[],
+  stats: DecodeStats,
+  depth: number,
+): void {
+  if (depth >= 8) return;
+  if (nameOf(dictGet(doc, form, '/Subtype')) !== '/Form') return;
+  const formRes = dictGet(doc, form, '/Resources') ?? parentResources;
+  const matrix = dictGet(doc, form, '/Matrix');
+  let nextCtm = ctm.slice();
+  if (Array.isArray(matrix) && matrix.length >= 6) {
+    nextCtm = mulMat(
+      matrix.map((a) => (typeof a === 'number' ? a : 0)),
+      ctm,
+    );
+  }
+  const fake: PdfDict = { d: true, map: new Map() };
+  fake.map.set('/Type', '/Page');
+  fake.map.set('/Contents', form);
+  if (formRes !== undefined) fake.map.set('/Resources', formRes);
+  const extracted = extractPage(doc, fake, pageNo, false, new Map(), nextCtm, depth + 1);
+  items.push(...extracted.items);
+  lines.push(...extracted.lines);
+  rects.push(...extracted.rects);
+  stats.mapped += extracted.stats.mapped;
+  stats.unmapped += extracted.stats.unmapped;
 }
 
 function collectImages(

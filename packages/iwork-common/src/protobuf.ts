@@ -43,7 +43,7 @@ export function decodeMessage(bytes: Uint8Array): ProtoField[] {
       if (i + len > bytes.length) throw ConvertError.malformed('truncated length-delimited');
       fields.push({ field, value: { kind: 'bytes', value: bytes.subarray(i, i + len) } });
       i += len;
-    } else {
+    } else if (wire !== 3 && wire !== 4) {
       throw ConvertError.malformed(`unsupported protobuf wire type ${wire}`);
     }
   }

@@ -3,13 +3,21 @@ import {
   buildIwa,
   decodeMessage,
   detectIWorkKind,
+  keynoteSlides,
   openIWork,
   parseIwa,
+  parsePreIwa,
   snappyDecode,
   snappyEncodeLiterals,
   TYPE,
 } from '../src/index.js';
-import { sampleKeynote, sampleNumbers, samplePages, zipStore } from './fixtures.js';
+import {
+  sampleKeynote,
+  sampleKeynoteField2,
+  sampleNumbers,
+  samplePages,
+  zipStore,
+} from './fixtures.js';
 
 describe('snappy', () => {
   it('round-trips literal blocks', () => {
@@ -61,6 +69,36 @@ describe('parseIwa', () => {
     expect(objects).toHaveLength(2);
     expect(objects[0]).toMatchObject({ id: 1, type: TYPE.TP_DOCUMENT });
     expect(objects[1]).toMatchObject({ id: 10, type: TYPE.TSWP_STORAGE });
+  });
+});
+
+describe('protobuf groups', () => {
+  it('skips proto2 end-group (wire 4) and keeps reading', () => {
+    const bytes = Uint8Array.from([0x0c, 0x08, 0x01]);
+    const fields = decodeMessage(bytes);
+    expect(fields).toEqual([{ field: 1, value: { kind: 'varint', value: 1 } }]);
+  });
+});
+
+describe('pre-IWA packages', () => {
+  it('detects and extracts text from index.xml', () => {
+    const bytes = zipStore({
+      'index.xml': new TextEncoder().encode(`<?xml version="1.0"?>
+<sl:document xmlns:sl="http://developer.apple.com/namespaces/sl" xmlns:sf="http://developer.apple.com/namespaces/sf">
+  <sf:p><sf:text>Hello from Pages 09</sf:text></sf:p>
+</sl:document>`),
+    });
+    expect(detectIWorkKind(bytes)).toBe('pages');
+    const doc = parsePreIwa(bytes, 'pages');
+    expect(doc.blocks.some((b) => JSON.stringify(b).includes('Hello from Pages 09'))).toBe(true);
+  });
+});
+
+describe('keynote slideTree field 2', () => {
+  it('walks repeated slide node refs on field 2', () => {
+    const bytes = sampleKeynoteField2('Slide From Field Two');
+    const archive = openIWork(bytes, 'keynote');
+    expect(keynoteSlides(archive).length).toBeGreaterThan(0);
   });
 });
 

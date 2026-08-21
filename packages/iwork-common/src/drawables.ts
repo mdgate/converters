@@ -95,21 +95,26 @@ export function keynoteSlides(archive: IWorkArchive): number[] {
   const show = deref(archive, doc.fields, 2);
   if (show === undefined) return [];
 
-  // ShowArchive.slideTree (field 3) is either an embedded SlideTreeArchive or a Reference.
   const treeField = fieldBytes(show.fields, 3);
   let rootId: number | undefined;
+  let treeNodes: number[] = [];
   if (treeField !== undefined) {
     const asRef = readReference(treeField);
     if (asRef !== undefined && getObject(archive, asRef)?.type === TYPE.KN_SLIDE_NODE) {
       rootId = asRef;
     } else {
-      // Embedded SlideTreeArchive { rootSlideNode = 1 }
-      rootId = readReference(fieldBytes(decodeMessage(treeField), 1)) ?? asRef;
+      const tree = decodeMessage(treeField);
+      rootId = readReference(fieldBytes(tree, 1)) ?? asRef;
+      treeNodes = readReferences(tree, 2);
     }
   }
 
   const slideIds: number[] = [];
-  walkSlideNode(archive, rootId, slideIds);
+  if (treeNodes.length > 0) {
+    for (const id of treeNodes) walkSlideNode(archive, id, slideIds);
+  } else {
+    walkSlideNode(archive, rootId, slideIds);
+  }
   return slideIds;
 }
 
