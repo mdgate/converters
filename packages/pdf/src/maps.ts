@@ -27,7 +27,7 @@ export interface PdfMaps {
 let injected: Uint8Array | undefined;
 let parsed: PdfMaps | undefined;
 
-/** Provide mapping bytes (browser / workers). Node reads maps.bin itself. */
+/** Provide mapping bytes. Required outside Node (browsers, Workers, Edge). */
 export function setPdfMaps(bytes: Uint8Array): void {
   injected = bytes;
   parsed = undefined;
@@ -55,7 +55,7 @@ function rawMaps(): Uint8Array {
     // not Node
   }
   throw new Error(
-    'PDF mapping tables not loaded. In browsers, import @mdgate/pdf/maps.bin and call setPdfMaps().',
+    'PDF mapping tables not loaded. Import @mdgate/pdf/maps.bin and call setPdfMaps() first. Required outside Node (browsers, Workers, Edge). Wrangler needs a Data rule for **/*.bin.',
   );
 }
 
