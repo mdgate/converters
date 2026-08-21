@@ -5,7 +5,7 @@ import { documentToMarkdown } from '@mdgate/document';
 import { fileExtension } from '@mdgate/utils';
 import { parseHtmlBytes, parseMhtml } from './internal/parse.js';
 
-const EXTS = new Set(['htm', 'html', 'xhtml', 'mhtml', 'mht']);
+const EXTS = new Set(['htm', 'html', 'html4', 'html5', 'xhtml', 'mhtml', 'mht']);
 const MHTML_EXTS = new Set(['mhtml', 'mht']);
 
 export function html(): Converter {

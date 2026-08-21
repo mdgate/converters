@@ -109,7 +109,7 @@ const convert = create([
 | Hangul | `.hwp`, `.hwpx`, `.hwt`, `.hwtx` |
 | Rich Text | `.rtf` |
 | PDF | `.pdf` |
-| HTML | `.html`, `.htm`, `.xhtml`, `.mhtml`, `.mht` |
+| HTML | `.html`, `.htm`, `.html4`, `.html5`, `.xhtml`, `.mhtml`, `.mht` |
 | Email | `.eml`, `.msg`, `.mbox`, `.emlx` |
 | Notebooks | `.ipynb` |
 | Ebooks | `.epub`, `.fb2`, `.mobi`, `.azw`, `.azw3`, `.prc` |
@@ -204,7 +204,7 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/text` | txt, md, and source files |
 | `@mdgate/data` | json, jsonl, xml, yaml |
 | `@mdgate/subtitle` | srt, vtt, webvtt, ass, lrc, sub, sbv, ttml, jss |
-| `@mdgate/html` | html, htm, xhtml, mhtml, mht |
+| `@mdgate/html` | html, htm, html4, html5, xhtml, mhtml, mht |
 | `@mdgate/email` | eml, msg, mbox, emlx |
 | `@mdgate/ipynb` | ipynb (Jupyter) |
 | `@mdgate/odf` | odt, ods, odp, odg |
