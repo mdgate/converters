@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/utils",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Internal text, byte, inflate, and legacy-encoding helpers for mdgate converters",
   "type": "module",
   "license": "MIT",

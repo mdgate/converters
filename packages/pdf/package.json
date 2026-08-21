@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/pdf",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "mdgate PDF converter",
   "type": "module",
   "license": "MIT",
@@ -25,8 +25,8 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.5.4",
-    "@mdgate/utils": "0.5.4"
+    "@mdgate/core": "0.5.5",
+    "@mdgate/utils": "0.5.5"
   },
   "publishConfig": {
     "access": "public"
