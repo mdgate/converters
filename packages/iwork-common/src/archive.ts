@@ -2,6 +2,7 @@ import { Package } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import { warn } from '@mdgate/utils';
 import { type IwaObject, parseIwa } from './iwa.js';
+import { detectPreIwaKind } from './pre-iwa.js';
 import { fieldBytes, type ProtoField, readReference, readReferences } from './protobuf.js';
 import { type IWorkKind, TYPE } from './types.js';
 
@@ -65,8 +66,8 @@ export function detectIWorkKind(bytes: Uint8Array): IWorkKind | undefined {
     const archive = openIWork(bytes);
     return archive.kind;
   } catch (e) {
-    if (e instanceof ConvertError && e.code === 'encrypted') return undefined;
-    return undefined;
+    if (e instanceof ConvertError && e.code === 'encrypted') return detectPreIwaKind(bytes);
+    return detectPreIwaKind(bytes);
   }
 }
 

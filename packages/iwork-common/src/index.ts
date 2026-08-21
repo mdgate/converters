@@ -16,6 +16,7 @@ export {
   slideToBlocks,
 } from './drawables.js';
 export { buildIwa, type IwaObject, parseIwa } from './iwa.js';
+export { detectPreIwaKind, parsePreIwa } from './pre-iwa.js';
 export {
   decodeMessage,
   encodeBytesField,

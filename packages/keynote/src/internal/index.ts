@@ -1,3 +1,4 @@
+import { ConvertError } from '@mdgate/core';
 import {
   type Block,
   type Document,
@@ -7,10 +8,22 @@ import {
   inlinesToPlainText,
   plain,
 } from '@mdgate/document';
-import { keynoteSlides, openIWork, slideToBlocks } from '@mdgate/iwork-common';
+import {
+  type IWorkArchive,
+  keynoteSlides,
+  openIWork,
+  parsePreIwa,
+  slideToBlocks,
+} from '@mdgate/iwork-common';
 
 export function parse(bytes: Uint8Array): Document {
-  const archive = openIWork(bytes, 'keynote');
+  let archive: IWorkArchive;
+  try {
+    archive = openIWork(bytes, 'keynote');
+  } catch (e) {
+    if (e instanceof ConvertError && e.code === 'encrypted') throw e;
+    return parsePreIwa(bytes, 'keynote');
+  }
   const doc = emptyDocument();
   const slides = keynoteSlides(archive);
   for (let i = 0; i < slides.length; i += 1) {

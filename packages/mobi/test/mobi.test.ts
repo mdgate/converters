@@ -26,6 +26,21 @@ describe('mobi', () => {
     expect(converter.sniff(enc.encode('<html><body>hi</body></html>'))).toBe(0);
   });
 
+  it('parses Gutenberg-style tag soup with unquoted attributes', async () => {
+    const html = [
+      '<html><head><title>Alice</title></head><body>',
+      '<h1>Down the Rabbit-Hole</h1>',
+      '<p>Alice was beginning to get very tired</p>',
+      '<a filepos=000012345>of sitting by her sister</a>',
+      '</body></html>',
+    ].join('');
+    const bytes = buildUncompressedMobi(html, "Alice's Adventures in Wonderland");
+    const md = await toMarkdown(bytes);
+    expect(md).toContain('Down the Rabbit-Hole');
+    expect(md).toContain('Alice was beginning to get very tired');
+    expect(md).toContain('of sitting by her sister');
+  });
+
   it('converts a synthetic uncompressed MOBI with XHTML', async () => {
     const bytes = buildUncompressedMobi(SAMPLE_HTML, 'Tiny Book');
     await expect(toMarkdown(bytes)).resolves.toBe(

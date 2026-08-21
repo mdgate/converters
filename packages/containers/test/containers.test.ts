@@ -166,6 +166,11 @@ describe('detect', () => {
 </manifest:manifest>`,
     });
     expect(detectZipDoc(sxw)).toBe('odt');
+
+    const pages09 = zipStore({
+      'index.xml': `<?xml version="1.0"?><sl:document xmlns:sl="http://developer.apple.com/namespaces/sl"/>`,
+    });
+    expect(detectZipDoc(pages09)).toBe('pages');
   });
 
   it('reads a zip part with limits', () => {

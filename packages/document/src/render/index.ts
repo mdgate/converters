@@ -51,6 +51,12 @@ export function documentToMarkdown(doc: Document): string {
     }
     parts.push(s);
   }
+  if (parts.length === 0) {
+    for (const asset of doc.assets) {
+      if (!asset.mediaType.startsWith('image/')) continue;
+      parts.push('![]()');
+    }
+  }
   let out = parts.join('\n\n');
   if (out.length > 0) out += '\n';
   return out;

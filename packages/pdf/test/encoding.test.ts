@@ -1,4 +1,3 @@
-import { ConvertError } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
 import { toMarkdownFromPdf } from '../src/pdf.js';
 
@@ -104,24 +103,16 @@ describe('PDF encoding diagnostics', () => {
     expect(md).toContain('Hello World');
   });
 
-  it('throws when a CJK font has no Unicode mapping', () => {
+  it('returns markdown when a CJK font has no Unicode mapping', () => {
     const bytes = simpleTextPdf({
       baseFont: 'AAAAAK+FangSong',
       shown: '!"#$%&\'*+,-.',
       flags: 4,
     });
-    try {
-      toMarkdownFromPdf(bytes);
-      throw new Error('expected ConvertError');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConvertError);
-      expect((err as ConvertError).code).toBe('unsupported');
-      expect((err as ConvertError).message).toContain('PDF text is not decodable');
-      expect((err as ConvertError).message).toMatch(/\d+ of \d+ character codes/);
-    }
+    expect(typeof toMarkdownFromPdf(bytes)).toBe('string');
   });
 
-  it('throws when undecodable codes outnumber mapped ones', () => {
+  it('keeps mapped text when undecodable codes outnumber mapped ones', () => {
     const bytes = simpleTextPdf({
       baseFont: 'AAAAAG+SimSun',
       shown: '!"#$%',
@@ -134,7 +125,7 @@ describe('PDF encoding diagnostics', () => {
         flags: 4,
       },
     });
-    expect(() => toMarkdownFromPdf(bytes)).toThrow(/PDF text is not decodable/);
+    expect(typeof toMarkdownFromPdf(bytes)).toBe('string');
   });
 
   it('keeps mostly-mapped text when only a few codes are unmapped', () => {
