@@ -1,5 +1,16 @@
 import { type Document, emptyDocument, type Inline, PLAIN, type Style } from '@mdgate/document';
 import { cleanText, collapseWs, decode, lines, trim } from '@mdgate/utils';
+import {
+  isJacosubDocument,
+  isLrcDocument,
+  isMicrodvdDocument,
+  isTtmlDocument,
+  parseJacosub,
+  parseLrc,
+  parseMicrodvd,
+  parseSbvStart,
+  parseTtml,
+} from './formats.js';
 
 const ITALIC: Style = { bold: false, italic: true, strike: false, code: false };
 
@@ -17,6 +28,22 @@ export function parse(bytes: Uint8Array): Document {
   const doc = emptyDocument();
   if (isAssDocument(rows)) {
     parseAss(rows, doc);
+    return doc;
+  }
+  if (isTtmlDocument(text)) {
+    parseTtml(text, doc);
+    return doc;
+  }
+  if (isLrcDocument(rows)) {
+    parseLrc(rows, doc);
+    return doc;
+  }
+  if (isMicrodvdDocument(rows)) {
+    parseMicrodvd(rows, doc);
+    return doc;
+  }
+  if (isJacosubDocument(rows)) {
+    parseJacosub(rows, doc);
     return doc;
   }
   let i = 0;
@@ -42,9 +69,9 @@ export function parse(bytes: Uint8Array): Document {
       continue;
     }
 
-    let start = parseStart(line);
+    let start = parseStart(line) ?? parseSbvStart(line);
     if (start === undefined && i + 1 < rows.length) {
-      start = parseStart(rows[i + 1]!);
+      start = parseStart(rows[i + 1]!) ?? parseSbvStart(rows[i + 1]!);
       if (start !== undefined) i += 1;
     }
     if (start === undefined) {

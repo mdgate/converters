@@ -40,8 +40,20 @@ describe('subtitle', () => {
     expect(converter.sniff(new Uint8Array([1]), { path: 'captions.webvtt' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'clip.ass' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'clip.ssa' })).toBe(1);
+    expect(converter.sniff(enc.encode('[ti:Demo]\n[00:01.00]Hi\n'))).toBe(2);
+    expect(converter.sniff(enc.encode('{0}{25}Hello\n'))).toBe(2);
+    expect(converter.sniff(enc.encode('0:00:01.000,0:00:04.000\nHi\n'))).toBe(2);
+    expect(
+      converter.sniff(enc.encode('<tt xmlns="http://www.w3.org/ns/ttml"><p begin="0">x</p></tt>')),
+    ).toBe(2);
+    expect(converter.sniff(enc.encode('#\n0:00:01.00 0:00:04.00 VM Hi\n'))).toBe(2);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'clip.lrc' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'clip.sbv' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'clip.ttml' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'clip.jss' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]))).toBe(0);
     expect(converter.sniff(enc.encode('hello'), { path: 'note.txt' })).toBe(0);
+    expect(converter.sniff(enc.encode('[true, false]\n'))).toBe(0);
   });
 
   it('converts SRT and WebVTT cues to paragraphs', async () => {
@@ -62,6 +74,37 @@ Dialogue: 0,0:00:05.00,0:00:06.50,Default,,0,0,0,,Next\\Nline
     await expect(toMarkdown(enc.encode(ass))).resolves.toBe(
       '*\\[00:00:01.000]* Hello world\n\n*\\[00:00:05.000]* Next line\n',
     );
+  });
+
+  it('converts LRC, MicroDVD, SBV, TTML, and JACOsub cues', async () => {
+    await expect(
+      toMarkdown(enc.encode('[ti:Demo]\n[00:01.00]Hello\n[01:02.50]World\n')),
+    ).resolves.toBe('*\\[00:00:01.000]* Hello\n\n*\\[00:01:02.500]* World\n');
+    await expect(
+      toMarkdown(enc.encode('{0}{}25.000 FPS\n{25}{50}Hello\n{50}{75}foo|bar\n')),
+    ).resolves.toBe('*\\[00:00:01.000]* Hello\n\n*\\[00:00:02.000]* foo bar\n');
+    await expect(
+      toMarkdown(
+        enc.encode('0:00:01.000,0:00:04.000\nHello\nworld\n\n0:00:05.500,0:00:08.200\nNext\n'),
+      ),
+    ).resolves.toBe('*\\[00:00:01.000]* Hello world\n\n*\\[00:00:05.500]* Next\n');
+    const ttml = `<?xml version="1.0" encoding="utf-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <head><metadata><ttm:title>Titre test</ttm:title></metadata></head>
+  <body>
+    <p begin="00:00:01.000">Hello</p>
+    <p begin="00:00:05.500">Next<br/>line</p>
+  </body>
+</tt>
+`;
+    await expect(toMarkdown(enc.encode(ttml))).resolves.toBe(
+      '# Titre test\n\n*\\[00:00:01.000]* Hello\n\n*\\[00:00:05.500]* Next line\n',
+    );
+    await expect(
+      toMarkdown(
+        enc.encode('#\n0:00:01.00 0:00:04.00 VM Hello\n0:00:05.00 0:00:06.50 vt Next\\nline\n'),
+      ),
+    ).resolves.toBe('*\\[00:00:01.000]* Hello\n\n*\\[00:00:05.000]* Next line\n');
   });
 
   it('refuses a PDF and office file', async () => {
