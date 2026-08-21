@@ -80,8 +80,11 @@ export function parseMicrodvd(rows: readonly string[], doc: Document): void {
       continue;
     }
     const cue = cleanLine(rest.replace(MICRO_TAG, '').replace(/\|/g, ' '));
-    if (!Number.isFinite(startFrame) || startFrame < 0 || cue.length === 0) continue;
-    pushCue(doc, fromSeconds(startFrame / fps), cue);
+    const start = fromSeconds(startFrame / fps);
+    if (start === undefined || !Number.isFinite(startFrame) || startFrame < 0 || cue.length === 0) {
+      continue;
+    }
+    pushCue(doc, start, cue);
   }
 }
 
