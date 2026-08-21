@@ -26,6 +26,8 @@ describe('html', () => {
     expect(converter.sniff(enc.encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>'))).toBe(0);
     expect(converter.sniff(new Uint8Array([1]), { path: 'a.htm' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'page.html' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'tables.html4' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'nordics.html5' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'ch.xhtml' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'saved.mhtml' })).toBe(3);
     expect(converter.sniff(new Uint8Array([1]), { path: 'saved.mht' })).toBe(3);
@@ -37,6 +39,21 @@ describe('html', () => {
         ),
       ),
     ).toBe(0);
+  });
+
+  it('converts HTML fragments named .html4 or .html5', async () => {
+    const fragment = enc.encode(
+      '<p>Simple table with caption:</p><table><tr><td>12</td></tr></table>',
+    );
+    expect(html().sniff(fragment)).toBe(0);
+    await expect(toMarkdown(fragment)).rejects.toMatchObject({
+      name: 'ConvertError',
+      code: 'unsupported',
+    });
+    const expected = 'Simple table with caption:\n\n|  |\n| --- |\n| 12 |\n';
+    await expect(toMarkdown(fragment, { path: 'tables.html4' })).resolves.toBe(expected);
+    await expect(toMarkdown(fragment, { path: 'nordics.html5' })).resolves.toBe(expected);
+    await expect(toMarkdown(fragment, { path: 'tables.html' })).resolves.toBe(expected);
   });
 
   it('converts a heading, paragraph, and link', async () => {

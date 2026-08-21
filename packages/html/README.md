@@ -3,7 +3,7 @@
 Convert HTML, XHTML, and MHTML files to Markdown. Outputs GitHub-Flavored Markdown. Works in Node,
 Edge, and browsers. No native addons.
 
-Handles: `.html`, `.htm`, `.xhtml`, `.mhtml`, `.mht`
+Handles: `.html`, `.htm`, `.html4`, `.html5`, `.xhtml`, `.mhtml`, `.mht`
 
 ## Usage
 
