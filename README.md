@@ -86,6 +86,28 @@ const convert = create([
 ]);
 ```
 
+### PDF mapping tables
+
+Node loads `@mdgate/pdf`'s `maps.bin` from disk. Browsers, Cloudflare Workers, and other Edge runtimes do not have that file tree, so pass the bytes before converting:
+
+```ts
+import { setPdfMaps, toMarkdown } from '@mdgate/converters';
+import maps from '@mdgate/pdf/maps.bin';
+
+setPdfMaps(new Uint8Array(maps));
+const markdown = await toMarkdown(bytes);
+```
+
+Wrangler needs a Data rule so `.bin` imports resolve:
+
+```jsonc
+{
+  "rules": [{ "type": "Data", "globs": ["**/*.bin"] }]
+}
+```
+
+In Vite, import with `?url` and `fetch` the file (see `apps/demo/src/worker.ts`).
+
 ## Features
 
 - **One output for every format.** Official converters share one Markdown dialect — same escaping, tables, heading anchors, and footnotes — whether the input was a `.doc` from 2003 or a `.xlsx` from yesterday.
