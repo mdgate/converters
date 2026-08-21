@@ -1,6 +1,7 @@
-/** Load official PDF mapping tables from maps.bin (zlib, not base64-in-JS). */
+/** Official PDF mapping tables. Zlib bytes, Z85-encoded so the JS source stays dense. */
 
 import { inflateZlib } from '@mdgate/utils';
+import { PDF_MAPS_PAD, PDF_MAPS_Z85 } from './generated/maps-data.js';
 
 export type UniKind = 'utf8' | 'utf16' | 'utf32';
 
@@ -24,44 +25,41 @@ export interface PdfMaps {
   uni: Record<string, UniKind>;
 }
 
-let injected: Uint8Array | undefined;
 let parsed: PdfMaps | undefined;
 
-/** Provide mapping bytes. Required outside Node (browsers, Workers, Edge). */
-export function setPdfMaps(bytes: Uint8Array): void {
-  injected = bytes;
-  parsed = undefined;
+const Z85 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-:+=^!/*?&<>()[]{}@%$#';
+
+const Z85_DEC = new Int16Array(128).fill(-1);
+for (let i = 0; i < 85; i += 1) Z85_DEC[Z85.charCodeAt(i)] = i;
+
+export function decodeZ85(src: string, pad: number): Uint8Array {
+  if (src.length % 5 !== 0) throw new Error('invalid PDF maps encoding');
+  const out = new Uint8Array((src.length / 5) * 4);
+  const view = new DataView(out.buffer);
+  let o = 0;
+  for (let i = 0; i < src.length; i += 5) {
+    let n = 0;
+    for (let j = 0; j < 5; j += 1) {
+      const code = src.charCodeAt(i + j);
+      const v = code < 128 ? Z85_DEC[code]! : -1;
+      if (v < 0) throw new Error('invalid PDF maps encoding');
+      n = n * 85 + v;
+    }
+    view.setUint32(o, n);
+    o += 4;
+  }
+  return pad > 0 ? out.subarray(0, out.length - pad) : out;
 }
 
 export function pdfMaps(): PdfMaps {
   if (parsed) return parsed;
-  parsed = parseMaps(inflateZlib(rawMaps(), 2 << 20));
+  parsed = parseMaps(inflateZlib(decodeZ85(PDF_MAPS_Z85, PDF_MAPS_PAD), 2 << 20));
   return parsed;
-}
-
-function rawMaps(): Uint8Array {
-  if (injected) return injected;
-  try {
-    const { readFileSync } = require('node:fs') as typeof import('node:fs');
-    const { fileURLToPath } = require('node:url') as typeof import('node:url');
-    for (const rel of ['./maps.bin', './generated/maps.bin'] as const) {
-      try {
-        return new Uint8Array(readFileSync(fileURLToPath(new URL(rel, import.meta.url))));
-      } catch {
-        // try next
-      }
-    }
-  } catch {
-    // not Node
-  }
-  throw new Error(
-    'PDF mapping tables not loaded. Import @mdgate/pdf/maps.bin and call setPdfMaps() first. Required outside Node (browsers, Workers, Edge). Wrangler needs a Data rule for **/*.bin.',
-  );
 }
 
 function parseMaps(data: Uint8Array): PdfMaps {
   if (data.length < 4 || ascii(data, 0, 4) !== 'MDG1') {
-    throw new Error('invalid PDF maps.bin');
+    throw new Error('invalid PDF maps');
   }
   const sections = new Map<string, Uint8Array>();
   let i = 4;
@@ -76,7 +74,7 @@ function parseMaps(data: Uint8Array): PdfMaps {
   const cid = sections.get('CID1');
   const agl = sections.get('AGL1');
   const enc = sections.get('ENC1');
-  if (!cjk || !cid || !agl || !enc) throw new Error('incomplete PDF maps.bin');
+  if (!cjk || !cid || !agl || !enc) throw new Error('incomplete PDF maps');
   return {
     ...parseCjk(cjk),
     adobe: parseAdobe(cid),
