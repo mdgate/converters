@@ -203,4 +203,34 @@ describe('ai', () => {
       code: 'unsupported',
     });
   });
+
+  it('encodes media bytes as exact base64 without overlapping windows', async () => {
+    const small = Uint8Array.from({ length: 64 }, (_, i) => (i * 17) & 0xff);
+    const large = Uint8Array.from({ length: 0x8000 + 13 }, (_, i) => i & 0xff);
+    const seen: string[] = [];
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as {
+        messages: Array<{ content: Array<{ image_url?: { url: string } }> }>;
+      };
+      seen.push(body.messages[1]?.content[1]?.image_url?.url ?? '');
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), {
+        status: 200,
+      });
+    }) as typeof fetch;
+
+    const helper = ai({
+      baseURL: 'https://api.example.com/v1',
+      apiKey: 'secret',
+      model: 'vision-x',
+    });
+    await helper.convertImage({ bytes: small, mime: 'image/jpeg' });
+    await helper.convertImage({ bytes: large, mime: 'image/png' });
+
+    const prefixJpeg = 'data:image/jpeg;base64,';
+    const prefixPng = 'data:image/png;base64,';
+    expect(seen[0]?.startsWith(prefixJpeg)).toBe(true);
+    expect(seen[1]?.startsWith(prefixPng)).toBe(true);
+    expect(seen[0]?.slice(prefixJpeg.length)).toBe(Buffer.from(small).toString('base64'));
+    expect(seen[1]?.slice(prefixPng.length)).toBe(Buffer.from(large).toString('base64'));
+  });
 });
