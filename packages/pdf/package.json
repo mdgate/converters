@@ -9,18 +9,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./maps.bin": "./dist/maps.bin"
+    }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist/**/*.js",
-    "dist/**/*.d.ts",
-    "dist/**/*.bin"
+    "dist/**/*.d.ts"
   ],
   "scripts": {
-    "build": "bun ../../scripts/build-package.ts && cp src/generated/maps.bin dist/maps.bin",
+    "build": "bun ../../scripts/build-package.ts",
     "gen:maps": "python3 scripts/gen-maps.py",
     "prepublishOnly": "bun run build"
   },

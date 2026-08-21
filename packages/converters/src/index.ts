@@ -28,7 +28,7 @@ export { numbers } from '@mdgate/numbers';
 export { odf } from '@mdgate/odf';
 export { onenote } from '@mdgate/onenote';
 export { pages } from '@mdgate/pages';
-export { pdf, setPdfMaps } from '@mdgate/pdf';
+export { pdf } from '@mdgate/pdf';
 export { ppt } from '@mdgate/ppt';
 export { pptx } from '@mdgate/pptx';
 export { rtf } from '@mdgate/rtf';

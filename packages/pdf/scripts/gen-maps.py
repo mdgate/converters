@@ -231,6 +231,25 @@ def pack_encoding_cmaps(packed: dict[str, dict], uni: dict[str, str]) -> bytes:
     return bytes(out)
 
 
+# ASCII85-family, 5 chars / 4 bytes (25% overhead). Base64 is 33% and needs
+# escaping-safe quotes; this alphabet has no `"` or `\` so it sits in a JS string.
+Z85 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-:+=^!/*?&<>()[]{}@%$#"
+
+
+def encode_z85(data: bytes) -> tuple[str, int]:
+    pad = (4 - (len(data) % 4)) % 4
+    src = data + bytes(pad)
+    out: list[str] = []
+    for i in range(0, len(src), 4):
+        n = int.from_bytes(src[i : i + 4], "big")
+        block = ["x"] * 5
+        for j in range(4, -1, -1):
+            n, rem = divmod(n, 85)
+            block[j] = Z85[rem]
+        out.extend(block)
+    return "".join(out), pad
+
+
 def write_maps_bin(
     equiv: dict[int, int],
     adobe: dict[str, dict[int, int]],
@@ -238,6 +257,10 @@ def write_maps_bin(
     enc_packed: dict[str, dict],
     uni: dict[str, str],
 ) -> None:
+    check, _ = encode_z85(bytes([0x86, 0x4F, 0xD2, 0x6F, 0xB5, 0x59, 0xF7, 0x5B]))
+    if check != "HelloWorld":
+        raise SystemExit(f"z85 encoder mismatch: {check!r}")
+
     sections = [
         (b"CJK1", pack_cjk(equiv)),
         (b"CID1", pack_adobe(adobe)),
@@ -248,17 +271,23 @@ def write_maps_bin(
     for tag, payload in sections:
         raw += tag + struct.pack("<I", len(payload)) + payload
     blob = zlib.compress(bytes(raw), 9)
-    path = OUT / "maps.bin"
-    path.write_bytes(blob)
+    text, pad = encode_z85(blob)
+    (OUT / "maps-data.ts").write_text(
+        HEADER
+        + f"export const PDF_MAPS_Z85 = {json.dumps(text)};\n"
+        + f"export const PDF_MAPS_PAD = {pad};\n"
+    )
+    b64 = len(blob) * 4 // 3 + 4
     print(
-        f"maps.bin: {len(blob)}B zlib / {len(raw)}B raw "
-        f"(was ~635KB of base64 inside index.js)"
+        f"maps-data.ts: {len(text)}B z85 / {len(blob)}B zlib / {len(raw)}B raw "
+        f"(base64 would be ~{b64}B)"
     )
     for stale in (
         "adobe-cid-data.ts",
         "encoding-cmap-data.ts",
         "glyphlist-data.ts",
         "cjk-equiv.ts",
+        "maps.bin",
     ):
         p = OUT / stale
         if p.exists():

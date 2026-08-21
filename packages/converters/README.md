@@ -21,8 +21,7 @@ const convert = create(all());
 
 `all()` registers every converter that needs no configuration. `image()`,
 `audio()`, and `video()` need callbacks, so they are exported but not included
-in `all()`. PDF outside Node needs `setPdfMaps()` and, on Wrangler, a Data rule
-for `**/*.bin`. See the [repository README](https://github.com/mdgate/converters#pdf-mapping-tables).
+in `all()`.
 
 Only need one format? Install just that package instead — for example
 `@mdgate/docx` — and call its identical `toMarkdown`.
