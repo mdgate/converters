@@ -105,6 +105,15 @@ Dialogue: 0,0:00:05.00,0:00:06.50,Default,,0,0,0,,Next\\Nline
         enc.encode('#\n0:00:01.00 0:00:04.00 VM Hello\n0:00:05.00 0:00:06.50 vt Next\\nline\n'),
       ),
     ).resolves.toBe('*\\[00:00:01.000]* Hello\n\n*\\[00:00:05.000]* Next line\n');
+    await expect(toMarkdown(enc.encode('[00:01.00][00:02.00]Chorus\n'))).resolves.toBe(
+      '*\\[00:00:01.000]* Chorus\n\n*\\[00:00:02.000]* Chorus\n',
+    );
+    const entities = `<?xml version="1.0"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body><p begin="00:00:01.000">A &amp; B&#39;s</p></body>
+</tt>
+`;
+    await expect(toMarkdown(enc.encode(entities))).resolves.toBe("*\\[00:00:01.000]* A & B's\n");
   });
 
   it('refuses a PDF and office file', async () => {

@@ -18,6 +18,8 @@ const TTML_P = /<p\b([^>]*)>([\s\S]*?)<\/p>/gi;
 const TTML_BEGIN = /\bbegin\s*=\s*["']([^"']+)["']/i;
 const TTML_TITLE = /<(?:[\w.]+:)?title\b[^>]*>([\s\S]*?)<\/(?:[\w.]+:)?title>/i;
 const KARAOKE = /<\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?>/g;
+const LRC_STAMP = /^\[(-?\d{1,3}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?)\]/;
+const ENTITY = /&(?:amp|lt|gt|quot|apos|nbsp|lrm|rlm|#\d+|#x[\da-f]+);/gi;
 
 export function isLrcDocument(rows: readonly string[]): boolean {
   for (const row of rows) {
@@ -57,12 +59,21 @@ export function parseLrc(rows: readonly string[], doc: Document): void {
   for (const row of rows) {
     const t = trim(row);
     if (t.length === 0 || LRC_ID.test(t)) continue;
-    const m = LRC_CUE.exec(t);
-    if (m === null) continue;
-    const start = lrcStamp(m[1]!);
-    const cue = cleanLine(m[2]!.replace(KARAOKE, ''));
-    if (start === undefined || cue.length === 0) continue;
-    pushCue(doc, start, cue);
+    const stamps: string[] = [];
+    let i = 0;
+    while (i < t.length) {
+      const m = LRC_STAMP.exec(t.slice(i));
+      if (m === null) break;
+      stamps.push(m[1]!);
+      i += m[0].length;
+    }
+    if (stamps.length === 0) continue;
+    const cue = cleanLine(t.slice(i).replace(KARAOKE, ''));
+    if (cue.length === 0) continue;
+    for (const raw of stamps) {
+      const start = lrcStamp(raw);
+      if (start !== undefined) pushCue(doc, start, cue);
+    }
   }
 }
 
@@ -228,7 +239,41 @@ function cueInlines(start: string, text: string): Inline[] {
 }
 
 function cleanLine(raw: string): string {
-  return trim(collapseWs(cleanText(raw.replace(/<[^>]+>/g, ''))));
+  return trim(collapseWs(cleanText(decodeEntities(raw.replace(/<[^>]+>/g, '')))));
+}
+
+export function decodeEntities(text: string): string {
+  return text.replace(ENTITY, (entity) => {
+    const lower = entity.toLowerCase();
+    switch (lower) {
+      case '&amp;':
+        return '&';
+      case '&lt;':
+        return '<';
+      case '&gt;':
+        return '>';
+      case '&quot;':
+        return '"';
+      case '&apos;':
+        return "'";
+      case '&nbsp;':
+        return ' ';
+      case '&lrm;':
+      case '&rlm;':
+        return '';
+      default:
+        break;
+    }
+    if (lower.startsWith('&#x')) {
+      const n = Number.parseInt(lower.slice(3, -1), 16);
+      return Number.isFinite(n) ? String.fromCodePoint(n) : '';
+    }
+    if (lower.startsWith('&#')) {
+      const n = Number.parseInt(lower.slice(2, -1), 10);
+      return Number.isFinite(n) ? String.fromCodePoint(n) : '';
+    }
+    return '';
+  });
 }
 
 function pad(n: number, width: number): string {
