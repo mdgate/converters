@@ -96,11 +96,7 @@ function parseBody(
       ? body.find(ns.OFFICE, 'drawing')
       : undefined;
 
-  if (text !== undefined) {
-    const blocks = parseContainer(text, ctx);
-    blocks.push(...masterRegions(masters, ctx));
-    return blocks;
-  }
+  if (text !== undefined) return parseContainer(text, ctx);
   if (sheet !== undefined) return parseSpreadsheet(sheet, ctx);
   if (pres !== undefined) return parsePages(pres, ctx, masters);
   if (drawing !== undefined) return parsePages(drawing, ctx, masters);
