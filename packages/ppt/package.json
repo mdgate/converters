@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/ppt",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "mdgate legacy PowerPoint converter (binary .ppt)",
   "type": "module",
   "license": "MIT",
@@ -22,11 +22,11 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.0",
-    "@mdgate/core": "0.6.0",
-    "@mdgate/document": "0.6.0",
-    "@mdgate/office-common": "0.6.0",
-    "@mdgate/utils": "0.6.0"
+    "@mdgate/containers": "0.6.1",
+    "@mdgate/core": "0.6.1",
+    "@mdgate/document": "0.6.1",
+    "@mdgate/office-common": "0.6.1",
+    "@mdgate/utils": "0.6.1"
   },
   "publishConfig": {
     "access": "public"
