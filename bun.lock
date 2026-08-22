@@ -234,6 +234,7 @@
       "dependencies": {
         "@mdgate/core": "0.4.1",
         "@mdgate/document": "0.4.1",
+        "@mdgate/utils": "0.4.1",
       },
     },
     "packages/ipynb": {
