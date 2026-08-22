@@ -46,7 +46,7 @@ Only need one format? Install just that package instead — for example
 | `@mdgate/pages` | pages |
 | `@mdgate/numbers` | numbers |
 | `@mdgate/keynote` | key |
-| `@mdgate/epub` | epub |
+| `@mdgate/epub` | epub, ibooks |
 | `@mdgate/pdf` | pdf |
 | `@mdgate/fb2` | fb2, fb2.zip |
 | `@mdgate/mobi` | mobi, azw, azw3, prc |

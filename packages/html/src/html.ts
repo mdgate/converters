@@ -12,6 +12,7 @@ export function html(): Converter {
   return {
     id: 'html',
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {
+      if (isZip(bytes)) return 0;
       const ext = hint?.path !== undefined ? fileExtension(hint.path) : undefined;
       if (looksLikeMhtml(bytes) || (ext !== undefined && MHTML_EXTS.has(ext))) return 3;
       if (looksLikeSvg(bytes)) return 0;
@@ -37,15 +38,17 @@ export function html(): Converter {
 function refuseForeign(bytes: Uint8Array): void {
   if (isPdf(bytes)) throw ConvertError.unsupported('pdf');
   if (hasOleMagic(bytes)) throw ConvertError.unsupported('ole');
-  if (
+  if (isZip(bytes)) throw ConvertError.unsupported('zip');
+}
+
+function isZip(bytes: Uint8Array): boolean {
+  return (
     bytes.length >= 4 &&
     bytes[0] === 0x50 &&
     bytes[1] === 0x4b &&
     bytes[2] === 0x03 &&
     bytes[3] === 0x04
-  ) {
-    throw ConvertError.unsupported('zip');
-  }
+  );
 }
 
 function isPdf(bytes: Uint8Array): boolean {
