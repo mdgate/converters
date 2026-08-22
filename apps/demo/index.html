@@ -382,13 +382,32 @@ const markdown = await toMarkdown(bytes, {
             real-world files into Markdown your agent can grep, search, chunk,
             index, cite, and reason over.
           </p>
-          <pre class="flow">PDF · DOCX · XLSX · PPTX · HWP · Pages · MSG
-                         ↓
-                mdgate/converters
-                         ↓
-                      Markdown
-                         ↓
-          grep · search · chunk · index · cite</pre>
+          <ol class="flow" aria-label="Files become Markdown through mdgate/converters, then grep, search, chunk, index, and cite">
+            <li>
+              <ul>
+                <li>.pdf</li>
+                <li>.docx</li>
+                <li>.xlsx</li>
+                <li>.pptx</li>
+                <li>.hwp</li>
+                <li>.pages</li>
+                <li>.msg</li>
+              </ul>
+            </li>
+            <li>
+              <span class="flow-brand"><span>mdgate</span><span class="slash">/</span><span>converters</span></span>
+            </li>
+            <li><span class="flow-out">Markdown</span></li>
+            <li>
+              <ul>
+                <li>grep</li>
+                <li>search</li>
+                <li>chunk</li>
+                <li>index</li>
+                <li>cite</li>
+              </ul>
+            </li>
+          </ol>
         </section>
 
         <section class="band" id="why">
