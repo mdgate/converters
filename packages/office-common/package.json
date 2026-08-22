@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/office-common",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "description": "mdgate shared office-format semantics: fields, numbering, styles, DrawingML",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.7",
-    "@mdgate/core": "0.6.7",
-    "@mdgate/document": "0.6.7",
-    "@mdgate/utils": "0.6.7"
+    "@mdgate/containers": "0.6.8",
+    "@mdgate/core": "0.6.8",
+    "@mdgate/document": "0.6.8",
+    "@mdgate/utils": "0.6.8"
   },
   "publishConfig": {
     "access": "public"
