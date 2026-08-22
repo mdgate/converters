@@ -26,5 +26,6 @@ export function linkTargetIsEmpty(target: LinkTarget): boolean {
 /** Where an image's bytes live. */
 export type ImageSource =
   | { type: 'external'; url: string }
+  | { type: 'relative'; url: string }
   | { type: 'asset'; id: AssetId }
   | { type: 'unavailable' };

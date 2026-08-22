@@ -170,7 +170,7 @@ function renderImage(
   ctx: InlineContext,
   inLabel: boolean,
 ): string {
-  if (source.type === 'external') {
+  if (source.type === 'external' || source.type === 'relative') {
     const escaped = escapeText(trim(alt), ctx, escapeOpts({ inLabel: true }));
     return `![${escaped}](${formatUrl(source.url)})`;
   }
