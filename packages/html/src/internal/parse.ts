@@ -125,14 +125,22 @@ class DefaultCtx implements HtmlCtx {
 
   imageSource(src: string): ImageSource | undefined {
     if (src.length === 0) return undefined;
+    if (isDataUri(src)) return this.resolveDataUri(src);
     const cid = this.resolveCid(src);
     if (cid !== undefined) return cid;
     if (isAbsoluteUri(src)) return { type: 'external', url: src };
-    return undefined;
+    return { type: 'relative', url: src };
   }
 
   anchorId(raw: string): AnchorId {
     return raw;
+  }
+
+  private resolveDataUri(src: string): ImageSource | undefined {
+    const parsed = decodeDataUri(src);
+    if (parsed === undefined) return undefined;
+    const id = this.assets.add(parsed.mediaType, src, parsed.bytes);
+    return { type: 'asset', id };
   }
 
   private resolveCid(src: string): ImageSource | undefined {
@@ -196,4 +204,73 @@ function decodeHtmlBytes(bytes: Uint8Array): string {
     return new TextDecoder('utf-8').decode(bytes.subarray(3));
   }
   return new TextDecoder('utf-8').decode(bytes);
+}
+
+function isDataUri(src: string): boolean {
+  return src.length >= 5 && src.slice(0, 5).toLowerCase() === 'data:';
+}
+
+function decodeDataUri(src: string): { mediaType: string; bytes: Uint8Array } | undefined {
+  const body = src.slice(5);
+  const comma = body.indexOf(',');
+  if (comma < 0) return undefined;
+  const parts = body.slice(0, comma).split(';');
+  let mediaType = parts[0]!.trim();
+  if (mediaType.length === 0) mediaType = 'application/octet-stream';
+  let base64 = false;
+  for (let i = 1; i < parts.length; i += 1) {
+    if (parts[i]!.trim().toLowerCase() === 'base64') base64 = true;
+  }
+  const payload = body.slice(comma + 1);
+  const bytes = base64 ? decodeBase64(payload) : decodePercent(payload);
+  if (bytes === undefined || bytes.length === 0) return undefined;
+  return { mediaType: mediaType.toLowerCase(), bytes };
+}
+
+function decodeBase64(raw: string): Uint8Array | undefined {
+  let s = '';
+  for (let i = 0; i < raw.length; i += 1) {
+    const c = raw.charCodeAt(i);
+    if (c === 0x09 || c === 0x0a || c === 0x0d || c === 0x20) continue;
+    s += raw[i]!;
+  }
+  if (s.length === 0) return undefined;
+  try {
+    const bin = atob(s);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return undefined;
+  }
+}
+
+function decodePercent(raw: string): Uint8Array | undefined {
+  const out: number[] = [];
+  for (let i = 0; i < raw.length; i += 1) {
+    const c = raw.charCodeAt(i);
+    if (c === 0x25) {
+      if (i + 2 >= raw.length) return undefined;
+      const hi = fromHex(raw.charCodeAt(i + 1));
+      const lo = fromHex(raw.charCodeAt(i + 2));
+      if (hi === undefined || lo === undefined) return undefined;
+      out.push((hi << 4) | lo);
+      i += 2;
+      continue;
+    }
+    if (c < 128) {
+      out.push(c);
+      continue;
+    }
+    const encoded = new TextEncoder().encode(raw[i]!);
+    for (let j = 0; j < encoded.length; j += 1) out.push(encoded[j]!);
+  }
+  return out.length === 0 ? undefined : new Uint8Array(out);
+}
+
+function fromHex(c: number): number | undefined {
+  if (c >= 48 && c <= 57) return c - 48;
+  if (c >= 65 && c <= 70) return c - 55;
+  if (c >= 97 && c <= 102) return c - 87;
+  return undefined;
 }

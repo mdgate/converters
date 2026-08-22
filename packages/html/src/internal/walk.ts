@@ -372,7 +372,7 @@ class Builder {
       this.flushParagraph();
       const text = elem.text();
       if (trim(text).length > 0) {
-        this.blocks.push({ type: 'codeBlock', lang: undefined, text });
+        this.blocks.push({ type: 'codeBlock', lang: codeLanguage(elem), text });
       }
       return;
     }
@@ -749,4 +749,34 @@ function parseI64(s: string): number | undefined {
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
+}
+
+function codeLanguage(elem: Element): string | undefined {
+  const own = languageFromClass(elem.attrAny('class'));
+  if (own !== undefined) return own;
+  for (const child of elem.childElems()) {
+    if (child.local !== 'code') continue;
+    const lang = languageFromClass(child.attrAny('class'));
+    if (lang !== undefined) return lang;
+  }
+  return undefined;
+}
+
+function languageFromClass(classAttr: string | undefined): string | undefined {
+  if (classAttr === undefined || classAttr.length === 0) return undefined;
+  let langFallback: string | undefined;
+  for (const token of classAttr.split(/\s+/)) {
+    if (token.startsWith('language-')) {
+      const lang = token.slice('language-'.length);
+      if (isFenceLang(lang)) return lang;
+    } else if (langFallback === undefined && token.startsWith('lang-')) {
+      const lang = token.slice('lang-'.length);
+      if (isFenceLang(lang)) langFallback = lang;
+    }
+  }
+  return langFallback;
+}
+
+function isFenceLang(lang: string): boolean {
+  return lang.length > 0 && !lang.includes('`') && !lang.includes('\n') && !lang.includes('\r');
 }

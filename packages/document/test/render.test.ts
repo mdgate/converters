@@ -209,6 +209,19 @@ describe('documentToMarkdown', () => {
     ).toBe('chart\n');
   });
 
+  it('renders a relative image url', () => {
+    expect(
+      doc([
+        {
+          type: 'paragraph',
+          inlines: [
+            { type: 'image', alt: 'logo', source: { type: 'relative', url: 'images/logo.png' } },
+          ],
+        },
+      ]),
+    ).toBe('![logo](images/logo.png)\n');
+  });
+
   it('renders an embedded image with empty alt as a picture when it is the only content', () => {
     expect(
       documentToMarkdown({
