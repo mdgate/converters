@@ -4,6 +4,12 @@
   "description": "mdgate shared office-format semantics: fields, numbering, styles, DrawingML",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/office-common"
+  },
   "sideEffects": false,
   "exports": {
     ".": {

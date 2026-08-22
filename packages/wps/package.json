@@ -4,6 +4,12 @@
   "description": "mdgate Kingsoft WPS converter (wps/et/dps)",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/wps"
+  },
   "sideEffects": false,
   "exports": {
     ".": {

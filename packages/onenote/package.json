@@ -4,6 +4,12 @@
   "description": "mdgate OneNote converter (.one / .onetoc2 / .onepkg)",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/onenote"
+  },
   "sideEffects": false,
   "exports": {
     ".": {
