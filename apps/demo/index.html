@@ -380,8 +380,10 @@ import { pdf } from '@mdgate/pdf';
 function myFormat() {
   return {
     id: 'my-format',
-    sniff(bytes) {
-      return looksLikeMine(bytes) ? 2 : 0;
+    sniff(bytes, hint) {
+      if (looksLikeMine(bytes)) return 2;
+      if (hint?.path?.endsWith('.mine')) return 1;
+      return 0;
     },
     convert(bytes) {
       return { markdown: parseMine(bytes) };
