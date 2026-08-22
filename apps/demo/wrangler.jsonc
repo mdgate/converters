@@ -8,7 +8,7 @@
   },
   "routes": [
     {
-      "pattern": "demo.mdgate.dev",
+      "pattern": "convert.mdgate.dev",
       "custom_domain": true
     }
   ],

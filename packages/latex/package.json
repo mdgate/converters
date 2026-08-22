@@ -4,7 +4,7 @@
   "description": "mdgate LaTeX converter",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://demo.mdgate.dev",
+  "homepage": "https://convert.mdgate.dev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mdgate/converters.git",
