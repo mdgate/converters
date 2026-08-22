@@ -1,6 +1,6 @@
 # @mdgate/image
 
-Converters for JPEG, PNG, WebP, GIF, TIFF, HEIC, BMP, and SVG.
+Converters for JPEG, PNG, WebP, GIF, TIFF, HEIC, BMP, SVG, and gzip SVG (`.svgz`).
 
 Raster formats need an `(input) => markdown` function — `@mdgate/ai`, Apple OCR, or your own. SVG is converted locally (`svg()`, or `image()` without calling that function). `all()` registers `svg()`, not `image()`.
 

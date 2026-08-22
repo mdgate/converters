@@ -1,6 +1,9 @@
 import type { ConvertHint } from '@mdgate/core';
 import { ConvertError } from '@mdgate/core';
+import { inflateGzip } from '@mdgate/utils';
 import type { ImageMime } from './types.js';
+
+const SVG_MAX = 8 << 20;
 
 const EXTS: Record<string, ImageMime> = {
   jpg: 'image/jpeg',
@@ -14,6 +17,7 @@ const EXTS: Record<string, ImageMime> = {
   heif: 'image/heic',
   bmp: 'image/bmp',
   svg: 'image/svg+xml',
+  svgz: 'image/svg+xml',
 };
 
 const OLE_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
@@ -53,6 +57,13 @@ export function mimeFromBytes(bytes: Uint8Array): ImageMime | undefined {
   if (isTiff(bytes)) return 'image/tiff';
   if (isHeic(bytes)) return 'image/heic';
   if (isSvg(bytes)) return 'image/svg+xml';
+  if (isGzip(bytes)) {
+    try {
+      if (isSvg(inflateGzip(bytes, SVG_MAX))) return 'image/svg+xml';
+    } catch {
+      return undefined;
+    }
+  }
   return undefined;
 }
 
@@ -122,6 +133,10 @@ function isHeicBrand(bytes: Uint8Array, i: number): boolean {
   const d = bytes[i + 3];
   if (a === 0x68 && b === 0x65 && c === 0x69 && (d === 0x63 || d === 0x66)) return true;
   return a === 0x6d && b === 0x69 && c === 0x66 && d === 0x31;
+}
+
+function isGzip(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
 }
 
 function isSvg(bytes: Uint8Array): boolean {

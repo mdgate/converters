@@ -1,7 +1,10 @@
 import type { Converter, ConvertHint, ConvertResult } from '@mdgate/core';
 import { ConvertError } from '@mdgate/core';
 import { type Document, documentToMarkdown, emptyDocument, heading, plain } from '@mdgate/document';
+import { inflateGzip } from '@mdgate/utils';
 import { mimeFromBytes, mimeFromPath, refuseForeign, resolveMime } from './mime.js';
+
+const SVG_MAX = 8 << 20;
 
 export function svg(): Converter {
   return {
@@ -31,7 +34,9 @@ export function svgToMarkdown(bytes: Uint8Array): string {
 }
 
 function parseSvg(bytes: Uint8Array): Document {
-  const source = stripIgnored(new TextDecoder('utf-8', { fatal: false }).decode(bytes));
+  const source = stripIgnored(
+    new TextDecoder('utf-8', { fatal: false }).decode(decodeSvgBytes(bytes)),
+  );
   const titles = extractTagged(source, 'title');
   const descs = extractTagged(source, 'desc');
   const texts = extractTagged(source, 'text');
@@ -48,6 +53,17 @@ function parseSvg(bytes: Uint8Array): Document {
   for (const desc of descs) doc.blocks.push({ type: 'paragraph', inlines: [plain(desc)] });
   for (const text of texts) doc.blocks.push({ type: 'paragraph', inlines: [plain(text)] });
   return doc;
+}
+
+function decodeSvgBytes(bytes: Uint8Array): Uint8Array {
+  if (bytes.length < 2 || bytes[0] !== 0x1f || bytes[1] !== 0x8b) {
+    return bytes;
+  }
+  try {
+    return inflateGzip(bytes, SVG_MAX);
+  } catch {
+    throw ConvertError.malformed('gzip svg');
+  }
 }
 
 function stripIgnored(source: string): string {
