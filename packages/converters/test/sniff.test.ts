@@ -1,12 +1,14 @@
 import { create } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
 import { data } from '../../data/src/index.js';
+import { doc } from '../../doc/src/index.js';
 import { email } from '../../email/src/index.js';
 import { html } from '../../html/src/index.js';
 import { svg } from '../../image/src/index.js';
 import { ipynb } from '../../ipynb/src/index.js';
 import { odf } from '../../odf/src/index.js';
 import { subtitle } from '../../subtitle/src/index.js';
+import { text } from '../../text/src/index.js';
 import { zip } from '../../zip/src/index.js';
 
 const enc = new TextEncoder();
@@ -77,6 +79,21 @@ describe('sniff routing', () => {
       '[Script Info]\nTitle: x\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,Hello\n',
     );
     await expect(convert(bytes, { path: 'clip.ass' })).resolves.toContain('Hello');
+  });
+
+  it('sends Graphviz .dot to text, not doc', async () => {
+    const convertDot = create([text(), doc()]);
+    await expect(convertDot(enc.encode('digraph { a -> b; }\n'), { path: 'g.dot' })).resolves.toBe(
+      '```dot\ndigraph { a -> b; }\n```\n',
+    );
+    await expect(
+      convertDot(enc.encode('// c\ngraph { a -- b; }\n'), { path: 'g.dot' }),
+    ).resolves.toBe('```dot\n// c\ngraph { a -- b; }\n```\n');
+    await expect(
+      convertDot(enc.encode('/* c */\ndigraph tika {\n  a -> b;\n}\n'), {
+        path: 'testGRAPHVIZdc.dot',
+      }),
+    ).resolves.toContain('```dot');
   });
 
   it('sends LRC and MicroDVD to subtitle, not data', async () => {

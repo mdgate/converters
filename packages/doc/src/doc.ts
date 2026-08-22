@@ -4,8 +4,6 @@ import { documentToMarkdown } from '@mdgate/document';
 import { asciiStartsWith, fileExtension } from '@mdgate/utils';
 import { parse } from './internal/index.js';
 
-const EXTS = new Set(['doc', 'dot']);
-
 export function doc(): Converter {
   return {
     id: 'doc',
@@ -14,7 +12,7 @@ export function doc(): Converter {
       // them to the rtf converter, whose content sniff outranks our hint.
       if (asciiStartsWith(bytes, '{\\rtf')) return 0;
       if (detectOleDoc(bytes) === 'doc') return 2;
-      if (hint?.path !== undefined && EXTS.has(fileExtension(hint.path) ?? '')) return 1;
+      if (hint?.path !== undefined && fileExtension(hint.path) === 'doc') return 1;
       return 0;
     },
     convert(bytes: Uint8Array): ConvertResult {
