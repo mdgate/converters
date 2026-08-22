@@ -5,10 +5,12 @@ import {
   isJacosubDocument,
   isLrcDocument,
   isMicrodvdDocument,
+  isMpl2Document,
   isTtmlDocument,
   parseJacosub,
   parseLrc,
   parseMicrodvd,
+  parseMpl2,
   parseSbvStart,
   parseTtml,
 } from './formats.js';
@@ -36,6 +38,10 @@ export function parse(bytes: Uint8Array): Document {
   }
   if (isLrcDocument(rows)) {
     parseLrc(rows, doc);
+    return doc;
+  }
+  if (isMpl2Document(rows)) {
+    parseMpl2(rows, doc);
     return doc;
   }
   if (isMicrodvdDocument(rows)) {

@@ -110,7 +110,9 @@ function jsonNumberThenArraySep(bytes: Uint8Array, start: number): boolean {
   i = skipWs(bytes, i);
   if (i >= bytes.length) return true;
   const n = bytes[i]!;
-  return n === 0x2c || n === 0x5d;
+  if (n === 0x2c) return true;
+  if (n !== 0x5d) return false;
+  return skipWs(bytes, i + 1) >= bytes.length;
 }
 
 /** Content that would be claimed as XML (never a score-2 signature). */

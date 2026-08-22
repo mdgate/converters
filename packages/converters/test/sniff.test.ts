@@ -86,5 +86,8 @@ describe('sniff routing', () => {
     await expect(convert(enc.encode('{0}{25}Hello\n'), { path: 'clip.sub' })).resolves.toContain(
       'Hello',
     );
+    await expect(
+      convert(enc.encode('[0][12]Foo|bar|bla\n'), { path: 'clip.txt' }),
+    ).resolves.toContain('Foo bar bla');
   });
 });
