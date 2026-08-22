@@ -41,6 +41,52 @@ export function inflateZlib(data: Uint8Array, maxOut: number): Uint8Array {
   return out;
 }
 
+/** gzip-wrapped DEFLATE (RFC 1952). */
+export function inflateGzip(data: Uint8Array, maxOut: number): Uint8Array {
+  if (data.length === 0) return new Uint8Array(0);
+  const start = gzipPayloadOffset(data);
+  const bits = new BitStream(data, start);
+  const out = inflateStream(bits, maxOut);
+  bits.align();
+  const off = bits.byteOffset;
+  if (off + 8 > data.length) throw new Error('truncated gzip checksum');
+  const crc =
+    (data[off]! | (data[off + 1]! << 8) | (data[off + 2]! << 16) | (data[off + 3]! << 24)) >>> 0;
+  const isize =
+    (data[off + 4]! | (data[off + 5]! << 8) | (data[off + 6]! << 16) | (data[off + 7]! << 24)) >>>
+    0;
+  if (crc32Gzip(out) !== crc) throw new Error('gzip checksum mismatch');
+  if (out.length >>> 0 !== isize) throw new Error('gzip size mismatch');
+  return out;
+}
+
+function gzipPayloadOffset(data: Uint8Array): number {
+  if (data.length < 10) throw new Error('invalid gzip header');
+  if (data[0] !== 0x1f || data[1] !== 0x8b) throw new Error('invalid gzip header');
+  if (data[2] !== 8) throw new Error('unsupported gzip method');
+  const flg = data[3]!;
+  if ((flg & 0xe0) !== 0) throw new Error('invalid gzip flags');
+  let i = 10;
+  if ((flg & 4) !== 0) {
+    if (i + 2 > data.length) throw new Error('truncated gzip header');
+    const xlen = data[i]! | (data[i + 1]! << 8);
+    i += 2 + xlen;
+  }
+  if ((flg & 8) !== 0) {
+    while (i < data.length && data[i] !== 0) i += 1;
+    if (i >= data.length) throw new Error('truncated gzip header');
+    i += 1;
+  }
+  if ((flg & 16) !== 0) {
+    while (i < data.length && data[i] !== 0) i += 1;
+    if (i >= data.length) throw new Error('truncated gzip header');
+    i += 1;
+  }
+  if ((flg & 2) !== 0) i += 2;
+  if (i > data.length) throw new Error('truncated gzip header');
+  return i;
+}
+
 const LEN_BASE = [
   3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131,
   163, 195, 227, 258,
@@ -338,6 +384,17 @@ class OutBuffer {
     next.set(this.buf.subarray(0, this.len));
     this.buf = next;
   }
+}
+
+function crc32Gzip(data: Uint8Array): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < data.length; i += 1) {
+    c ^= data[i]!;
+    for (let k = 0; k < 8; k += 1) {
+      c = (c >>> 1) ^ ((c & 1) === 0 ? 0 : 0xedb88320);
+    }
+  }
+  return (c ^ 0xffffffff) >>> 0;
 }
 
 function adler32(data: Uint8Array): number {

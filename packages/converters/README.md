@@ -56,7 +56,7 @@ Only need one format? Install just that package instead — for example
 | `@mdgate/hwp` | hwp, hwpx, hwt, hwtx |
 | `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
 | `@mdgate/zip` | zip, zipx, jar |
-| `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg |
+| `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg, svgz |
 | `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, weba\* |
 | `@mdgate/video` | mp4\*, m4v\*, mov\*, webm\*, mkv\*, avi\* |
 

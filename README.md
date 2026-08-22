@@ -120,7 +120,7 @@ const convert = create([
 | Text | `.txt`, `.md`, and source files |
 | Subtitles | `.srt`, `.vtt`, `.webvtt` |
 | Archives | `.zip`, `.zipx`, `.jar` |
-| Images | `.jpeg`\*, `.png`\*, `.webp`\*, `.gif`\*, `.tiff`\*, `.heic`\*, `.bmp`\*, `.svg` |
+| Images | `.jpeg`\*, `.png`\*, `.webp`\*, `.gif`\*, `.tiff`\*, `.heic`\*, `.bmp`\*, `.svg`, `.svgz` |
 | Audio | `.mp3`\*, `.wav`\*, `.m4a`\*, `.aac`\*, `.ogg`\*, `.flac`\*, `.weba`\* |
 | Video | `.mp4`\*, `.m4v`\*, `.mov`\*, `.webm`\*, `.mkv`\*, `.avi`\* |
 
@@ -221,7 +221,7 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/hwp` | hwp, hwpx, hwt, hwtx |
 | `@mdgate/wps` | wps, wpt, et, ett, dps, dpt |
 | `@mdgate/zip` | zip, zipx, jar |
-| `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg |
+| `@mdgate/image` | jpeg\*, png\*, webp\*, gif\*, tiff\*, heic\*, bmp\*, svg, svgz |
 | `@mdgate/audio` | mp3\*, wav\*, m4a\*, aac\*, ogg\*, flac\*, weba\* |
 | `@mdgate/video` | mp4\*, m4v\*, mov\*, webm\*, mkv\*, avi\* |
 | `@mdgate/ai` | Optional `image` / `audio` / `video` callbacks |

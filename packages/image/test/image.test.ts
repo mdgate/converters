@@ -1,3 +1,4 @@
+import { gzipSync } from 'node:zlib';
 import { ConvertError, create } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
 import { image, svg, toMarkdown } from '../src/index.js';
@@ -44,6 +45,8 @@ describe('image', () => {
     expect(converter.sniff(new Uint8Array([1]), { path: 'a.heic' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'a.bmp' })).toBe(1);
     expect(converter.sniff(new Uint8Array([1]), { path: 'a.svg' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'a.svgz' })).toBe(1);
+    expect(converter.sniff(gzipSync(SVG_HI))).toBe(2);
     expect(converter.sniff(new Uint8Array([1]))).toBe(0);
   });
 
@@ -86,12 +89,23 @@ describe('svg', () => {
     expect(converter.sniff(SVG_HI)).toBe(3);
     expect(converter.sniff(enc.encode('<?xml version="1.0"?><svg></svg>'))).toBe(3);
     expect(converter.sniff(new Uint8Array([1]), { path: 'icon.svg' })).toBe(1);
+    expect(converter.sniff(new Uint8Array([1]), { path: 'icon.svgz' })).toBe(1);
+    expect(converter.sniff(gzipSync(SVG_HI))).toBe(3);
     expect(converter.sniff(new Uint8Array([1]))).toBe(0);
     expect(converter.sniff(PNG)).toBe(0);
   });
 
   it('converts a tiny svg with text', async () => {
     await expect(toMarkdown(SVG_HI)).resolves.toBe('Hi\n');
+  });
+
+  it('converts gzip-compressed SVG named .svgz', async () => {
+    const gz = gzipSync(SVG_HI);
+    expect(svg().sniff(gz)).toBe(3);
+    await expect(toMarkdown(gz, { path: 'icon.svgz' })).resolves.toBe('Hi\n');
+    await expect(
+      toMarkdown(gzipSync(enc.encode('<svg><title>Logo</title><text>Hi</text></svg>'))),
+    ).resolves.toBe('# Logo\n\nHi\n');
   });
 
   it('extracts title and desc, and notes a bare svg', async () => {

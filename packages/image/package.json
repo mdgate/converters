@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "@mdgate/core": "0.6.2",
-    "@mdgate/document": "0.6.2"
+    "@mdgate/document": "0.6.2",
+    "@mdgate/utils": "0.6.2"
   },
   "publishConfig": {
     "access": "public"
