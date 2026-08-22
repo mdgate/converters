@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/audio",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "mdgate audio converter",
   "type": "module",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.2"
+    "@mdgate/core": "0.6.3"
   },
   "publishConfig": {
     "access": "public"

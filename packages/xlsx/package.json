@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/xlsx",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "mdgate Excel converter (xlsx/xlsm/xlsb/xls)",
   "type": "module",
   "license": "MIT",
@@ -22,10 +22,10 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.2",
-    "@mdgate/core": "0.6.2",
-    "@mdgate/document": "0.6.2",
-    "@mdgate/utils": "0.6.2"
+    "@mdgate/containers": "0.6.3",
+    "@mdgate/core": "0.6.3",
+    "@mdgate/document": "0.6.3",
+    "@mdgate/utils": "0.6.3"
   },
   "publishConfig": {
     "access": "public"
