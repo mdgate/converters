@@ -23,6 +23,21 @@ test('sharedVersion accepts a lockstep tree', () => {
   expect(sharedVersion(pkgs)).toMatch(/^\d+\.\d+\.\d+$/);
 });
 
+test('published packages declare homepage and repository', () => {
+  for (const pkg of loadPublished()) {
+    const json = JSON.parse(readFileSync(pkg.path, 'utf8')) as {
+      homepage?: string;
+      repository?: { type?: string; url?: string; directory?: string };
+    };
+    expect(json.homepage, pkg.json.name).toBe('https://demo.mdgate.dev');
+    expect(json.repository, pkg.json.name).toEqual({
+      type: 'git',
+      url: 'git+https://github.com/mdgate/converters.git',
+      directory: `packages/${pkg.dir}`,
+    });
+  }
+});
+
 test('publish order lists every published package after its @mdgate deps', () => {
   const pkgs = loadPublished();
   const order = publishOrder(pkgs);

@@ -4,6 +4,12 @@
   "description": "mdgate PowerPoint converter (pptx/pptm/ppsx/ppsm)",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/pptx"
+  },
   "sideEffects": false,
   "exports": {
     ".": {

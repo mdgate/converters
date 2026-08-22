@@ -4,6 +4,12 @@
   "description": "mdgate OpenDocument converter (odt/ods/odp/odg and flat/templates)",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/odf"
+  },
   "sideEffects": false,
   "exports": {
     ".": {

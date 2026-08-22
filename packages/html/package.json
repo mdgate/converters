@@ -4,6 +4,12 @@
   "description": "mdgate HTML, XHTML, and MHTML converter",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/html"
+  },
   "sideEffects": false,
   "exports": {
     ".": {

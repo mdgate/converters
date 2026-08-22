@@ -4,6 +4,12 @@
   "description": "mdgate Apple Numbers converter",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/numbers"
+  },
   "sideEffects": false,
   "exports": {
     ".": {

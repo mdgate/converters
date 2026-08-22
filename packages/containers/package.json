@@ -4,6 +4,12 @@
   "description": "mdgate container parsing: ZIP/OPC packages, OLE compound files, XML",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://demo.mdgate.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdgate/converters.git",
+    "directory": "packages/containers"
+  },
   "sideEffects": false,
   "exports": {
     ".": {
