@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/data",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "mdgate JSON, JSONL, XML, and YAML converter",
   "type": "module",
   "license": "MIT",
@@ -28,9 +28,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.6",
-    "@mdgate/document": "0.6.6",
-    "@mdgate/utils": "0.6.6"
+    "@mdgate/core": "0.6.7",
+    "@mdgate/document": "0.6.7",
+    "@mdgate/utils": "0.6.7"
   },
   "publishConfig": {
     "access": "public"
