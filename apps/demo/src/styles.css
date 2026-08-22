@@ -781,13 +781,14 @@ code {
 }
 
 .catalog th[scope="row"] a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .catalog th[scope="row"] a:hover {
-  color: var(--accent-hover);
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .catalog td span {
