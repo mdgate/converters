@@ -1,11 +1,14 @@
 # @mdgate/docx
 
-Convert Word documents to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
-browsers. No native addons.
+**Convert Word documents to Markdown in TypeScript.**
 
-Handles: `.docx`, `.docm`, `.dotx`, `.dotm`
+[`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) reads `.docx`, `.docm`, `.dotx`, and `.dotm` files directly in JavaScript and converts them into GitHub-Flavored Markdown, without Python, native addons, WASM, or an external Word service.
 
-## Usage
+Works in **Node.js, Cloudflare Workers, Edge runtimes, and browsers**.
+
+```bash
+npm install @mdgate/docx
+```
 
 ```ts
 import { toMarkdown } from '@mdgate/docx';
@@ -13,14 +16,189 @@ import { toMarkdown } from '@mdgate/docx';
 const markdown = await toMarkdown(bytes);
 ```
 
-Compose with other converters:
+`bytes` is a `Uint8Array`, so the document can come from a file upload, object storage, an HTTP request, a browser file picker, or anywhere else your application gets bytes.
+
+---
+
+## Why [`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx)
+
+Word support often means a native library, a desktop application, or a remote conversion API.
+
+[`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) is a Word reader written for the same runtime as your application:
+
+* **Pure TypeScript**
+* **DOCX → Markdown locally**
+* **No Python runtime**
+* **No native addons**
+* **No WASM runtime**
+* **Zero third-party runtime dependencies**
+* **Works with raw `Uint8Array` input**
+* **Detects OOXML Word packages from their contents, not only the filename**
+
+Use it when your application, AI agent, ingestion pipeline, or serverless function needs to read Word files without operating a separate document-processing service.
+
+---
+
+## What it extracts
+
+[`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) walks WordprocessingML and rebuilds a shared document model, then renders GitHub-Flavored Markdown.
+
+The converter handles Word-specific concerns including:
+
+* headings and paragraphs
+* bold, italic, and strikethrough
+* links
+* ordered, unordered, and nested lists
+* tables, including merged cells
+* footnotes and endnotes
+* field results
+* charts and diagrams as readable blocks when present
+* images that can be handed to a reader composed with [`@mdgate/core`](https://github.com/mdgate/converters/tree/main/packages/core)
+
+The output is Markdown that can be searched, indexed, chunked, cached, or passed directly to an AI agent.
+
+---
+
+## Node.js
+
+```ts
+import { readFile } from 'node:fs/promises';
+import { toMarkdown } from '@mdgate/docx';
+
+const bytes = new Uint8Array(await readFile('report.docx'));
+const markdown = await toMarkdown(bytes);
+
+console.log(markdown);
+```
+
+---
+
+## Browser
+
+Word files can be converted directly from a browser file picker.
+
+```ts
+import { toMarkdown } from '@mdgate/docx';
+
+const file = input.files![0];
+const bytes = new Uint8Array(await file.arrayBuffer());
+
+const markdown = await toMarkdown(bytes);
+```
+
+Conversion can happen locally without uploading the document to a parsing service.
+
+---
+
+## Cloudflare Workers and Edge runtimes
+
+Because [`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) does not depend on Python, native binaries, WASM, or a separate execution runtime, it can be used as a normal JavaScript dependency in Cloudflare Workers and other Edge runtimes.
+
+```ts
+import { toMarkdown } from '@mdgate/docx';
+
+export default {
+  async fetch(request: Request) {
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    const markdown = await toMarkdown(bytes);
+
+    return new Response(markdown, {
+      headers: {
+        'content-type': 'text/markdown; charset=utf-8',
+      },
+    });
+  },
+};
+```
+
+This makes it suitable for workflows such as:
+
+```text
+upload DOCX
+↓
+Cloudflare Worker
+↓
+@mdgate/docx
+↓
+Markdown
+↓
+agent / search / index / storage
+```
+
+---
+
+## Format detection
+
+You do not need to trust the file extension.
+
+[`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) recognizes Word OOXML packages from ZIP package metadata.
+
+```ts
+const markdown = await toMarkdown(bytes);
+```
+
+A path can still be supplied as a format hint when [`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) is used through [`@mdgate/converters`](https://github.com/mdgate/converters/tree/main/packages/converters) or a reader composed with [`@mdgate/core`](https://github.com/mdgate/converters/tree/main/packages/core), but the path is never used to read a file from disk.
+
+Legacy binary `.doc` files are a different format. Use [`@mdgate/doc`](https://github.com/mdgate/converters/tree/main/packages/doc) for those.
+
+---
+
+## Compose it with other file readers
+
+[`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) implements the converter interface from [`@mdgate/core`](https://github.com/mdgate/converters/tree/main/packages/core).
 
 ```ts
 import { create } from '@mdgate/core';
 import { docx } from '@mdgate/docx';
 
-const convert = create([docx()]);
+const read = create([
+  docx(),
+]);
+
+const markdown = await read(bytes);
 ```
 
-Part of [mdgate converters](https://github.com/mdgate/converters); install
-`@mdgate/converters` for every format at once.
+Add other converters when your application needs more than Word:
+
+```ts
+import { create } from '@mdgate/core';
+import { docx } from '@mdgate/docx';
+import { pdf } from '@mdgate/pdf';
+import { xlsx } from '@mdgate/xlsx';
+
+const read = create([
+  docx(),
+  pdf(),
+  xlsx(),
+]);
+```
+
+The application still uses one reading interface while each format remains independently installable.
+
+---
+
+## Need more than Word?
+
+If your application needs to read many different file types, use the complete converter set:
+
+```bash
+npm install @mdgate/converters
+```
+
+```ts
+import { toMarkdown } from '@mdgate/converters';
+
+const markdown = await toMarkdown(bytes, {
+  path: filename,
+});
+```
+
+[`@mdgate/docx`](https://github.com/mdgate/converters/tree/main/packages/docx) is one of the single-format packages in the open-source [`mdgate/converters`](https://github.com/mdgate/converters) project.
+
+For AI agents, the same converter architecture can be used to extend `read_file` from text files to real-world document formats.
+
+---
+
+## License
+
+MIT

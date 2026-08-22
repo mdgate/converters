@@ -1,11 +1,14 @@
 # @mdgate/rtf
 
-Convert RTF documents to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
-browsers. No native addons.
+**Convert RTF to Markdown in TypeScript.**
 
-Handles: `.rtf` (also RTF content wearing a `.doc` extension)
+[`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf) reads Rich Text Format files directly in JavaScript and converts them into GitHub-Flavored Markdown, without Python, native addons, WASM, or Word.
 
-## Usage
+Works in **Node.js, Cloudflare Workers, Edge runtimes, and browsers**.
+
+```bash
+npm install @mdgate/rtf
+```
 
 ```ts
 import { toMarkdown } from '@mdgate/rtf';
@@ -13,14 +16,147 @@ import { toMarkdown } from '@mdgate/rtf';
 const markdown = await toMarkdown(bytes);
 ```
 
-Compose with other converters:
+`bytes` is a `Uint8Array`, so the document can come from a file upload, object storage, an HTTP request, a browser file picker, or anywhere else your application gets bytes.
+
+---
+
+## Why [`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf)
+
+RTF still shows up in email, older Word "Save As" output, and files that wear a `.doc` extension but start with `{\rtf`.
+
+[`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf) is an RTF reader written for the same runtime as your application:
+
+* **Pure TypeScript**
+* **RTF → Markdown locally**
+* **No Python runtime**
+* **No native addons**
+* **No WASM runtime**
+* **Zero third-party runtime dependencies**
+* **Works with raw `Uint8Array` input**
+* **Detects RTF from the file contents, not only the filename**
+
+---
+
+## What it extracts
+
+[`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf) lexes RTF control words and rebuilds a shared document model.
+
+The converter handles RTF-specific concerns including:
+
+* paragraphs and headings
+* bold, italic, and strikethrough
+* lists
+* tables
+* Unicode and legacy code-page text
+* RTF content stored under a `.doc` name
+
+The output is Markdown that can be searched, indexed, chunked, cached, or passed directly to an AI agent.
+
+---
+
+## Node.js
+
+```ts
+import { readFile } from 'node:fs/promises';
+import { toMarkdown } from '@mdgate/rtf';
+
+const bytes = new Uint8Array(await readFile('notes.rtf'));
+const markdown = await toMarkdown(bytes);
+
+console.log(markdown);
+```
+
+---
+
+## Browser
+
+```ts
+import { toMarkdown } from '@mdgate/rtf';
+
+const file = input.files![0];
+const bytes = new Uint8Array(await file.arrayBuffer());
+
+const markdown = await toMarkdown(bytes);
+```
+
+---
+
+## Cloudflare Workers and Edge runtimes
+
+```ts
+import { toMarkdown } from '@mdgate/rtf';
+
+export default {
+  async fetch(request: Request) {
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    const markdown = await toMarkdown(bytes);
+
+    return new Response(markdown, {
+      headers: {
+        'content-type': 'text/markdown; charset=utf-8',
+      },
+    });
+  },
+};
+```
+
+---
+
+## Format detection
+
+You do not need to trust the file extension.
+
+[`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf) recognizes RTF from the opening `{\rtf` group.
+
+```ts
+const markdown = await toMarkdown(bytes);
+```
+
+A path can still be supplied as a format hint when [`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf) is used through [`@mdgate/converters`](https://github.com/mdgate/converters/tree/main/packages/converters) or a reader composed with [`@mdgate/core`](https://github.com/mdgate/converters/tree/main/packages/core), but the path is never used to read a file from disk.
+
+---
+
+## Compose it with other file readers
+
+[`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf) implements the converter interface from [`@mdgate/core`](https://github.com/mdgate/converters/tree/main/packages/core).
 
 ```ts
 import { create } from '@mdgate/core';
 import { rtf } from '@mdgate/rtf';
+import { docx } from '@mdgate/docx';
 
-const convert = create([rtf()]);
+const read = create([
+  rtf(),
+  docx(),
+]);
 ```
 
-Part of [mdgate converters](https://github.com/mdgate/converters); install
-`@mdgate/converters` for every format at once.
+The application still uses one reading interface while each format remains independently installable.
+
+---
+
+## Need more than RTF?
+
+If your application needs to read many different file types, use the complete converter set:
+
+```bash
+npm install @mdgate/converters
+```
+
+```ts
+import { toMarkdown } from '@mdgate/converters';
+
+const markdown = await toMarkdown(bytes, {
+  path: filename,
+});
+```
+
+[`@mdgate/rtf`](https://github.com/mdgate/converters/tree/main/packages/rtf) is one of the single-format packages in the open-source [`mdgate/converters`](https://github.com/mdgate/converters) project.
+
+For AI agents, the same converter architecture can be used to extend `read_file` from text files to real-world document formats.
+
+---
+
+## License
+
+MIT
