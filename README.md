@@ -112,7 +112,7 @@ const convert = create([
 | HTML | `.html`, `.htm`, `.html4`, `.html5`, `.xhtml`, `.mhtml`, `.mht` |
 | Email | `.eml`, `.msg`, `.mbox`, `.emlx` |
 | Notebooks | `.ipynb` |
-| Ebooks | `.epub`, `.fb2`, `.mobi`, `.azw`, `.azw3`, `.prc` |
+| Ebooks | `.epub`, `.ibooks`, `.fb2`, `.mobi`, `.azw`, `.azw3`, `.prc` |
 | LaTeX | `.tex`, `.latex`, `.ltx` |
 | Visio | `.vsd`, `.vsdx`, `.vss`, `.vst`, `.vssx`, `.vstx` |
 | OneNote | `.one`, `.onetoc2`, `.onepkg` |
@@ -211,7 +211,7 @@ Converters — each exports a factory (for `create`) and its own `toMarkdown`:
 | `@mdgate/pages` | pages |
 | `@mdgate/numbers` | numbers |
 | `@mdgate/keynote` | key |
-| `@mdgate/epub` | epub |
+| `@mdgate/epub` | epub, ibooks |
 | `@mdgate/pdf` | pdf |
 | `@mdgate/fb2` | fb2, fb2.zip |
 | `@mdgate/mobi` | mobi, azw, azw3, prc |

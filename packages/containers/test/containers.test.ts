@@ -148,6 +148,11 @@ describe('detect', () => {
     });
     expect(detectZipDoc(vsdx)).toBe('vsdx');
 
+    const ibooks = zipStore({
+      mimetype: 'application/x-ibooks+zip',
+    });
+    expect(detectZipDoc(ibooks)).toBe('epub');
+
     const hwpx = zipStore({
       mimetype: 'application/hwp+zip',
       'Contents/content.hpf': '<hpf/>',

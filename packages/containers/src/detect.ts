@@ -221,6 +221,7 @@ function mimetypeKind(mime: string): ZipDocKind | undefined {
   const base = mime.endsWith('-template') ? mime.slice(0, -'-template'.length) : mime;
   switch (base) {
     case 'application/epub+zip':
+    case 'application/x-ibooks+zip':
       return 'epub';
     case 'application/vnd.oasis.opendocument.text':
       return 'odt';

@@ -3,7 +3,7 @@
 Convert EPUB books to Markdown. Outputs GitHub-Flavored Markdown. Works in Node, Edge, and
 browsers. No native addons.
 
-Handles: `.epub`
+Handles: `.epub`, `.ibooks`
 
 ## Usage
 
