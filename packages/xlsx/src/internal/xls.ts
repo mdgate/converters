@@ -33,8 +33,7 @@ export function parseXlsCfb(ole: CompoundFile): SheetRange[] {
   walkRecords(stream, (typ, data, rec) => {
     switch (typ) {
       case 0x002f:
-        if (u16(data, 0) !== 0) throw ConvertError.encrypted();
-        break;
+        throw ConvertError.encrypted();
       case 0x0042:
         encoding = encodingFromCodepage(u16(data, 0));
         break;
