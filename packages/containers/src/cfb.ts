@@ -112,10 +112,17 @@ export class CompoundFile {
     }
     // rust-cfb 0.14 Allocator::validate (default Permissive): a FAT that
     // still outruns the file after stripping padding is a hard open error.
+    // Some writers pad the last FAT sector with ENDOFCHAIN instead of FREESECT.
     const numSectors = Math.max(0, Math.floor((bytes.length + sectorSize - 1) / sectorSize) - 1);
     while (fat.length > numSectors) {
       const last = fat[fat.length - 1];
-      if (last === 0 || last === DIFATSECT || last === FATSECT || last === FREESECT) {
+      if (
+        last === 0 ||
+        last === DIFATSECT ||
+        last === FATSECT ||
+        last === FREESECT ||
+        last === ENDOFCHAIN
+      ) {
         fat.pop();
       } else {
         break;
