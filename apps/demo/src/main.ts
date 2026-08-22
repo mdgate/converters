@@ -1,6 +1,6 @@
-import { formatLabel, stemOf } from './format';
+import { formatLabel, mediaKind, stemOf } from './format';
 import { renderMarkdown } from './preview';
-import { sampleCsv, sampleDocx, sampleEml, sampleHtml, sampleRtf, sampleXlsx } from './samples';
+import { loadSample } from './samples';
 import type { ConvertRequest, WorkerMessage } from './worker';
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -10,11 +10,17 @@ const $ = <T extends HTMLElement>(id: string): T => {
 };
 
 const drop = $<HTMLButtonElement>('drop');
-const dropTitle = $('drop-title');
-const dropHint = $('drop-hint');
+const statusEl = $('status');
+const statusLabel = $('status-label');
 const fileInput = $<HTMLInputElement>('file');
 const output = $('output');
 const preview = $('preview');
+const help = $('help');
+const helpTitle = $('help-title');
+const helpLede = $('help-lede');
+const helpBody = $('help-body');
+const helpCmd = $('help-cmd');
+const helpLink = $<HTMLAnchorElement>('help-link');
 const result = $('result');
 const resultName = $('result-name');
 const resultArrow = $('result-arrow');
@@ -24,29 +30,34 @@ const viewPreview = $<HTMLButtonElement>('view-preview');
 const viewSource = $<HTMLButtonElement>('view-source');
 const copyBtn = $<HTMLButtonElement>('copy');
 const downloadBtn = $<HTMLButtonElement>('download');
-const sampleHtmlBtn = $<HTMLButtonElement>('sample-html');
-const sampleEmlBtn = $<HTMLButtonElement>('sample-eml');
-const sampleRtfBtn = $<HTMLButtonElement>('sample-rtf');
-const sampleCsvBtn = $<HTMLButtonElement>('sample-csv');
-const sampleDocxBtn = $<HTMLButtonElement>('sample-docx');
-const sampleXlsxBtn = $<HTMLButtonElement>('sample-xlsx');
-const sampleButtons = [
-  sampleHtmlBtn,
-  sampleEmlBtn,
-  sampleRtfBtn,
-  sampleCsvBtn,
-  sampleDocxBtn,
-  sampleXlsxBtn,
-];
+const sampleButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-sample]')];
+
+const MEDIA_HELP = {
+  image: {
+    title: 'This file needs a model callback',
+    lede: '@mdgate/image does not send images to an AI service automatically. Connect the vision model your application already uses.',
+    install: 'npm install @mdgate/image',
+    href: 'https://github.com/mdgate/converters/tree/main/packages/image',
+  },
+  audio: {
+    title: 'This file needs a model callback',
+    lede: '@mdgate/audio does not send audio to a transcription service automatically. Connect the speech model your application already uses.',
+    install: 'npm install @mdgate/audio',
+    href: 'https://github.com/mdgate/converters/tree/main/packages/audio',
+  },
+  video: {
+    title: 'This file needs a model callback',
+    lede: '@mdgate/video does not send video to a model automatically. Connect the video model your application already uses.',
+    install: 'npm install @mdgate/video',
+    href: 'https://github.com/mdgate/converters/tree/main/packages/video',
+  },
+} as const;
 
 let markdown = '';
 let baseName = 'document';
 let seq = 0;
 let ready = false;
 let showPreview = true;
-
-const idleTitle = 'Drop a file here';
-const idleHint = 'or <u>browse</u> for one. Conversion happens locally, nothing is uploaded.';
 
 const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 
@@ -57,34 +68,60 @@ worker.addEventListener('message', (event: MessageEvent<WorkerMessage>) => {
 });
 
 worker.addEventListener('error', (event) => {
-  dropTitle.textContent = 'The converter failed to load';
-  dropHint.textContent = event.message || 'worker error';
+  statusEl.classList.remove('ready', 'busy');
+  statusLabel.textContent = event.message || 'The converter failed to load';
   drop.disabled = true;
 });
+
+function setStatus(kind: 'starting' | 'ready' | 'busy', label: string): void {
+  statusEl.classList.toggle('ready', kind === 'ready');
+  statusEl.classList.toggle('busy', kind === 'busy');
+  statusLabel.textContent = label;
+}
 
 function setBusy(busy: boolean, label?: string): void {
   drop.disabled = busy || !ready;
   for (const button of sampleButtons) button.disabled = busy || !ready;
   if (busy) {
-    dropTitle.textContent = label ?? 'Converting…';
-    dropHint.textContent = 'this stays on your machine';
+    setStatus('busy', label ?? 'Converting');
     return;
   }
   if (ready) {
-    dropTitle.textContent = idleTitle;
-    dropHint.innerHTML = idleHint;
+    setStatus('ready', 'Ready · running @mdgate/converters locally');
   }
 }
 
 function applyView(): void {
-  const previewOn = showPreview && !output.classList.contains('error');
+  const previewOn = showPreview && !output.classList.contains('error') && help.hidden;
   preview.hidden = !previewOn;
-  output.hidden = previewOn;
+  output.hidden = previewOn || !help.hidden;
   viewPreview.setAttribute('aria-pressed', previewOn ? 'true' : 'false');
   viewSource.setAttribute('aria-pressed', previewOn ? 'false' : 'true');
 }
 
+function hideHelp(): void {
+  help.hidden = true;
+}
+
+function showMediaHelp(kind: keyof typeof MEDIA_HELP): void {
+  const info = MEDIA_HELP[kind];
+  help.hidden = false;
+  helpTitle.textContent = info.title;
+  helpLede.textContent = info.lede;
+  helpBody.textContent =
+    'SVG converts locally. Raster images, audio, and video stay out of all() until you register a callback.';
+  helpCmd.textContent = info.install;
+  helpLink.href = info.href;
+  preview.replaceChildren();
+  preview.hidden = true;
+  output.hidden = true;
+  view.hidden = true;
+  copyBtn.hidden = true;
+  downloadBtn.hidden = true;
+}
+
 function showResult(name: string, stats: string, text: string, isError: boolean): void {
+  hideHelp();
   result.hidden = false;
   resultName.textContent = name;
   resultArrow.hidden = isError;
@@ -107,8 +144,9 @@ function convert(name: string, bytes: Uint8Array): void {
   if (!ready) return;
   const id = ++seq;
   const format = formatLabel(name, bytes);
+  const media = mediaKind(name, bytes);
   baseName = stemOf(name);
-  setBusy(true, `Converting ${name}…`);
+  setBusy(true, `Converting ${name}`);
 
   const copy = new Uint8Array(bytes);
   const request: ConvertRequest = { type: 'convert', id, path: name, bytes: copy };
@@ -127,6 +165,15 @@ function convert(name: string, bytes: Uint8Array): void {
       showResult(name, `${format} · ${chars} chars · ${msg.ms} ms`, markdown, false);
       return;
     }
+    if (media !== undefined) {
+      result.hidden = false;
+      resultName.textContent = name;
+      resultArrow.hidden = true;
+      resultStats.textContent = '';
+      showMediaHelp(media);
+      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
     showResult(name, '', `Could not convert this file: ${msg.message}`, true);
   };
   worker.addEventListener('message', onMessage);
@@ -134,15 +181,6 @@ function convert(name: string, bytes: Uint8Array): void {
 
 async function convertFile(file: File): Promise<void> {
   convert(file.name, new Uint8Array(await file.arrayBuffer()));
-}
-
-function convertFetched(name: string, load: () => Promise<Uint8Array>): void {
-  void load()
-    .then((bytes) => convert(name, bytes))
-    .catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
-      showResult(name, '', `Could not load sample: ${message}`, true);
-    });
 }
 
 drop.addEventListener('click', () => {
@@ -167,12 +205,18 @@ drop.addEventListener('drop', (event) => {
   if (dropped) void convertFile(dropped);
 });
 
-sampleHtmlBtn.addEventListener('click', () => convert('page.html', sampleHtml()));
-sampleEmlBtn.addEventListener('click', () => convert('note.eml', sampleEml()));
-sampleRtfBtn.addEventListener('click', () => convert('notes.rtf', sampleRtf()));
-sampleCsvBtn.addEventListener('click', () => convert('report.csv', sampleCsv()));
-sampleDocxBtn.addEventListener('click', () => convertFetched('letter.docx', sampleDocx));
-sampleXlsxBtn.addEventListener('click', () => convertFetched('sheet.xlsx', sampleXlsx));
+for (const button of sampleButtons) {
+  button.addEventListener('click', () => {
+    const name = button.dataset.sample;
+    if (name === undefined) return;
+    void loadSample(name)
+      .then((bytes) => convert(name, bytes))
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        showResult(name, '', `Could not load sample: ${message}`, true);
+      });
+  });
+}
 
 viewPreview.addEventListener('click', () => {
   showPreview = true;

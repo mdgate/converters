@@ -36,6 +36,75 @@ export function formatLabel(path: string, bytes: Uint8Array): string {
   return extensionOf(path) ?? 'file';
 }
 
+export type MediaKind = 'image' | 'audio' | 'video';
+
+const IMAGE_EXTS = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'tif',
+  'tiff',
+  'heic',
+  'heif',
+  'bmp',
+]);
+const AUDIO_EXTS = new Set(['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'weba']);
+const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'webm', 'mkv', 'avi']);
+
+function hasPrefix(bytes: Uint8Array, prefix: number[]): boolean {
+  if (bytes.length < prefix.length) return false;
+  for (let i = 0; i < prefix.length; i += 1) {
+    if (bytes[i] !== prefix[i]) return false;
+  }
+  return true;
+}
+
+export function mediaKind(path: string, bytes: Uint8Array): MediaKind | undefined {
+  if (hasPrefix(bytes, [0xff, 0xd8, 0xff])) return 'image';
+  if (hasPrefix(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image';
+  if (hasPrefix(bytes, [0x47, 0x49, 0x46, 0x38])) return 'image';
+  if (hasPrefix(bytes, [0x42, 0x4d])) return 'image';
+  if (
+    bytes.length >= 12 &&
+    hasPrefix(bytes, [0x52, 0x49, 0x46, 0x46]) &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return 'image';
+  }
+  if (
+    bytes.length >= 12 &&
+    hasPrefix(bytes, [0x52, 0x49, 0x46, 0x46]) &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x41 &&
+    bytes[10] === 0x56 &&
+    bytes[11] === 0x45
+  ) {
+    return 'audio';
+  }
+  if (hasPrefix(bytes, [0x49, 0x44, 0x33])) return 'audio';
+  if (
+    bytes.length >= 8 &&
+    bytes[4] === 0x66 &&
+    bytes[5] === 0x74 &&
+    bytes[6] === 0x79 &&
+    bytes[7] === 0x70
+  ) {
+    return 'video';
+  }
+  if (hasPrefix(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return 'video';
+  const ext = extensionOf(path);
+  if (ext === undefined) return undefined;
+  if (IMAGE_EXTS.has(ext)) return 'image';
+  if (AUDIO_EXTS.has(ext)) return 'audio';
+  if (VIDEO_EXTS.has(ext)) return 'video';
+  return undefined;
+}
+
 export function stemOf(path: string): string {
   const base = path.split(/[/\\]/).pop() ?? 'document';
   const dot = base.lastIndexOf('.');

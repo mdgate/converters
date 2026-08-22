@@ -1,4 +1,4 @@
-import { toMarkdown } from '@mdgate/converters';
+import { ConvertError, toMarkdown } from '@mdgate/converters';
 
 export type ConvertRequest = {
   type: 'convert';
@@ -10,7 +10,7 @@ export type ConvertRequest = {
 export type WorkerMessage =
   | { type: 'ready' }
   | { type: 'ok'; id: number; markdown: string; ms: number }
-  | { type: 'err'; id: number; message: string };
+  | { type: 'err'; id: number; message: string; code?: string };
 
 self.postMessage({ type: 'ready' } satisfies WorkerMessage);
 
@@ -27,7 +27,8 @@ self.addEventListener('message', (event: MessageEvent<ConvertRequest>) => {
     })
     .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      const reply: WorkerMessage = { type: 'err', id: data.id, message };
+      const code = error instanceof ConvertError ? error.code : undefined;
+      const reply: WorkerMessage = { type: 'err', id: data.id, message, code };
       self.postMessage(reply);
     });
 });
