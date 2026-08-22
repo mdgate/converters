@@ -945,6 +945,10 @@ code {
   font: inherit;
 }
 
+.snippet .cmt {
+  color: var(--text-muted);
+}
+
 .prose {
   margin: 16px 0 0;
   color: var(--ink-72);
@@ -978,52 +982,6 @@ code {
 .install-line .cmd {
   font: inherit;
   user-select: all;
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 18px 0 0;
-}
-
-.card {
-  display: block;
-  text-decoration: none;
-  background: var(--surface);
-  border: 1px solid var(--border-faint);
-  border-radius: 12px;
-  padding: 16px;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.card:hover {
-  border-color: var(--accent);
-  color: inherit;
-}
-
-.card h3 {
-  margin: 0 0 6px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.card .pkg {
-  margin: 0 0 8px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-}
-
-.card p:last-child {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 18px;
 }
 
 .facts-line {
@@ -1160,7 +1118,6 @@ code {
 }
 
 @media (max-width: 575px) {
-  .cards,
   .why {
     grid-template-columns: 1fr;
   }
@@ -1195,8 +1152,7 @@ footer a {
   .samples button,
   .result-bar button,
   .view button,
-  .badges a,
-  .card {
+  .badges a {
     transition: none;
   }
 }

@@ -348,28 +348,24 @@
             <span class="dollar">$</span>
             <code class="cmd">npm install @mdgate/converters</code>
           </p>
-          <pre class="snippet"><code>import { toMarkdown } from '@mdgate/converters';
+          <pre class="snippet"><code><span class="cmt">// Everything: broad file support</span>
+import { toMarkdown } from '@mdgate/converters';
 
 const markdown = await toMarkdown(bytes, {
   path: filename,
-});</code></pre>
-          <div class="cards">
-            <a class="card" href="https://github.com/mdgate/converters/tree/main/packages/converters">
-              <h3>Everything</h3>
-              <p class="pkg">@mdgate/converters</p>
-              <p>Broad file support</p>
-            </a>
-            <a class="card" href="https://github.com/mdgate/converters/tree/main/packages/pdf">
-              <h3>One format</h3>
-              <p class="pkg">@mdgate/pdf</p>
-              <p>Ship only PDF</p>
-            </a>
-            <a class="card" href="https://github.com/mdgate/converters/tree/main/packages/core">
-              <h3>Your own set</h3>
-              <p class="pkg">@mdgate/core</p>
-              <p>Compose PDF + DOCX + …</p>
-            </a>
-          </div>
+});
+
+<span class="cmt">// One format: ship only PDF</span>
+import { toMarkdown } from '@mdgate/pdf';
+
+const markdown = await toMarkdown(bytes);
+
+<span class="cmt">// Your own set: compose PDF + DOCX + …</span>
+import { create } from '@mdgate/core';
+import { pdf } from '@mdgate/pdf';
+import { docx } from '@mdgate/docx';
+
+const toMarkdown = create([pdf(), docx()]);</code></pre>
           <p class="facts-line">
             Pure TypeScript · Node.js · Cloudflare Workers · Edge · Browser · No Python · No native addons · No WASM · Zero third-party runtime dependencies
           </p>
