@@ -348,24 +348,36 @@
             <span class="dollar">$</span>
             <code class="cmd">npm install @mdgate/converters</code>
           </p>
-          <pre class="snippet"><code><span class="cmt">// Everything: broad file support</span>
+          <pre class="snippet"><code><span class="cmt">// Everything</span>
 import { toMarkdown } from '@mdgate/converters';
 
 const markdown = await toMarkdown(bytes, {
   path: filename,
 });
 
-<span class="cmt">// One format: ship only PDF</span>
+<span class="cmt">// One format</span>
 import { toMarkdown } from '@mdgate/pdf';
 
 const markdown = await toMarkdown(bytes);
 
-<span class="cmt">// Your own set: compose PDF + DOCX + …</span>
+<span class="cmt">// Your own converter</span>
 import { create } from '@mdgate/core';
 import { pdf } from '@mdgate/pdf';
-import { docx } from '@mdgate/docx';
 
-const toMarkdown = create([pdf(), docx()]);</code></pre>
+function myFormat() {
+  return {
+    id: 'my-format',
+    sniff(bytes) {
+      return looksLikeMine(bytes) ? 2 : 0;
+    },
+    convert(bytes) {
+      return { markdown: parseMine(bytes) };
+    },
+  };
+}
+
+const toMarkdown = create([myFormat(), pdf()]);
+const markdown = await toMarkdown(bytes);</code></pre>
           <p class="facts-line">
             Pure TypeScript · Node.js · Cloudflare Workers · Edge · Browser · No Python · No native addons · No WASM · Zero third-party runtime dependencies
           </p>
