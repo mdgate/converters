@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/pptx",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "mdgate PowerPoint converter (pptx/pptm/ppsx/ppsm)",
   "type": "module",
   "license": "MIT",
@@ -22,11 +22,11 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.3",
-    "@mdgate/core": "0.6.3",
-    "@mdgate/document": "0.6.3",
-    "@mdgate/office-common": "0.6.3",
-    "@mdgate/utils": "0.6.3"
+    "@mdgate/containers": "0.6.4",
+    "@mdgate/core": "0.6.4",
+    "@mdgate/document": "0.6.4",
+    "@mdgate/office-common": "0.6.4",
+    "@mdgate/utils": "0.6.4"
   },
   "publishConfig": {
     "access": "public"

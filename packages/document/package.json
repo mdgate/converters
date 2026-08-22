@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/document",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "mdgate document model and Markdown renderer",
   "type": "module",
   "license": "MIT",
@@ -22,8 +22,8 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.3",
-    "@mdgate/utils": "0.6.3"
+    "@mdgate/core": "0.6.4",
+    "@mdgate/utils": "0.6.4"
   },
   "publishConfig": {
     "access": "public"
