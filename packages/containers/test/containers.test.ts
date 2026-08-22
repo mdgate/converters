@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConvertError } from '@mdgate/core';
 import { describe, expect, it } from 'vitest';
-import { Package } from '../src/archive.js';
+import { Package, probeOle } from '../src/archive.js';
+import { CompoundFile } from '../src/cfb.js';
 import { detectOleDoc, detectZipDoc } from '../src/detect.js';
 import {
   mimeAttachments,
@@ -17,6 +18,44 @@ import { resolve } from '../src/path.js';
 import { normalizeOoxmlUri, normalizeStarOfficeUri, ns, parseXml } from '../src/xml.js';
 
 const FIXTURES = join(fileURLToPath(new URL('../../../test/fixtures', import.meta.url)));
+
+describe('ole fat padding', () => {
+  it('opens a compound file whose extra FAT slots are ENDOFCHAIN', () => {
+    const bytes = oleWithFatPad(ENDOFCHAIN_PAD, [
+      { name: 'ENCRYPTIONINFO', data: new Uint8Array([1, 2, 3, 4]) },
+      { name: 'ENCRYPTEDPACKAGE', data: new Uint8Array([5, 6, 7, 8]) },
+    ]);
+    const file = CompoundFile.open(bytes);
+    expect(file.exists('EncryptionInfo')).toBe(true);
+    expect(file.exists('EncryptedPackage')).toBe(true);
+    expect(file.readStream('ENCRYPTIONINFO')).toEqual(new Uint8Array([1, 2, 3, 4]));
+  });
+
+  it('treats that layout as an encrypted OOXML package', () => {
+    const bytes = oleWithFatPad(ENDOFCHAIN_PAD, [
+      { name: 'ENCRYPTIONINFO', data: new Uint8Array([1]) },
+      { name: 'ENCRYPTEDPACKAGE', data: new Uint8Array([2]) },
+    ]);
+    const err = probeOle(bytes);
+    expect(err).toMatchObject({ name: 'ConvertError', code: 'encrypted' });
+  });
+
+  it('classifies uppercase WordDocument after the same FAT pad', () => {
+    const bytes = oleWithFatPad(ENDOFCHAIN_PAD, [
+      { name: 'WORDDOCUMENT', data: new Uint8Array(8) },
+    ]);
+    expect(detectOleDoc(bytes)).toBe('doc');
+  });
+
+  it('still rejects a FAT that points past the end of the file', () => {
+    expect(() => olePastEof()).toThrow(ConvertError);
+    try {
+      olePastEof();
+    } catch (e) {
+      expect(e).toMatchObject({ name: 'ConvertError', code: 'malformed' });
+    }
+  });
+});
 
 describe('package path', () => {
   const path = (base: string, r: string) => resolve(base, r).path;
@@ -363,4 +402,102 @@ function zipStore(files: Record<string, string>): Uint8Array {
   }
   out.set(eocd, w);
   return out;
+}
+
+const SECTOR = 512;
+const FATSECT = 0xfffffffd;
+const ENDOFCHAIN = 0xfffffffe;
+const FREESECT = 0xffffffff;
+const NOSTREAM = 0xffffffff;
+const ENDOFCHAIN_PAD = 'end';
+const CHAIN_PAST_EOF = 'past';
+
+function oleWithFatPad(
+  pad: typeof ENDOFCHAIN_PAD | typeof CHAIN_PAST_EOF,
+  streams: { name: string; data: Uint8Array }[],
+): Uint8Array {
+  const dataStart = 2;
+  const sectorCount = dataStart + streams.length;
+  const bytes = new Uint8Array((sectorCount + 1) * SECTOR);
+  const dv = new DataView(bytes.buffer);
+
+  bytes.set([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1], 0);
+  dv.setUint16(0x18, 0x003e, true);
+  dv.setUint16(0x1a, 0x0003, true);
+  dv.setUint16(0x1c, 0xfffe, true);
+  dv.setUint16(0x1e, 9, true);
+  dv.setUint16(0x20, 6, true);
+  dv.setUint32(0x2c, 1, true);
+  dv.setUint32(0x30, 1, true);
+  dv.setUint32(0x38, 1, true);
+  dv.setUint32(0x3c, ENDOFCHAIN, true);
+  dv.setUint32(0x44, ENDOFCHAIN, true);
+  dv.setUint32(0x4c, 0, true);
+  for (let i = 1; i < 109; i += 1) dv.setUint32(0x4c + i * 4, FREESECT, true);
+
+  const fatOff = SECTOR;
+  const extra = pad === CHAIN_PAST_EOF ? sectorCount : ENDOFCHAIN;
+  for (let i = 0; i < 128; i += 1) dv.setUint32(fatOff + i * 4, extra, true);
+  dv.setUint32(fatOff, FATSECT, true);
+  dv.setUint32(fatOff + 4, ENDOFCHAIN, true);
+  for (let i = 0; i < streams.length; i += 1) {
+    dv.setUint32(fatOff + (dataStart + i) * 4, ENDOFCHAIN, true);
+  }
+
+  writeDirEntry(bytes, SECTOR * 2, {
+    name: 'Root Entry',
+    type: 5,
+    child: streams.length > 0 ? 1 : NOSTREAM,
+    start: ENDOFCHAIN,
+    size: 0,
+    left: NOSTREAM,
+    right: NOSTREAM,
+  });
+  for (let i = 0; i < streams.length; i += 1) {
+    const stream = streams[i]!;
+    writeDirEntry(bytes, SECTOR * 2 + 128 * (i + 1), {
+      name: stream.name,
+      type: 2,
+      child: NOSTREAM,
+      start: dataStart + i,
+      size: stream.data.length,
+      left: NOSTREAM,
+      right: i + 2 < streams.length + 1 ? i + 2 : NOSTREAM,
+    });
+    bytes.set(stream.data, SECTOR * (dataStart + i + 1));
+  }
+  return bytes;
+}
+
+function olePastEof(): void {
+  CompoundFile.open(
+    oleWithFatPad(CHAIN_PAST_EOF, [{ name: 'WordDocument', data: new Uint8Array(8) }]),
+  );
+}
+
+function writeDirEntry(
+  bytes: Uint8Array,
+  off: number,
+  entry: {
+    name: string;
+    type: number;
+    child: number;
+    start: number;
+    size: number;
+    left: number;
+    right: number;
+  },
+): void {
+  const dv = new DataView(bytes.buffer, off, 128);
+  for (let i = 0; i < entry.name.length; i += 1) {
+    dv.setUint16(i * 2, entry.name.charCodeAt(i), true);
+  }
+  dv.setUint16(64, entry.name.length * 2 + 2, true);
+  bytes[off + 66] = entry.type;
+  bytes[off + 67] = 1;
+  dv.setUint32(68, entry.left, true);
+  dv.setUint32(72, entry.right, true);
+  dv.setUint32(76, entry.child, true);
+  dv.setUint32(116, entry.start, true);
+  dv.setUint32(120, entry.size, true);
 }
