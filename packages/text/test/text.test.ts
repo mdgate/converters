@@ -20,6 +20,45 @@ describe('text', () => {
     expect(converter.sniff(enc.encode('a,b'), { path: 'a.csv' })).toBe(0);
     expect(converter.sniff(enc.encode('<html></html>'), { path: 'a.html' })).toBe(0);
     expect(converter.sniff(enc.encode('%PDF-1.7\n'))).toBe(0);
+    expect(converter.sniff(enc.encode('hello'), { path: 'g.gv' })).toBe(1);
+  });
+
+  it('sniffs Graphviz DOT and converts it as a source fence', async () => {
+    const converter = text();
+    const directed = enc.encode('digraph "Tika-Relations" {\n  apache -> tika;\n}\n');
+    const undirected = enc.encode('// C++-style comments allowed\ngraph {\n  apache -- tika;\n}\n');
+    const block = enc.encode('/* c */\ndigraph tika_relations {\n  apache -> tika;\n}\n');
+    const strict = enc.encode('strict graph G {\n  a -- b;\n}\n');
+    expect(converter.sniff(directed)).toBe(2);
+    expect(converter.sniff(undirected, { path: 'g.dot' })).toBe(2);
+    expect(converter.sniff(block, { path: 'g.dot' })).toBe(2);
+    expect(converter.sniff(strict)).toBe(2);
+    expect(converter.sniff(enc.encode('const graph = 1;'))).toBe(0);
+    expect(converter.sniff(enc.encode('graph paper is nice'))).toBe(0);
+    expect(converter.sniff(enc.encode('graph = {\n  x: 1\n}\n'))).toBe(0);
+    expect(converter.sniff(enc.encode('graph({\n  x: 1\n})\n'))).toBe(0);
+    expect(converter.sniff(enc.encode('graph = {\n  x: 1\n}\n'), { path: 'app.js' })).toBe(1);
+    const md = enc.encode('# Title\n\ndigraph {\n  a -> b;\n}\n');
+    expect(converter.sniff(md)).toBe(0);
+    expect(converter.sniff(md, { path: 'readme.md' })).toBe(1);
+    await expect(toMarkdown(directed)).resolves.toBe(
+      '```dot\ndigraph "Tika-Relations" {\n  apache -> tika;\n}\n```\n',
+    );
+    await expect(toMarkdown(undirected, { path: 'g.dot' })).resolves.toBe(
+      '```dot\n// C++-style comments allowed\ngraph {\n  apache -- tika;\n}\n```\n',
+    );
+    await expect(toMarkdown(block)).resolves.toBe(
+      '```dot\n/* c */\ndigraph tika_relations {\n  apache -> tika;\n}\n```\n',
+    );
+    await expect(toMarkdown(enc.encode('digraph { a -> b; }'), { path: 'g.gv' })).resolves.toBe(
+      '```dot\ndigraph { a -> b; }\n```\n',
+    );
+    await expect(
+      toMarkdown(enc.encode('graph = {\n  x: 1\n}\n'), { path: 'app.js' }),
+    ).resolves.toBe('```js\ngraph = {\n  x: 1\n}\n```\n');
+    await expect(
+      toMarkdown(enc.encode('# Title\n\ndigraph {\n  a -> b;\n}\n'), { path: 'readme.md' }),
+    ).resolves.toBe('# Title\n\ndigraph {\n  a -> b;\n}\n');
   });
 
   it('converts plain text, markdown passthrough, and source fences', async () => {
