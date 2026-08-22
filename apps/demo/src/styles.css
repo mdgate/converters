@@ -366,6 +366,12 @@ h2 {
   font-size: 14px;
 }
 
+.drop .choose {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .drop .kinds {
   display: block;
   margin-top: 22px;
