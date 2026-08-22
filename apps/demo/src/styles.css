@@ -1058,6 +1058,12 @@ code {
   padding: 2px 8px;
 }
 
+.flow ul li.more {
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+}
+
 .flow-brand {
   font-family: var(--mono);
   font-size: 13px;
