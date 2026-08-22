@@ -42,6 +42,8 @@ describe('subtitle', () => {
     expect(converter.sniff(new Uint8Array([1]), { path: 'clip.ssa' })).toBe(1);
     expect(converter.sniff(enc.encode('[ti:Demo]\n[00:01.00]Hi\n'))).toBe(2);
     expect(converter.sniff(enc.encode('{0}{25}Hello\n'))).toBe(2);
+    expect(converter.sniff(enc.encode('[0][12]Foo|bar|bla\n'))).toBe(2);
+    expect(converter.sniff(enc.encode('[41][] /italic\n'))).toBe(2);
     expect(converter.sniff(enc.encode('0:00:01.000,0:00:04.000\nHi\n'))).toBe(2);
     expect(
       converter.sniff(enc.encode('<tt xmlns="http://www.w3.org/ns/ttml"><p begin="0">x</p></tt>')),
@@ -107,6 +109,11 @@ Dialogue: 0,0:00:05.00,0:00:06.50,Default,,0,0,0,,Next\\Nline
     ).resolves.toBe('*\\[00:00:01.000]* Hello\n\n*\\[00:00:05.000]* Next line\n');
     await expect(toMarkdown(enc.encode('[00:01.00][00:02.00]Chorus\n'))).resolves.toBe(
       '*\\[00:00:01.000]* Chorus\n\n*\\[00:00:02.000]* Chorus\n',
+    );
+    await expect(
+      toMarkdown(enc.encode('[0][12]Foo|bar|bla\n[41][] /italic|\\bold|\\/italicbold\n')),
+    ).resolves.toBe(
+      '*\\[00:00:00.000]* Foo bar bla\n\n*\\[00:00:04.100]* italic bold italicbold\n',
     );
     const entities = `<?xml version="1.0"?>
 <tt xmlns="http://www.w3.org/ns/ttml">

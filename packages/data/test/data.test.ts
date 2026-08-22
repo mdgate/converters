@@ -35,6 +35,8 @@ describe('data', () => {
     expect(converter.sniff(enc.encode('{\\rtf1\\ansi hi}'), { path: 'a.json' })).toBe(0);
     expect(converter.sniff(enc.encode('[ti:Swansong]\n[00:35.62]Hello\n'))).toBe(0);
     expect(converter.sniff(enc.encode('{0}{}25.000 FPS\n{1000}{}foo\n'))).toBe(0);
+    expect(converter.sniff(enc.encode('[0][12]Foo|bar|bla\n'))).toBe(0);
+    expect(converter.sniff(enc.encode('[0]\n'))).toBe(2);
   });
 
   it('converts a small json object to a list and an array of objects to a table', async () => {

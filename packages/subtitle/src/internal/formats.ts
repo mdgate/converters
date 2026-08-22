@@ -5,6 +5,7 @@ const ITALIC = { bold: false, italic: true, strike: false, code: false } as cons
 const LRC_ID = /^\s*\[[A-Za-z][^:\]]*:[^\]]*\]\s*$/;
 const LRC_CUE = /^\s*\[(-?\d{1,3}:\d{2}(?::\d{2})?(?:[.,]\d{1,3})?)\](.*)$/;
 const MICRO_LINE = /^\s*\{(-?\d+)\}\{(\d*)\}(.*)$/;
+const MPL2_LINE = /^\s*\[(-?\d+)\]\[(\d*)\](.*)$/;
 const MICRO_TAG = /\{[^}]*\}/g;
 const SBV_TIMING =
   /^\s*(\d{1,2}):(\d{2}):(\d{2})[.,](\d{1,3})\s*,\s*(\d{1,2}):(\d{2}):(\d{2})[.,](\d{1,3})\s*$/;
@@ -36,6 +37,15 @@ export function isMicrodvdDocument(rows: readonly string[]): boolean {
     const t = trim(row);
     if (t.length === 0) continue;
     return MICRO_LINE.test(t);
+  }
+  return false;
+}
+
+export function isMpl2Document(rows: readonly string[]): boolean {
+  for (const row of rows) {
+    const t = trim(row);
+    if (t.length === 0) continue;
+    return MPL2_LINE.test(t);
   }
   return false;
 }
@@ -74,6 +84,22 @@ export function parseLrc(rows: readonly string[], doc: Document): void {
       const start = lrcStamp(raw);
       if (start !== undefined) pushCue(doc, start, cue);
     }
+  }
+}
+
+export function parseMpl2(rows: readonly string[], doc: Document): void {
+  for (const row of rows) {
+    const m = MPL2_LINE.exec(row);
+    if (m === null) continue;
+    const start = fromSeconds(Number(m[1]) / 10);
+    const cue = cleanLine(
+      (m[3] ?? '')
+        .split('|')
+        .map((part) => trim(part).replace(/^[\\/_]+/, ''))
+        .join(' '),
+    );
+    if (start === undefined || cue.length === 0) continue;
+    pushCue(doc, start, cue);
   }
 }
 

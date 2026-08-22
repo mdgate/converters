@@ -26,6 +26,7 @@ export function subtitle(): Converter {
       if (startsWithWebvtt(bytes)) return 2;
       if (startsWithTtml(bytes)) return 2;
       if (startsWithLrc(bytes)) return 2;
+      if (startsWithMpl2(bytes)) return 2;
       if (startsWithMicrodvd(bytes)) return 2;
       if (startsWithSbv(bytes)) return 2;
       if (startsWithJacosub(bytes)) return 2;
@@ -71,6 +72,19 @@ function startsWithLrc(bytes: Uint8Array): boolean {
   if (!isLetter(bytes[i])) return false;
   while (isLetter(bytes[i]) || bytes[i] === 0x5f) i += 1;
   return bytes[i] === 0x3a;
+}
+
+function startsWithMpl2(bytes: Uint8Array): boolean {
+  let i = skipBomAndWs(bytes);
+  if (bytes[i] !== 0x5b) return false;
+  i += 1;
+  if (bytes[i] === 0x2d) i += 1;
+  if (!isDigit(bytes[i])) return false;
+  while (isDigit(bytes[i])) i += 1;
+  if (bytes[i] !== 0x5d || bytes[i + 1] !== 0x5b) return false;
+  i += 2;
+  while (isDigit(bytes[i])) i += 1;
+  return bytes[i] === 0x5d;
 }
 
 function startsWithMicrodvd(bytes: Uint8Array): boolean {
