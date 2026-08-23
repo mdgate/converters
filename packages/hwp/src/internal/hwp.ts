@@ -223,6 +223,8 @@ function maybeDecompress(data: Uint8Array, compressed: boolean | undefined): Uin
   }
   if (compressed === false) return data;
   if (compressed === true) {
+    const raw = tryInflateRaw(data);
+    if (raw !== undefined) return raw;
     const inflated = tryInflate(data);
     if (inflated !== undefined) return inflated;
   }

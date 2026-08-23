@@ -14,6 +14,7 @@ export function detectPreIwaKind(bytes: Uint8Array): IWorkKind | undefined {
   } catch {
     return undefined;
   }
+  if (isEpubMimetype(pkg)) return undefined;
   if (isEncryptedPackage(pkg)) return kindFromNames(pkg) ?? 'pages';
   return classifyPreIwa(pkg);
 }
@@ -128,6 +129,13 @@ function collectParagraphs(tree: Element): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const elem of tree.descendantElems()) {
+    if (elem.local === 'ct') {
+      const s = trim((elem.attrAny('s') ?? '').replace(/\s+/g, ' '));
+      if (s.length === 0 || seen.has(s)) continue;
+      seen.add(s);
+      out.push(s);
+      continue;
+    }
     if (elem.local !== 'p' && elem.local !== 'text') continue;
     const text = trim(elem.text().replace(/\s+/g, ' '));
     if (text.length === 0 || seen.has(text)) continue;
@@ -139,7 +147,24 @@ function collectParagraphs(tree: Element): string[] {
   return fallback.length === 0 ? [] : [fallback];
 }
 
+function isEpubMimetype(pkg: Package): boolean {
+  const mime = pkg.optionalPart('mimetype');
+  if (mime === undefined) return false;
+  const text = trim(new TextDecoder().decode(mime));
+  return text === 'application/epub+zip' || text === 'application/x-ibooks+zip';
+}
+
+export function isEpubZip(bytes: Uint8Array): boolean {
+  if (!isZip(bytes)) return false;
+  try {
+    return isEpubMimetype(Package.open(bytes));
+  } catch {
+    return false;
+  }
+}
+
 function isEncryptedPackage(pkg: Package): boolean {
+  if (pkg.hasEncryptedEntries()) return true;
   for (const name of pkg.partNames()) {
     const lower = name.toLowerCase();
     if (lower.includes('encrypted') || lower.endsWith('.iwae')) return true;

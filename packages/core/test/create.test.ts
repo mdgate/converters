@@ -87,4 +87,21 @@ describe('create', () => {
     await expect(convert(new Uint8Array([3]))).resolves.toBe('3+2+1+leaf');
     await expect(convert(new Uint8Array([4]))).resolves.toBe('4+3+2+1+leaf');
   });
+
+  it('stops nested conversion at the resource limit', async () => {
+    const convert = create([
+      {
+        id: 'nest',
+        sniff: () => 2,
+        async convert(_bytes, options) {
+          const inner = await options!.convert!(new Uint8Array([1]));
+          return { markdown: inner };
+        },
+      },
+    ]);
+    await expect(convert(new Uint8Array([1]))).rejects.toMatchObject({
+      name: 'ConvertError',
+      code: 'resourceLimit',
+    });
+  });
 });

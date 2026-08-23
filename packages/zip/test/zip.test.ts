@@ -66,9 +66,17 @@ describe('zip', () => {
       code: 'encrypted',
     });
   });
+
+  it('throws encrypted for Apple zip compression methods', async () => {
+    const bytes = zipStore({ 'secret.txt': 'x' }, 0, 0x636b);
+    await expect(zip().convert(bytes, { convert: async () => 'ok' })).rejects.toMatchObject({
+      name: 'ConvertError',
+      code: 'encrypted',
+    });
+  });
 });
 
-function zipStore(files: Record<string, string>, flags = 0): Uint8Array {
+function zipStore(files: Record<string, string>, flags = 0, method = 0): Uint8Array {
   const encoder = new TextEncoder();
   const locals: Uint8Array[] = [];
   const centrals: Uint8Array[] = [];
@@ -81,6 +89,7 @@ function zipStore(files: Record<string, string>, flags = 0): Uint8Array {
     lv.setUint32(0, 0x04034b50, true);
     lv.setUint16(4, 20, true);
     lv.setUint16(6, flags, true);
+    lv.setUint16(8, method, true);
     lv.setUint32(18, data.length, true);
     lv.setUint32(22, data.length, true);
     lv.setUint16(26, nameB.length, true);
@@ -94,6 +103,7 @@ function zipStore(files: Record<string, string>, flags = 0): Uint8Array {
     cv.setUint16(4, 20, true);
     cv.setUint16(6, 20, true);
     cv.setUint16(8, flags, true);
+    cv.setUint16(10, method, true);
     cv.setUint32(20, data.length, true);
     cv.setUint32(24, data.length, true);
     cv.setUint16(28, nameB.length, true);

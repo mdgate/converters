@@ -23,6 +23,7 @@ import {
   type Block,
   cellSpanning,
   type Document,
+  emptyDocument,
   GridBuilder,
   type ImageSource,
   type Inline,
@@ -118,7 +119,7 @@ export function parse(bytes: Uint8Array): Document {
     }
   }
   if (slidePaths.length === 0) {
-    throw ConvertError.malformedPart(presPart, 'presentation has no slide list');
+    return emptyDocument();
   }
 
   const assets = new AssetSink();

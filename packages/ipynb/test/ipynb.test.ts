@@ -73,6 +73,28 @@ describe('ipynb', () => {
     await expect(toMarkdown(bytes)).resolves.toContain('```r\n1 + 1\n```');
   });
 
+  it('converts nbformat 2/3 worksheets and heading cells', async () => {
+    const converter = ipynb();
+    const v2 = enc.encode(
+      JSON.stringify({
+        nbformat: 2,
+        nbformat_minor: 0,
+        worksheets: [
+          {
+            cells: [
+              { cell_type: 'heading', level: 1, source: ['Old heading'] },
+              { cell_type: 'code', input: ['print(1)\n'], language: 'python', outputs: [] },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(converter.sniff(v2)).toBe(3);
+    const md = await toMarkdown(v2);
+    expect(md).toContain('# Old heading');
+    expect(md).toContain('```python\nprint(1)\n```');
+  });
+
   it('throws malformed on invalid JSON', async () => {
     await expect(toMarkdown(enc.encode('{not json'), { path: 'x.ipynb' })).rejects.toMatchObject({
       name: 'ConvertError',

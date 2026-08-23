@@ -1,50 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { epub, toMarkdown } from '../src/index.js';
+import { pptx, toMarkdown } from '../src/index.js';
 
-describe('epub', () => {
-  it('sniffs EPUB and iBooks packages', () => {
-    const converter = epub();
-    expect(converter.id).toBe('epub');
-    expect(converter.sniff(book('application/epub+zip'))).toBe(3);
-    expect(converter.sniff(book('application/x-ibooks+zip'))).toBe(3);
-    expect(converter.sniff(new Uint8Array([1]), { path: 'tiny.epub' })).toBe(1);
-    expect(converter.sniff(new Uint8Array([1]), { path: 'testiBooks.ibooks' })).toBe(1);
-    expect(converter.sniff(new Uint8Array([1]))).toBe(0);
-  });
-
-  it('converts EPUB and iBooks XHTML spine text', async () => {
-    const expected = '# Hello\n\nchapter\n';
-    await expect(toMarkdown(book('application/epub+zip'))).resolves.toBe(expected);
-    await expect(toMarkdown(book('application/x-ibooks+zip'), { path: 'n.ibooks' })).resolves.toBe(
-      expected,
-    );
+describe('pptx', () => {
+  it('converts a presentation with no slide list to empty markdown', async () => {
+    const bytes = emptyPptx();
+    expect(pptx().sniff(bytes)).toBe(2);
+    await expect(toMarkdown(bytes, { path: 'empty.pptx' })).resolves.toBe('');
   });
 });
 
-function book(mimetype: string): Uint8Array {
+function emptyPptx(): Uint8Array {
   return zipStore({
-    mimetype,
-    'META-INF/container.xml': `<?xml version="1.0"?>
-<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-  <rootfiles>
-    <rootfile full-path="EPUB/content.opf" media-type="application/oebps-package+xml"/>
-  </rootfiles>
-</container>`,
-    'EPUB/content.opf': `<?xml version="1.0"?>
-<package version="3.0" xmlns="http://www.idpf.org/2007/opf" unique-identifier="id">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:identifier id="id">urn:uuid:1</dc:identifier>
-    <dc:title>Hello</dc:title>
-  </metadata>
-  <manifest>
-    <item id="ch" href="ch.xhtml" media-type="application/xhtml+xml"/>
-  </manifest>
-  <spine>
-    <itemref idref="ch"/>
-  </spine>
-</package>`,
-    'EPUB/ch.xhtml':
-      '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>chapter</p></body></html>',
+    '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+</Types>`,
+    '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`,
+    'ppt/presentation.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+</p:presentation>`,
   });
 }
 
