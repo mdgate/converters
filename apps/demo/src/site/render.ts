@@ -332,7 +332,7 @@ export function renderConverterPage(page: ConverterPage): string {
           <a href="/#developers">Developers</a>
           <a href="${GITHUB}">
             ${GITHUB_ICON}
-            <span>GitHub</span>
+            <span>Star on GitHub</span>
           </a>
           <a class="pkg" href="${esc(npm)}">
             ${NPM_ICON}
@@ -357,6 +357,12 @@ export function renderConverterPage(page: ConverterPage): string {
               <a href="${esc(npm)}">
                 <span class="key">npm</span>
                 <span class="value">${esc(pkg)}</span>
+              </a>
+            </li>
+            <li hidden>
+              <a href="${esc(npm)}">
+                <span class="key">downloads</span>
+                <span class="value" id="npm-downloads" data-package="${esc(pkg)}"></span>
               </a>
             </li>
             <li>
