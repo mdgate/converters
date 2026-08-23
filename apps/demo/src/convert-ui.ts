@@ -122,7 +122,7 @@ export function bindConvert(options: ConvertUiOptions = {}): void {
     drop.disabled = true;
   });
 
-  function setStatus(kind: 'starting' | 'ready' | 'busy', label: string): void {
+  function setStatus(kind: 'ready' | 'busy', label: string): void {
     statusEl.classList.toggle('ready', kind === 'ready');
     statusEl.classList.toggle('busy', kind === 'busy');
     statusLabel.textContent = label;
