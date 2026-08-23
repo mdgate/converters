@@ -308,6 +308,10 @@ h2 {
   line-height: 20px;
 }
 
+.badges li[hidden] {
+  display: none;
+}
+
 .badges a {
   text-decoration: none;
   transition:

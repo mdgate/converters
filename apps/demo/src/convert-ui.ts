@@ -37,7 +37,41 @@ export type ConvertUiOptions = {
   statsFor?: (info: { name: string; format: string; chars: number; ms: number }) => string;
 };
 
+function formatDownloads(count: number): string {
+  if (count < 1000) return `${count}/mo`;
+  if (count < 10_000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}k/mo`;
+  if (count < 1_000_000) return `${Math.round(count / 1000)}k/mo`;
+  if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M/mo`;
+  return `${Math.round(count / 1_000_000)}M/mo`;
+}
+
+function bindNpmDownloads(): void {
+  const value = document.getElementById('npm-downloads');
+  const badge = value?.closest('li');
+  const pkg = value?.dataset.package;
+  if (!(value instanceof HTMLElement) || !(badge instanceof HTMLElement) || pkg === undefined) {
+    return;
+  }
+  void fetch(`https://api.npmjs.org/downloads/point/last-month/${pkg}`)
+    .then(async (response) => {
+      if (!response.ok) return;
+      const data: unknown = await response.json();
+      if (
+        typeof data !== 'object' ||
+        data === null ||
+        !('downloads' in data) ||
+        typeof data.downloads !== 'number'
+      ) {
+        return;
+      }
+      value.textContent = formatDownloads(data.downloads);
+      badge.hidden = false;
+    })
+    .catch(() => {});
+}
+
 export function bindConvert(options: ConvertUiOptions = {}): void {
+  bindNpmDownloads();
   const readyLabel = options.readyLabel ?? 'Ready · running @mdgate/converters locally';
   const copyIdle = options.copyIdle ?? 'Copy';
   const copyDone = options.copyDone ?? 'Copied';

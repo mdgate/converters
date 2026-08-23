@@ -45,6 +45,16 @@ describe('demo site SEO', () => {
     expect(catalog).not.toContain('html4-to-markdown');
   });
 
+  it('includes an npm downloads badge on the homepage and converter pages', () => {
+    expect(home).toContain('id="npm-downloads"');
+    expect(home).toContain('data-package="@mdgate/converters"');
+    const page = PAGES.find((item) => item.ext === 'docx');
+    expect(page).toBeDefined();
+    const html = renderConverterPage(page!);
+    expect(html).toContain('id="npm-downloads"');
+    expect(html).toContain('data-package="@mdgate/docx"');
+  });
+
   it('injects JSON-LD and the catalog into the homepage', () => {
     const html = enhanceHomeHtml(home);
     expect(html).toContain('application/ld+json');

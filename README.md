@@ -1,6 +1,7 @@
 # mdgate/converters
 
 [![npm](https://img.shields.io/npm/v/@mdgate/converters.svg)](https://www.npmjs.com/package/@mdgate/converters)
+[![downloads](https://img.shields.io/npm/dm/@mdgate/converters.svg)](https://www.npmjs.com/package/@mdgate/converters)
 [![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
 [![convert](https://img.shields.io/badge/convert-convert.mdgate.dev-0f766e)](https://convert.mdgate.dev)
 
