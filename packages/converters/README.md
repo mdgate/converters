@@ -5,11 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
 [![convert](https://img.shields.io/badge/convert-convert.mdgate.dev-0f766e)](https://convert.mdgate.dev)
 
-**Real-world files to Markdown, in pure TypeScript.**
+**Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
 
-[`@mdgate/converters`](https://github.com/mdgate/converters/tree/main/packages/converters) is the complete deterministic reader: one `toMarkdown(bytes)` for PDF, Word, Excel, PowerPoint, OpenDocument, Apple iWork, HWP, WPS, email, OneNote, Visio, ebooks, archives, and more.
-
-Works in **Node.js, Cloudflare Workers, Edge runtimes, and browsers**.
+[`@mdgate/converters`](https://github.com/mdgate/converters/tree/main/packages/converters) is the complete deterministic reader: one `toMarkdown(bytes)` across those formats.
 
 **No Python. No native addons. No WASM. No third-party runtime dependencies.**
 

@@ -14,11 +14,11 @@ We are marketing:
 
 Canonical description:
 
-> **Real-world files to Markdown, in pure TypeScript.**
+> **Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
 
 Longer version:
 
-> `mdgate/converters` converts real-world files — PDF, Word, Excel, PowerPoint, iWork, HWP, WPS, email, OneNote, Visio, ebooks, archives, and more — into Markdown inside JavaScript runtimes.
+> `mdgate/converters` converts 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email, into GitHub-Flavored Markdown. It is written in TypeScript and runs in Node, Edge, and browsers.
 
 ---
 
@@ -76,7 +76,7 @@ The user or coding agent should be able to decide quickly:
 
 Use when describing the whole repository:
 
-> **Real-world files to Markdown, in pure TypeScript.**
+> **Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
 
 Supporting line:
 
