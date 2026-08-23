@@ -14,23 +14,16 @@ npm install @mdgate/converters
 ```
 
 ```ts
-import { readFile } from 'node:fs/promises';
 import { toMarkdown } from '@mdgate/converters';
-
-const bytes = new Uint8Array(await readFile('report.docx'));
 
 const markdown = await toMarkdown(bytes, {
   path: 'report.docx',
 });
 ```
 
-The input is bytes. The output is GitHub-Flavored Markdown. The same call works in Cloudflare Workers, Edge, and the browser.
+Bytes in. GitHub-Flavored Markdown out. Works in Node.js, Cloudflare Workers, Edge, and browsers.
 
-The optional `path` is a format hint. The converter never reads that path from disk. Formats with a content signature (PDF, DOCX, and many others) can be identified from the bytes alone. CSV and plain text need the hint.
-
-`toMarkdown` is `create(all())`. `all()` registers every converter that needs no configuration. Raster images, audio, and video need callbacks, so they are not in `all()`.
-
-[Convert a file in your browser](https://convert.mdgate.dev): the page runs the library in a Web Worker, so files never leave your machine.
+[Try it in your browser](https://convert.mdgate.dev). Files convert locally and never leave your machine.
 
 <p align="center">
   <a href="https://convert.mdgate.dev">
@@ -75,7 +68,7 @@ const toMarkdown = create([
 const markdown = await toMarkdown(bytes);
 ```
 
-Archives and containers can pass inner files through the same reader. To add a format, implement `Converter` from [`@mdgate/core`](packages/core).
+`@mdgate/converters` is `create(all())`. The optional `path` is a format hint, never a disk read. Archives pass inner files through the same reader. To add a format, implement `Converter` from [`@mdgate/core`](packages/core).
 
 ---
 
@@ -113,56 +106,7 @@ Archives and containers can pass inner files through the same reader. To add a f
 
 ## Images, audio, and video
 
-Raster images, audio, and video use the model your application already has. PDF text extracts locally; embedded raster images in a PDF can use the same `image()` callback.
-
-```ts
-import { create } from '@mdgate/core';
-import { ai } from '@mdgate/ai';
-import { image } from '@mdgate/image';
-import { audio } from '@mdgate/audio';
-import { video } from '@mdgate/video';
-
-const media = ai({
-  baseURL: 'https://api.example.com/v1',
-  apiKey: process.env.API_KEY!,
-  model: 'your-model',
-});
-
-const toMarkdown = create([
-  image(media.convertImage),
-  audio(media.convertAudio),
-  video(media.convertVideo),
-]);
-```
-
-`image()`, `audio()`, and `video()` are not registered by `all()`. SVG converts locally and is included.
-
----
-
-## Errors
-
-A conversion throws when it cannot produce meaningful Markdown.
-
-```ts
-import { ConvertError, toMarkdown } from '@mdgate/converters';
-
-try {
-  const markdown = await toMarkdown(bytes, { path: filename });
-} catch (error) {
-  if (error instanceof ConvertError) {
-    console.error(error.code);
-  }
-}
-```
-
-| Code            | Meaning                                     |
-| --------------- | ------------------------------------------- |
-| `unsupported`   | The format is unknown or unsupported        |
-| `malformed`     | No meaningful content could be extracted    |
-| `encrypted`     | The file is encrypted or password-protected |
-| `missingPart`   | Required document data is missing           |
-| `io`            | The input could not be read                 |
-| `resourceLimit` | Reserved for resource-limit failures        |
+Raster images, audio, and video use callbacks, so you can plug in the vision or transcription model you already use. See [`@mdgate/ai`](packages/ai) for an OpenAI-compatible adapter.
 
 ---
 
