@@ -227,7 +227,7 @@ export function renderConverterPage(page: ConverterPage): string {
               <rect x="8" y="6" width="32" height="36" rx="4" />
               <path d="M16 18h16M16 24h16M16 30h10" />
             </svg>
-            <span class="big" id="drop-title">Drop a file here</span>
+            <span class="big" id="drop-title">Drop a <span class="accent">.${esc(page.ext)}</span> file here</span>
             <span class="small" id="drop-hint">or <u>browse</u> for one. Conversion happens locally, nothing is uploaded.</span>
           </button>
           <p class="status" id="status">

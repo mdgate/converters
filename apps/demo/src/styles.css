@@ -254,7 +254,8 @@ h1 {
   font-weight: 600;
 }
 
-h1 .accent {
+h1 .accent,
+.drop .accent {
   color: var(--accent);
 }
 
