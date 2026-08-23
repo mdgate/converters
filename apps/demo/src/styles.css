@@ -2,35 +2,35 @@
   font-family: "Geist Sans";
   src: url("/fonts/geist-sans-400.woff2") format("woff2");
   font-weight: 400;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: "Geist Sans";
   src: url("/fonts/geist-sans-500.woff2") format("woff2");
   font-weight: 500;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: "Geist Sans";
   src: url("/fonts/geist-sans-600.woff2") format("woff2");
   font-weight: 600;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: "Geist Mono";
   src: url("/fonts/geist-mono-400.woff2") format("woff2");
   font-weight: 400;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: "Geist Mono";
   src: url("/fonts/geist-mono-500.woff2") format("woff2");
   font-weight: 500;
-  font-display: swap;
+  font-display: optional;
 }
 
 :root {

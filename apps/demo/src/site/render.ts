@@ -169,6 +169,11 @@ export function renderConverterPage(page: ConverterPage): string {
     <meta name="twitter:image" content="${SITE}/og.png" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/geist-sans-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-sans-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-sans-600.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-mono-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-mono-500.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
