@@ -122,8 +122,8 @@ Do not unpublish. Do not reuse a version. Pre-`0.4.0` versions are the old indep
 - Fix a converter, change output, land the PR on `main`. After `check` is green, the `publish` job bumps patch, commits `release: x.y.z`, tags, publishes, and writes a GitHub Release from commits since the previous tag. Do not bump in the PR.
 - Add a format, add a published package, or change the public API. Label the PR `release:minor` (or `release:major`). After merge, run `gh workflow run ci.yml -f increment=minor` from `main`. Auto-patch will not fire.
 - A new `packages/<name>/package.json` that is public also blocks auto-patch, even if the label is missing. Then run CI with `minor`.
-- Docs, AGENTS, CI, or demo only: no publish.
-- Put `[skip publish]` in the commit message to skip auto-patch for a `packages/` change that must not ship yet.
+- Docs, AGENTS, CI, demo, `packages/**/*.md`, and package.json metadata (`description`, `keywords`, `homepage`, `repository`, `bugs`) do not publish. The `publish` job skips them. Do not add `[skip publish]` for those.
+- Put `[skip publish]` in the commit message to skip auto-patch for source changes that must not ship yet.
 
 Repo secret `NPM_TOKEN` is an npm Automation token with publish rights on `@mdgate/*`. Put it in GitHub Actions secrets, never in the repo. If branch protection blocks the bot, allow `github-actions[bot]` to push `main`.
 

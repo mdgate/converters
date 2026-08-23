@@ -126,3 +126,63 @@ test('decidePatch publishes only ordinary packages/ changes', () => {
     }).publish,
   ).toBe(false);
 });
+
+test('decidePatch skips docs, demo, and package.json metadata', () => {
+  expect(
+    decidePatch({
+      commitMessage: 'feat(demo): show npm downloads and Star on GitHub',
+      labels: [],
+      changedFiles: [
+        'README.md',
+        'apps/demo/src/convert-ui.ts',
+        'packages/converters/README.md',
+        'test/demo-site.test.ts',
+      ],
+      addedPublicPackages: [],
+    }),
+  ).toEqual({ publish: false, reason: 'docs-only packages/ changes' });
+
+  expect(
+    decidePatch({
+      commitMessage: 'docs(converters): align the public one-liner',
+      labels: [],
+      changedFiles: [
+        'AGENTS.md',
+        'README.md',
+        'packages/converters/README.md',
+        'packages/converters/package.json',
+      ],
+      addedPublicPackages: [],
+      packageJsons: {
+        'packages/converters/package.json': {
+          before: { name: '@mdgate/converters', description: 'old' },
+          after: { name: '@mdgate/converters', description: 'new' },
+        },
+      },
+    }),
+  ).toEqual({ publish: false, reason: 'docs-only packages/ changes' });
+
+  expect(
+    decidePatch({
+      commitMessage: 'docs(converters): align the public one-liner',
+      labels: [],
+      changedFiles: ['packages/converters/package.json'],
+      addedPublicPackages: [],
+      packageJsons: {
+        'packages/converters/package.json': {
+          before: { name: '@mdgate/converters', dependencies: { '@mdgate/pdf': '0.6.11' } },
+          after: { name: '@mdgate/converters', dependencies: { '@mdgate/pdf': '0.6.12' } },
+        },
+      },
+    }).publish,
+  ).toBe(true);
+
+  expect(
+    decidePatch({
+      commitMessage: 'docs: note plus a real fix',
+      labels: [],
+      changedFiles: ['packages/converters/README.md', 'packages/pdf/src/pdf.ts'],
+      addedPublicPackages: [],
+    }).publish,
+  ).toBe(true);
+});
