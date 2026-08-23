@@ -31,6 +31,7 @@ const SOURCE_EXTS = new Set([
   'scss',
   'less',
   'graphql',
+  'gv',
 ]);
 const EXTS = new Set([...PLAIN_EXTS, ...MARKDOWN_EXTS, ...SOURCE_EXTS]);
 
@@ -40,6 +41,7 @@ export function text(): Converter {
     // Extension-only except UTF-8 BOM + printable when the path is .txt.
     sniff(bytes: Uint8Array, hint?: ConvertHint): number {
       const ext = hint?.path !== undefined ? fileExtension(hint.path) : undefined;
+      if (claimsGraphviz(ext) && looksLikeGraphviz(decodeSniffText(bytes))) return 2;
       if (ext === 'txt' && hasUtf8Bom(bytes) && isPrintableUtf8(bytes.subarray(3))) return 2;
       if (ext !== undefined && EXTS.has(ext)) return 1;
       return 0;
@@ -47,12 +49,15 @@ export function text(): Converter {
     convert(bytes: Uint8Array, options?: ConvertOptions): ConvertResult {
       refuseForeign(bytes);
       const ext = options?.path !== undefined ? fileExtension(options.path) : undefined;
+      const decoded = decodeText(bytes);
+      if (ext !== undefined && MARKDOWN_EXTS.has(ext)) {
+        return { markdown: decoded.endsWith('\n') ? decoded : `${decoded}\n` };
+      }
+      if (claimsGraphviz(ext) && looksLikeGraphviz(decoded)) {
+        return { markdown: documentToMarkdown(toSourceDoc(decoded, 'dot')) };
+      }
       if (ext === undefined || !EXTS.has(ext)) {
         throw ConvertError.unsupported(ext ?? 'text');
-      }
-      const decoded = decodeText(bytes);
-      if (MARKDOWN_EXTS.has(ext)) {
-        return { markdown: decoded.endsWith('\n') ? decoded : `${decoded}\n` };
       }
       if (PLAIN_EXTS.has(ext)) {
         return { markdown: documentToMarkdown(toParagraphs(decoded)) };
@@ -102,4 +107,134 @@ function startsWith(bytes: Uint8Array, magic: readonly number[]): boolean {
     if (bytes[i] !== magic[i]) return false;
   }
   return true;
+}
+
+function claimsGraphviz(ext: string | undefined): boolean {
+  return ext === undefined || ext === 'dot' || ext === 'gv';
+}
+
+function decodeSniffText(bytes: Uint8Array): string {
+  const text = new TextDecoder('utf-8').decode(bytes.subarray(0, 8192));
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+function looksLikeGraphviz(text: string): boolean {
+  const end = Math.min(text.length, 8192);
+  let i = 0;
+
+  const skip = (): void => {
+    while (i < end) {
+      const c = text.charCodeAt(i);
+      if (c === 32 || c === 9 || c === 10 || c === 13) {
+        i += 1;
+        continue;
+      }
+      if (c === 47 && i + 1 < end) {
+        const next = text.charCodeAt(i + 1);
+        if (next === 47) {
+          i += 2;
+          while (i < end && text.charCodeAt(i) !== 10) i += 1;
+          continue;
+        }
+        if (next === 42) {
+          i += 2;
+          while (i + 1 < end && !(text.charCodeAt(i) === 42 && text.charCodeAt(i + 1) === 47)) {
+            i += 1;
+          }
+          i = i + 1 < end ? i + 2 : end;
+          continue;
+        }
+      }
+      break;
+    }
+  };
+
+  const takeWord = (word: string): boolean => {
+    if (i + word.length > end) return false;
+    if (text.slice(i, i + word.length).toLowerCase() !== word) return false;
+    const after = i + word.length;
+    if (after < end) {
+      const c = text.charCodeAt(after);
+      if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 95) {
+        return false;
+      }
+    }
+    i += word.length;
+    return true;
+  };
+
+  skip();
+  if (takeWord('strict')) skip();
+  if (!takeWord('digraph') && !takeWord('graph')) return false;
+  skip();
+  if (i >= end) return false;
+  if (text[i] === '{') return true;
+  if (text[i] === '"') {
+    i += 1;
+    while (i < end) {
+      if (text[i] === '\\') {
+        i += 2;
+        continue;
+      }
+      if (text[i] === '"') {
+        i += 1;
+        break;
+      }
+      i += 1;
+    }
+    skip();
+    return text[i] === '{';
+  }
+  if (text[i] === '<') {
+    i += 1;
+    let depth = 1;
+    while (i < end && depth > 0) {
+      if (text[i] === '<') depth += 1;
+      else if (text[i] === '>') depth -= 1;
+      i += 1;
+    }
+    skip();
+    return text[i] === '{';
+  }
+  if (!takeUnquotedId()) return false;
+  skip();
+  return text[i] === '{';
+
+  function takeUnquotedId(): boolean {
+    if (i >= end) return false;
+    const c = text.charCodeAt(i);
+    if (c === 45 || (c >= 48 && c <= 57) || (c === 46 && nextIsDigit())) {
+      if (c === 45) i += 1;
+      let sawDigit = false;
+      if (i < end && text.charCodeAt(i) === 46) i += 1;
+      while (i < end && text.charCodeAt(i) >= 48 && text.charCodeAt(i) <= 57) {
+        sawDigit = true;
+        i += 1;
+      }
+      if (i < end && text.charCodeAt(i) === 46) {
+        i += 1;
+        while (i < end && text.charCodeAt(i) >= 48 && text.charCodeAt(i) <= 57) {
+          sawDigit = true;
+          i += 1;
+        }
+      }
+      return sawDigit;
+    }
+    if (!isNameStart(c)) return false;
+    i += 1;
+    while (i < end && isNamePart(text.charCodeAt(i))) i += 1;
+    return true;
+  }
+
+  function nextIsDigit(): boolean {
+    return i + 1 < end && text.charCodeAt(i + 1) >= 48 && text.charCodeAt(i + 1) <= 57;
+  }
+}
+
+function isNameStart(c: number): boolean {
+  return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95 || c >= 128;
+}
+
+function isNamePart(c: number): boolean {
+  return isNameStart(c) || (c >= 48 && c <= 57);
 }
