@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/subtitle",
-  "version": "0.6.12",
+  "version": "0.6.13",
   "description": "mdgate subtitle and caption converter",
   "type": "module",
   "license": "MIT",
@@ -28,9 +28,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.12",
-    "@mdgate/document": "0.6.12",
-    "@mdgate/utils": "0.6.12"
+    "@mdgate/core": "0.6.13",
+    "@mdgate/document": "0.6.13",
+    "@mdgate/utils": "0.6.13"
   },
   "publishConfig": {
     "access": "public"
