@@ -12,5 +12,5 @@ bindConvert({
   readyLabel: `Ready · running @mdgate/${config.pkg} locally`,
   copyIdle: 'Copy Markdown',
   copyDone: 'Copied',
-  statsFor: () => `${config.name} detected · Converted locally`,
+  statsFor: (info) => `${info.format} detected · Converted locally`,
 });

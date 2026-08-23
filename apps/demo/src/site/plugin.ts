@@ -2,10 +2,21 @@ import { readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
-import { LEGACY_SLUGS, PAGES } from './pages';
+import { type ConverterPage, LEGACY_SLUGS, PAGES } from './pages';
 import { renderConverterPage, renderRobots, renderSitemap } from './render';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+
+function routeSlug(
+  url: string | undefined,
+): { redirect: string } | { page: ConverterPage } | undefined {
+  const path = (url ?? '').split('?')[0] ?? '';
+  const slug = path.replace(/^\//, '').replace(/\/$/, '');
+  const legacy = LEGACY_SLUGS[slug];
+  if (legacy !== undefined) return { redirect: legacy };
+  const page = PAGES.find((item) => item.slug === slug);
+  return page === undefined ? undefined : { page };
+}
 
 export function converterPages(): Plugin {
   const files = new Set(PAGES.map((page) => `${page.slug}.html`));
@@ -52,20 +63,18 @@ export function converterPages(): Plugin {
           res.end(renderSitemap(PAGES));
           return;
         }
-        const slug = path.replace(/^\//, '').replace(/\/$/, '');
-        const legacy = LEGACY_SLUGS[slug];
-        if (legacy !== undefined) {
-          res.statusCode = 302;
-          res.setHeader('Location', `/${legacy}`);
-          res.end();
-          return;
-        }
-        const page = PAGES.find((item) => item.slug === slug);
-        if (page === undefined) {
+        const route = routeSlug(req.url);
+        if (route === undefined) {
           next();
           return;
         }
-        void server.transformIndexHtml(path, renderConverterPage(page)).then((html) => {
+        if ('redirect' in route) {
+          res.statusCode = 302;
+          res.setHeader('Location', `/${route.redirect}`);
+          res.end();
+          return;
+        }
+        void server.transformIndexHtml(path, renderConverterPage(route.page)).then((html) => {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(html);
         });
@@ -75,6 +84,25 @@ export function converterPages(): Plugin {
         if (!file.includes('/src/site/')) return;
         writePages();
         server.ws.send({ type: 'full-reload', path: '*' });
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const route = routeSlug(req.url);
+        if (route === undefined) {
+          next();
+          return;
+        }
+        if ('redirect' in route) {
+          res.statusCode = 302;
+          res.setHeader('Location', `/${route.redirect}`);
+          res.end();
+          return;
+        }
+        const raw = req.url ?? '';
+        const query = raw.includes('?') ? raw.slice(raw.indexOf('?')) : '';
+        req.url = `/${route.page.slug}.html${query}`;
+        next();
       });
     },
     generateBundle() {
