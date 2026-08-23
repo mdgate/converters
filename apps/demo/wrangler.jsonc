@@ -4,7 +4,8 @@
   "account_id": "b1a1e79c50cbd7f8b2cfb5b74c5d76db",
   "compatibility_date": "2026-08-13",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "html_handling": "drop-trailing-slash"
   },
   "routes": [
     {

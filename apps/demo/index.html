@@ -127,14 +127,34 @@
             ebooks, and dozens of other formats to GitHub-Flavored Markdown.
           </p>
           <p class="stay">Your files stay on your device. No upload. No account.</p>
+          <ul class="badges">
+            <li>
+              <a href="https://www.npmjs.com/package/@mdgate/converters">
+                <span class="key">npm</span>
+                <span class="value">@mdgate/converters</span>
+              </a>
+            </li>
+            <li>
+              <a href="https://github.com/mdgate/converters/blob/main/LICENSE">
+                <span class="key">license</span>
+                <span class="value">MIT</span>
+              </a>
+            </li>
+            <li>
+              <span class="key">runtime</span>
+              <span class="value">Node.js · Edge · browser</span>
+            </li>
+          </ul>
         </section>
 
         <section class="band convert">
           <button class="drop" id="drop" type="button" aria-describedby="drop-hint" disabled>
+            <svg class="drop-mark" viewBox="0 0 48 48" aria-hidden="true">
+              <rect x="8" y="6" width="32" height="36" rx="4" />
+              <path d="M16 18h16M16 24h16M16 30h10" />
+            </svg>
             <span class="big" id="drop-title">Drop a file here</span>
-            <span class="small" id="drop-hint">or <span class="choose">click to choose a file</span></span>
-            <span class="kinds">.pdf, .docx, .pptx, .xlsx, .pages, .hwp, .msg, …</span>
-            <span class="local">Converted locally in your browser</span>
+            <span class="small" id="drop-hint">or <u>browse</u> for one. Conversion happens locally, nothing is uploaded.</span>
           </button>
           <p class="status" id="status">
             <span class="dot" aria-hidden="true"></span>
@@ -201,153 +221,153 @@
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/docx">@mdgate/docx</a></th>
                 <td>
-                  <span>docx</span><span>docm</span><span>dotx</span><span>dotm</span>
+                  <a href="/docx-to-markdown">docx</a><a href="/docm-to-markdown">docm</a><a href="/dotx-to-markdown">dotx</a><a href="/dotm-to-markdown">dotm</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/doc">@mdgate/doc</a></th>
-                <td><span>doc</span><span>dot</span></td>
+                <td><a href="/doc-to-markdown">doc</a><a href="/dot-to-markdown">dot</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/rtf">@mdgate/rtf</a></th>
-                <td><span>rtf</span></td>
+                <td><a href="/rtf-to-markdown">rtf</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/pptx">@mdgate/pptx</a></th>
                 <td>
-                  <span>pptx</span><span>pptm</span><span>ppsx</span><span>ppsm</span><span>potx</span><span>potm</span>
+                  <a href="/pptx-to-markdown">pptx</a><a href="/pptm-to-markdown">pptm</a><a href="/ppsx-to-markdown">ppsx</a><a href="/ppsm-to-markdown">ppsm</a><a href="/potx-to-markdown">potx</a><a href="/potm-to-markdown">potm</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/ppt">@mdgate/ppt</a></th>
-                <td><span>ppt</span><span>pps</span><span>pot</span></td>
+                <td><a href="/ppt-to-markdown">ppt</a><a href="/pps-to-markdown">pps</a><a href="/pot-to-markdown">pot</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/xlsx">@mdgate/xlsx</a></th>
                 <td>
-                  <span>xlsx</span><span>xlsm</span><span>xlsb</span><span>xls</span><span>xltx</span><span>xltm</span><span>xlt</span>
+                  <a href="/xlsx-to-markdown">xlsx</a><a href="/xlsm-to-markdown">xlsm</a><a href="/xlsb-to-markdown">xlsb</a><a href="/xls-to-markdown">xls</a><a href="/xltx-to-markdown">xltx</a><a href="/xltm-to-markdown">xltm</a><a href="/xlt-to-markdown">xlt</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/odf">@mdgate/odf</a></th>
                 <td>
-                  <span>odt</span><span>ods</span><span>odp</span><span>odg</span><span>ott</span><span>ots</span><span>otp</span><span>otg</span><span>fodt</span><span>fods</span><span>fodp</span><span>fodg</span>
+                  <a href="/odt-to-markdown">odt</a><a href="/ods-to-markdown">ods</a><a href="/odp-to-markdown">odp</a><a href="/odg-to-markdown">odg</a><a href="/ott-to-markdown">ott</a><a href="/ots-to-markdown">ots</a><a href="/otp-to-markdown">otp</a><a href="/otg-to-markdown">otg</a><a href="/fodt-to-markdown">fodt</a><a href="/fods-to-markdown">fods</a><a href="/fodp-to-markdown">fodp</a><a href="/fodg-to-markdown">fodg</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/pages">@mdgate/pages</a></th>
-                <td><span>pages</span></td>
+                <td><a href="/pages-to-markdown">pages</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/numbers">@mdgate/numbers</a></th>
-                <td><span>numbers</span></td>
+                <td><a href="/numbers-to-markdown">numbers</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/keynote">@mdgate/keynote</a></th>
-                <td><span>key</span></td>
+                <td><a href="/key-to-markdown">key</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/wps">@mdgate/wps</a></th>
                 <td>
-                  <span>wps</span><span>wpt</span><span>et</span><span>ett</span><span>dps</span><span>dpt</span>
+                  <a href="/wps-to-markdown">wps</a><a href="/wpt-to-markdown">wpt</a><a href="/et-to-markdown">et</a><a href="/ett-to-markdown">ett</a><a href="/dps-to-markdown">dps</a><a href="/dpt-to-markdown">dpt</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/hwp">@mdgate/hwp</a></th>
                 <td>
-                  <span>hwp</span><span>hwpx</span><span>hwt</span><span>hwtx</span>
+                  <a href="/hwp-to-markdown">hwp</a><a href="/hwpx-to-markdown">hwpx</a><a href="/hwt-to-markdown">hwt</a><a href="/hwtx-to-markdown">hwtx</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/pdf">@mdgate/pdf</a></th>
-                <td><span>pdf</span></td>
+                <td><a href="/pdf-to-markdown">pdf</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/html">@mdgate/html</a></th>
                 <td>
-                  <span>html</span><span>htm</span><span>xhtml</span><span>mhtml</span><span>mht</span>
+                  <a href="/html-to-markdown">html</a><a href="/htm-to-markdown">htm</a><a href="/xhtml-to-markdown">xhtml</a><a href="/mhtml-to-markdown">mhtml</a><a href="/mht-to-markdown">mht</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/email">@mdgate/email</a></th>
                 <td>
-                  <span>eml</span><span>msg</span><span>mbox</span><span>emlx</span>
+                  <a href="/eml-to-markdown">eml</a><a href="/msg-to-markdown">msg</a><a href="/mbox-to-markdown">mbox</a><a href="/emlx-to-markdown">emlx</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/ipynb">@mdgate/ipynb</a></th>
-                <td><span>ipynb</span></td>
+                <td><a href="/ipynb-to-markdown">ipynb</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/epub">@mdgate/epub</a></th>
-                <td><span>epub</span></td>
+                <td><a href="/epub-to-markdown">epub</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/fb2">@mdgate/fb2</a></th>
-                <td><span>fb2</span><span>fb2.zip</span></td>
+                <td><a href="/fb2-to-markdown">fb2</a><a href="/fb2-zip-to-markdown">fb2.zip</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/mobi">@mdgate/mobi</a></th>
                 <td>
-                  <span>mobi</span><span>azw</span><span>azw3</span><span>prc</span>
+                  <a href="/mobi-to-markdown">mobi</a><a href="/azw-to-markdown">azw</a><a href="/azw3-to-markdown">azw3</a><a href="/prc-to-markdown">prc</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/latex">@mdgate/latex</a></th>
-                <td><span>tex</span><span>latex</span><span>ltx</span></td>
+                <td><a href="/tex-to-markdown">tex</a><a href="/latex-to-markdown">latex</a><a href="/ltx-to-markdown">ltx</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/visio">@mdgate/visio</a></th>
                 <td>
-                  <span>vsd</span><span>vsdx</span><span>vss</span><span>vst</span><span>vssx</span><span>vstx</span>
+                  <a href="/vsd-to-markdown">vsd</a><a href="/vsdx-to-markdown">vsdx</a><a href="/vss-to-markdown">vss</a><a href="/vst-to-markdown">vst</a><a href="/vssx-to-markdown">vssx</a><a href="/vstx-to-markdown">vstx</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/onenote">@mdgate/onenote</a></th>
                 <td>
-                  <span>one</span><span>onetoc2</span><span>onepkg</span>
+                  <a href="/one-to-markdown">one</a><a href="/onetoc2-to-markdown">onetoc2</a><a href="/onepkg-to-markdown">onepkg</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/csv">@mdgate/csv</a></th>
-                <td><span>csv</span><span>tsv</span><span>tab</span></td>
+                <td><a href="/csv-to-markdown">csv</a><a href="/tsv-to-markdown">tsv</a><a href="/tab-to-markdown">tab</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/data">@mdgate/data</a></th>
                 <td>
-                  <span>json</span><span>jsonl</span><span>xml</span><span>yaml</span><span>yml</span>
+                  <a href="/json-to-markdown">json</a><a href="/jsonl-to-markdown">jsonl</a><a href="/xml-to-markdown">xml</a><a href="/yaml-to-markdown">yaml</a><a href="/yml-to-markdown">yml</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/text">@mdgate/text</a></th>
                 <td>
-                  <span>txt</span><span>text</span><span>md</span><span>markdown</span><span>mdx</span><span>js</span><span>ts</span><span>py</span><span>go</span><span>rs</span>
+                  <a href="/txt-to-markdown">txt</a><a href="/text-to-markdown">text</a><a href="/md-to-markdown">md</a><a href="/markdown-to-markdown">markdown</a><a href="/mdx-to-markdown">mdx</a><a href="/js-to-markdown">js</a><a href="/ts-to-markdown">ts</a><a href="/py-to-markdown">py</a><a href="/go-to-markdown">go</a><a href="/rs-to-markdown">rs</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/subtitle">@mdgate/subtitle</a></th>
-                <td><span>srt</span><span>vtt</span><span>webvtt</span></td>
+                <td><a href="/srt-to-markdown">srt</a><a href="/vtt-to-markdown">vtt</a><a href="/webvtt-to-markdown">webvtt</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/zip">@mdgate/zip</a></th>
-                <td><span>zip</span><span>zipx</span><span>jar</span></td>
+                <td><a href="/zip-to-markdown">zip</a><a href="/zipx-to-markdown">zipx</a><a href="/jar-to-markdown">jar</a></td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/image">@mdgate/image</a></th>
                 <td>
-                  <span class="note">jpeg</span><span class="note">png</span><span class="note">webp</span><span class="note">gif</span><span class="note">tiff</span><span class="note">heic</span><span class="note">bmp</span><span>svg</span>
+                  <a class="note" href="/jpeg-to-markdown">jpeg</a><a class="note" href="/png-to-markdown">png</a><a class="note" href="/webp-to-markdown">webp</a><a class="note" href="/gif-to-markdown">gif</a><a class="note" href="/tiff-to-markdown">tiff</a><a class="note" href="/heic-to-markdown">heic</a><a class="note" href="/bmp-to-markdown">bmp</a><a href="/svg-to-markdown">svg</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/audio">@mdgate/audio</a></th>
                 <td>
-                  <span class="note">mp3</span><span class="note">wav</span><span class="note">m4a</span><span class="note">aac</span><span class="note">ogg</span><span class="note">flac</span><span class="note">weba</span>
+                  <a class="note" href="/mp3-to-markdown">mp3</a><a class="note" href="/wav-to-markdown">wav</a><a class="note" href="/m4a-to-markdown">m4a</a><a class="note" href="/aac-to-markdown">aac</a><a class="note" href="/ogg-to-markdown">ogg</a><a class="note" href="/flac-to-markdown">flac</a><a class="note" href="/weba-to-markdown">weba</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row"><a href="https://github.com/mdgate/converters/tree/main/packages/video">@mdgate/video</a></th>
                 <td>
-                  <span class="note">mp4</span><span class="note">m4v</span><span class="note">mov</span><span class="note">webm</span><span class="note">mkv</span><span class="note">avi</span>
+                  <a class="note" href="/mp4-to-markdown">mp4</a><a class="note" href="/m4v-to-markdown">m4v</a><a class="note" href="/mov-to-markdown">mov</a><a class="note" href="/webm-to-markdown">webm</a><a class="note" href="/mkv-to-markdown">mkv</a><a class="note" href="/avi-to-markdown">avi</a>
                 </td>
               </tr>
             </tbody>
