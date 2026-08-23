@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 import { LEGACY_SLUGS, PAGES } from './pages';
-import { renderConverterPage, renderSitemap } from './render';
+import { renderConverterPage, renderRobots, renderSitemap } from './render';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -42,6 +42,16 @@ export function converterPages(): Plugin {
       server.watcher.unwatch(PAGES.map((page) => resolve(root, `${page.slug}.html`)));
       server.middlewares.use((req, res, next) => {
         const path = (req.url ?? '').split('?')[0] ?? '';
+        if (path === '/robots.txt') {
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          res.end(renderRobots());
+          return;
+        }
+        if (path === '/sitemap.xml' || path === '/sitemaps.xml') {
+          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+          res.end(renderSitemap(PAGES));
+          return;
+        }
         const slug = path.replace(/^\//, '').replace(/\/$/, '');
         const legacy = LEGACY_SLUGS[slug];
         if (legacy !== undefined) {
@@ -68,10 +78,21 @@ export function converterPages(): Plugin {
       });
     },
     generateBundle() {
+      const sitemap = renderSitemap(PAGES);
+      this.emitFile({
+        type: 'asset',
+        fileName: 'robots.txt',
+        source: renderRobots(),
+      });
       this.emitFile({
         type: 'asset',
         fileName: 'sitemap.xml',
-        source: renderSitemap(PAGES),
+        source: sitemap,
+      });
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sitemaps.xml',
+        source: sitemap,
       });
       this.emitFile({
         type: 'asset',

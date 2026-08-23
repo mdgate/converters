@@ -405,3 +405,11 @@ ${urls.join('\n')}
 </urlset>
 `;
 }
+
+export function renderRobots(): string {
+  return `User-agent: *
+Allow: /
+
+Sitemap: ${SITE}/sitemaps.xml
+`;
+}
