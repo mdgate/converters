@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/odf",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "description": "mdgate OpenDocument converter (odt/ods/odp/odg and flat/templates)",
   "type": "module",
   "license": "MIT",
@@ -28,11 +28,11 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.10",
-    "@mdgate/core": "0.6.10",
-    "@mdgate/document": "0.6.10",
-    "@mdgate/office-common": "0.6.10",
-    "@mdgate/utils": "0.6.10"
+    "@mdgate/containers": "0.6.11",
+    "@mdgate/core": "0.6.11",
+    "@mdgate/document": "0.6.11",
+    "@mdgate/office-common": "0.6.11",
+    "@mdgate/utils": "0.6.11"
   },
   "publishConfig": {
     "access": "public"
