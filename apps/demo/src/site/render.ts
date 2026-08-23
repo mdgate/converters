@@ -387,9 +387,9 @@ export function renderConverterPage(page: ConverterPage): string {
             <span class="big" id="drop-title">Drop a <span class="accent">.${esc(page.ext)}</span> file here</span>
             <span class="small" id="drop-hint">or <u>browse</u> for one. Conversion happens locally, nothing is uploaded.</span>
           </button>
-          <p class="status" id="status">
+          <p class="status ready" id="status">
             <span class="dot" aria-hidden="true"></span>
-            <span id="status-label">Starting local converter</span>
+            <span id="status-label">Ready · running ${esc(pkg)} locally</span>
           </p>
           <input id="file" type="file" hidden accept="${esc(page.accept)}" />
           ${sample(page)}
