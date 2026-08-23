@@ -43,7 +43,7 @@ Review every prose output against these rules before delivering.
 
 ### Product domain
 
-- **mdgate** (this monorepo): TypeScript converters that turn documents into GitHub-Flavored Markdown. Word, PowerPoint, Excel, OpenDocument, Apple iWork, WPS, Hangul, PDF, HTML, email, notebooks, ebooks, audio, video, and more. Pass file bytes; get Markdown.
+- **mdgate** (this monorepo): Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers. Pass file bytes; get GitHub-Flavored Markdown.
 - **Runtimes**: Node, Edge (Cloudflare Workers), and the browser. No native addons, no WASM, no Node builtins, no dependencies outside `@mdgate/*`.
 - **Public API**: `@mdgate/converters` is the official bundle (`toMarkdown`, `create`, `all`). Each format is also its own package (`@mdgate/docx`, `@mdgate/pdf`, …) with the same `toMarkdown` function. Compose a custom set with `create()` from `@mdgate/core`.
 - **Detection**: converters `sniff` bytes (and optional `hint.path`). Path is a sniff hint only, never read from disk. Needed for signature-less formats such as CSV.

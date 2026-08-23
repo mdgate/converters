@@ -5,11 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
 [![convert](https://img.shields.io/badge/convert-convert.mdgate.dev-0f766e)](https://convert.mdgate.dev)
 
-**Real-world files to Markdown, in pure TypeScript.**
-
-Convert PDF, Word, Excel, PowerPoint, OpenDocument, Apple iWork, HWP, WPS, email, OneNote, Visio, ebooks, archives, and more into GitHub-Flavored Markdown.
-
-Runs in **Node.js, Cloudflare Workers, Edge runtimes, and browsers**.
+**Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
 
 **No Python. No native addons. No WASM. No third-party runtime dependencies.**
 
@@ -36,7 +32,7 @@ Use it for AI agents, document ingestion, search and indexing, RAG pipelines, lo
 
 <p align="center">
   <a href="https://convert.mdgate.dev">
-    <img src="apps/demo/public/og.png" alt="mdgate/converters: any file in, Markdown out" width="800" />
+    <img src="apps/demo/public/og.png" alt="mdgate/converters: pure TypeScript converters for 150+ file types" width="800" />
   </a>
 </p>
 

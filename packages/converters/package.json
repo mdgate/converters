@@ -1,7 +1,7 @@
 {
   "name": "@mdgate/converters",
   "version": "0.6.10",
-  "description": "Official mdgate converter bundle",
+  "description": "Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://convert.mdgate.dev",
