@@ -47,10 +47,10 @@ const DISPLAY: Record<string, string> = {
   'fb2.zip': 'FB2.ZIP',
   ibooks: 'iBooks',
   key: 'Keynote',
-  markdown: 'Markdown',
+  md: 'Markdown',
   numbers: 'Numbers',
   pages: 'Pages',
-  webvtt: 'WebVTT',
+  vtt: 'WebVTT',
 };
 
 const SAMPLES: Record<string, string> = {
