@@ -5,3 +5,4 @@ dist/
 .DS_Store
 .grok/
 .idea/
+apps/demo/*-to-markdown.html

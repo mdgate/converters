@@ -3,23 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>mdgate — any file to Markdown</title>
+    <title>Convert files to Markdown in your browser | mdgate</title>
     <meta
       name="description"
-      content="Convert Word, PowerPoint, Excel, PDF, Pages, HTML, email, notebooks, ebooks, audio, video, and more to GitHub-Flavored Markdown, entirely in your browser."
+      content="Convert PDF, Word, Excel, PowerPoint, Pages, HWP, email, ebooks and more to Markdown directly in your browser. Local, private, and open source."
     />
-    <meta property="og:title" content="mdgate — any file to Markdown" />
+    <link rel="canonical" href="https://convert.mdgate.dev/" />
+    <meta property="og:title" content="Convert files to Markdown in your browser | mdgate" />
     <meta
       property="og:description"
-      content="Open-source TypeScript converters that turn almost any file into clean GitHub-Flavored Markdown. This page runs them locally: files never leave your machine."
+      content="Convert PDF, Word, Excel, PowerPoint, Pages, HWP, email, ebooks and more to Markdown directly in your browser. Local, private, and open source."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://demo.mdgate.dev/" />
-    <meta property="og:image" content="https://demo.mdgate.dev/og.png" />
+    <meta property="og:url" content="https://convert.mdgate.dev/" />
+    <meta property="og:site_name" content="mdgate" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://convert.mdgate.dev/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Convert files to Markdown with mdgate" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://demo.mdgate.dev/og.png" />
+    <meta name="twitter:title" content="Convert files to Markdown in your browser | mdgate" />
+    <meta
+      name="twitter:description"
+      content="Convert PDF, Word, Excel, PowerPoint, Pages, HWP, email, ebooks and more to Markdown directly in your browser. Local, private, and open source."
+    />
+    <meta name="twitter:image" content="https://convert.mdgate.dev/og.png" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/geist-sans-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-sans-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-sans-600.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-mono-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/geist-mono-500.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
@@ -32,13 +48,31 @@
         <a class="lockup" href="./">
           <img src="/favicon.svg" width="22" height="22" alt="" />
           <span class="wordmark">mdgate</span>
+          <span class="slash" aria-hidden="true">/</span>
+          <span class="repo">converters</span>
         </a>
         <nav>
           <a href="#formats">Formats</a>
-          <a class="aux" href="#about">About</a>
-          <a class="aux" href="#install">Install</a>
-          <a href="https://github.com/mdgate/converters">GitHub</a>
-          <a class="pkg" href="https://www.npmjs.com/package/@mdgate/converters">npm</a>
+          <a href="#developers">Developers</a>
+          <a href="https://github.com/mdgate/converters">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"
+              />
+            </svg>
+            <span>GitHub</span>
+          </a>
+          <a class="pkg" href="https://www.npmjs.com/package/@mdgate/converters">
+            <svg viewBox="0 0 18 18" aria-hidden="true">
+              <path
+                fill="currentColor"
+                fill-rule="evenodd"
+                d="M0 0h18v18H0V0zm3 3h12v12h-3V6H9v9H3V3z"
+              />
+            </svg>
+            <span>npm</span>
+          </a>
         </nav>
       </header>
 
@@ -99,13 +133,12 @@
         </svg>
 
         <section class="band hero">
-          <h1>Any file in.<br /><span class="accent">Markdown out.</span></h1>
+          <h1>Convert files to Markdown <span class="accent">in your browser.</span></h1>
           <p class="lede">
-            Open-source TypeScript converters that turn office documents, HTML,
-            email, notebooks, ebooks, audio, video, and more into
-            <strong>GitHub-Flavored Markdown</strong>. This page runs them in a
-            Web Worker: <strong>files never leave your machine</strong>.
+            Convert PDF, Word, Excel, PowerPoint, Apple iWork, HWP, email,
+            ebooks, and dozens of other formats to GitHub-Flavored Markdown.
           </p>
+          <p class="stay">Your files stay on your device. No upload. No account.</p>
           <ul class="badges">
             <li>
               <a href="https://www.npmjs.com/package/@mdgate/converters">
@@ -121,34 +154,39 @@
             </li>
             <li>
               <span class="key">runtime</span>
-              <span class="value">Node · Edge · browser</span>
+              <span class="value">Node.js · Edge · browser</span>
             </li>
           </ul>
         </section>
 
-        <section class="band">
+        <section class="band convert">
           <button class="drop" id="drop" type="button" aria-describedby="drop-hint" disabled>
             <svg class="drop-mark" viewBox="0 0 48 48" aria-hidden="true">
               <rect x="8" y="6" width="32" height="36" rx="4" />
               <path d="M16 18h16M16 24h16M16 30h10" />
             </svg>
-            <span class="big" id="drop-title">Loading the converter…</span>
-            <span class="small" id="drop-hint">TypeScript converters, compiled once for this page</span>
+            <span class="big" id="drop-title">Drop a file here</span>
+            <span class="small" id="drop-hint">or <u>browse</u> for one. Conversion happens locally, nothing is uploaded.</span>
           </button>
+          <p class="status" id="status">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="status-label">Starting local converter</span>
+          </p>
           <input
             id="file"
             type="file"
             hidden
-            accept=".doc,.docx,.docm,.dot,.dotx,.dotm,.odt,.ott,.fodt,.odg,.otg,.fodg,.ppt,.pptx,.pptm,.pps,.ppsx,.ppsm,.pot,.potx,.potm,.odp,.otp,.fodp,.xls,.xlsx,.xlsm,.xlsb,.xlt,.xltx,.xltm,.ods,.ots,.fods,.csv,.tsv,.tab,.pages,.numbers,.key,.wps,.wpt,.et,.ett,.dps,.dpt,.rtf,.epub,.pdf,.html,.htm,.xhtml,.mhtml,.mht,.eml,.emlx,.msg,.mbox,.ipynb,.md,.markdown,.mdx,.txt,.text,.json,.jsonl,.xml,.yaml,.yml,.tex,.latex,.ltx,.fb2,.mobi,.azw,.azw3,.prc,.hwp,.hwpx,.hwt,.hwtx,.vsd,.vsdx,.vss,.vst,.vssx,.vstx,.one,.onetoc2,.onepkg,.zip,.zipx,.jar,.srt,.vtt,.webvtt,.svg"
+            accept=".doc,.docx,.docm,.dot,.dotx,.dotm,.odt,.ott,.fodt,.odg,.otg,.fodg,.ppt,.pptx,.pptm,.pps,.ppsx,.ppsm,.pot,.potx,.potm,.odp,.otp,.fodp,.xls,.xlsx,.xlsm,.xlsb,.xlt,.xltx,.xltm,.ods,.ots,.fods,.csv,.tsv,.tab,.pages,.numbers,.key,.wps,.wpt,.et,.ett,.dps,.dpt,.rtf,.epub,.pdf,.html,.htm,.xhtml,.mhtml,.mht,.eml,.emlx,.msg,.mbox,.ipynb,.md,.markdown,.mdx,.txt,.text,.json,.jsonl,.xml,.yaml,.yml,.tex,.latex,.ltx,.fb2,.mobi,.azw,.azw3,.prc,.hwp,.hwpx,.hwt,.hwtx,.vsd,.vsdx,.vss,.vst,.vssx,.vstx,.one,.onetoc2,.onepkg,.zip,.zipx,.jar,.srt,.vtt,.webvtt,.svg,.svgz,.jpeg,.jpg,.png,.webp,.gif,.tiff,.tif,.heic,.bmp,.mp3,.wav,.m4a,.aac,.ogg,.flac,.weba,.mp4,.m4v,.mov,.webm,.mkv,.avi"
           />
           <p class="samples">
-            No file at hand? Try a sample:
-            <button type="button" id="sample-docx">letter.docx</button>
-            <button type="button" id="sample-xlsx">sheet.xlsx</button>
-            <button type="button" id="sample-html">page.html</button>
-            <button type="button" id="sample-eml">note.eml</button>
-            <button type="button" id="sample-rtf">notes.rtf</button>
-            <button type="button" id="sample-csv">report.csv</button>
+            Try a sample:
+            <button type="button" data-sample="report.pdf">PDF</button>
+            <button type="button" data-sample="letter.docx">Word</button>
+            <button type="button" data-sample="deck.pptx">PowerPoint</button>
+            <button type="button" data-sample="sheet.xlsx">Excel</button>
+            <button type="button" data-sample="essay.pages">Pages</button>
+            <button type="button" data-sample="note.hwpx">HWP</button>
+            <button type="button" data-sample="meeting.msg">Outlook MSG</button>
           </p>
         </section>
 
@@ -168,10 +206,22 @@
           </div>
           <article class="preview" id="preview"></article>
           <pre class="output" id="output" hidden></pre>
+          <aside class="help" id="help" hidden>
+            <h3 id="help-title">This file needs a model callback</h3>
+            <p id="help-lede"></p>
+            <p id="help-body"></p>
+            <p class="help-cmd">
+              <span class="dollar">$</span>
+              <code class="cmd" id="help-cmd"></code>
+            </p>
+            <p>
+              <a id="help-link" href="https://github.com/mdgate/converters">Read the package README</a>
+            </p>
+          </aside>
         </section>
 
         <section class="band" id="formats">
-          <h2>Formats</h2>
+          <h2>More than .pdf and .docx</h2>
           <table class="catalog">
             <thead>
               <tr>
@@ -180,158 +230,6 @@
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/docx">@mdgate/docx</a></th>
-                <td>
-                  <span>docx</span><span>docm</span><span>dotx</span><span>dotm</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/doc">@mdgate/doc</a></th>
-                <td><span>doc</span><span>dot</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/rtf">@mdgate/rtf</a></th>
-                <td><span>rtf</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/pptx">@mdgate/pptx</a></th>
-                <td>
-                  <span>pptx</span><span>pptm</span><span>ppsx</span><span>ppsm</span><span>potx</span><span>potm</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/ppt">@mdgate/ppt</a></th>
-                <td><span>ppt</span><span>pps</span><span>pot</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/xlsx">@mdgate/xlsx</a></th>
-                <td>
-                  <span>xlsx</span><span>xlsm</span><span>xlsb</span><span>xls</span><span>xltx</span><span>xltm</span><span>xlt</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/odf">@mdgate/odf</a></th>
-                <td>
-                  <span>odt</span><span>ods</span><span>odp</span><span>odg</span><span>ott</span><span>ots</span><span>otp</span><span>otg</span><span>fodt</span><span>fods</span><span>fodp</span><span>fodg</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/pages">@mdgate/pages</a></th>
-                <td><span>pages</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/numbers">@mdgate/numbers</a></th>
-                <td><span>numbers</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/keynote">@mdgate/keynote</a></th>
-                <td><span>key</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/wps">@mdgate/wps</a></th>
-                <td>
-                  <span>wps</span><span>wpt</span><span>et</span><span>ett</span><span>dps</span><span>dpt</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/hwp">@mdgate/hwp</a></th>
-                <td>
-                  <span>hwp</span><span>hwpx</span><span>hwt</span><span>hwtx</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/pdf">@mdgate/pdf</a></th>
-                <td><span>pdf</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/html">@mdgate/html</a></th>
-                <td>
-                  <span>html</span><span>htm</span><span>xhtml</span><span>mhtml</span><span>mht</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/email">@mdgate/email</a></th>
-                <td>
-                  <span>eml</span><span>msg</span><span>mbox</span><span>emlx</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/ipynb">@mdgate/ipynb</a></th>
-                <td><span>ipynb</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/epub">@mdgate/epub</a></th>
-                <td><span>epub</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/fb2">@mdgate/fb2</a></th>
-                <td><span>fb2</span><span>fb2.zip</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/mobi">@mdgate/mobi</a></th>
-                <td>
-                  <span>mobi</span><span>azw</span><span>azw3</span><span>prc</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/latex">@mdgate/latex</a></th>
-                <td><span>tex</span><span>latex</span><span>ltx</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/visio">@mdgate/visio</a></th>
-                <td>
-                  <span>vsd</span><span>vsdx</span><span>vss</span><span>vst</span><span>vssx</span><span>vstx</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/onenote">@mdgate/onenote</a></th>
-                <td>
-                  <span>one</span><span>onetoc2</span><span>onepkg</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/csv">@mdgate/csv</a></th>
-                <td><span>csv</span><span>tsv</span><span>tab</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/data">@mdgate/data</a></th>
-                <td>
-                  <span>json</span><span>jsonl</span><span>xml</span><span>yaml</span><span>yml</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/text">@mdgate/text</a></th>
-                <td>
-                  <span>txt</span><span>text</span><span>md</span><span>markdown</span><span>mdx</span><span>js</span><span>ts</span><span>py</span><span>go</span><span>rs</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/subtitle">@mdgate/subtitle</a></th>
-                <td><span>srt</span><span>vtt</span><span>webvtt</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/zip">@mdgate/zip</a></th>
-                <td><span>zip</span><span>zipx</span><span>jar</span></td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/image">@mdgate/image</a></th>
-                <td>
-                  <span class="note">jpeg</span><span class="note">png</span><span class="note">webp</span><span class="note">gif</span><span class="note">tiff</span><span class="note">heic</span><span class="note">bmp</span><span>svg</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/audio">@mdgate/audio</a></th>
-                <td>
-                  <span class="note">mp3</span><span class="note">wav</span><span class="note">m4a</span><span class="note">aac</span><span class="note">ogg</span><span class="note">flac</span><span class="note">weba</span>
-                </td>
-              </tr>
-              <tr>
-                <th scope="row"><a href="https://www.npmjs.com/package/@mdgate/video">@mdgate/video</a></th>
-                <td>
-                  <span class="note">mp4</span><span class="note">m4v</span><span class="note">mov</span><span class="note">webm</span><span class="note">mkv</span><span class="note">avi</span>
-                </td>
-              </tr>
             </tbody>
           </table>
           <p class="prose">
@@ -341,73 +239,128 @@
           </p>
         </section>
 
-        <section class="band" id="about">
-          <h2>About</h2>
-          <dl class="facts">
-            <dt>One model</dt>
-            <dd>
-              <strong>A parser may build a Document and run the shared
-              Markdown serializer</strong>,
-              so headings, nested lists, and tables come out the same from
-              a .doc, an .eml, or yesterday’s .xlsx.
-            </dd>
-            <dt>Detection</dt>
-            <dd>
-              The format is read from the bytes, not the extension, so
-              mislabeled files still convert. Pass <code>hint.path</code> only
-              for signature-less formats such as CSV, TSV, and plain text.
-            </dd>
-            <dt>Portable</dt>
-            <dd>
-              The converters are TypeScript with no Node builtins, no WASM,
-              and no dependencies outside <code>@mdgate/*</code>.
-              The same <code>toMarkdown(bytes)</code> call works in Node, Edge,
-              and this page.
-            </dd>
-            <dt>Formats</dt>
-            <dd>
-              One package per family, or the full bundle. The
-              <a href="#formats">list above</a> is what this page will convert.
-            </dd>
-            <dt>PDF</dt>
-            <dd>
-              Text is extracted locally. Embedded images are handed to the
-              converter pool when a vision callback is registered.
-            </dd>
-            <dt>This page</dt>
-            <dd>
-              The converter above is
-              <a href="https://www.npmjs.com/package/@mdgate/converters"
-                >@mdgate/converters</a
-              >, running in a Web Worker. Drop a file into your own app the
-              same way.
-            </dd>
-          </dl>
+        <section class="band" id="developers">
+          <h2>Use the same converter in your app.</h2>
+          <p class="install-line">
+            <span class="dollar">$</span>
+            <code class="cmd">npm install @mdgate/converters</code>
+          </p>
+          <pre class="snippet"><code><span class="cmt">// Everything</span>
+import { toMarkdown } from '@mdgate/converters';
+
+const markdown = await toMarkdown(bytes, {
+  path: filename,
+});
+
+<span class="cmt">// One format</span>
+import { toMarkdown } from '@mdgate/pdf';
+
+const markdown = await toMarkdown(bytes);
+
+<span class="cmt">// Your own converter</span>
+import { create } from '@mdgate/core';
+import { pdf } from '@mdgate/pdf';
+
+function myFormat() {
+  return {
+    id: 'my-format',
+    sniff(bytes, hint) {
+      if (looksLikeMine(bytes)) return 2;
+      if (hint?.path?.endsWith('.mine')) return 1;
+      return 0;
+    },
+    convert(bytes) {
+      return { markdown: parseMine(bytes) };
+    },
+  };
+}
+
+const toMarkdown = create([myFormat(), pdf()]);
+const markdown = await toMarkdown(bytes);</code></pre>
+          <p class="facts-line">
+            Pure TypeScript, Node.js, Cloudflare Workers, Edge, Browser, No Python, No native addons, No WASM, Zero third-party runtime dependencies
+          </p>
         </section>
 
-        <section class="band" id="install">
-          <h2>Install</h2>
-          <dl class="installs">
-            <dt>Everything</dt>
-            <dd>
-              <span class="dollar">$</span>
-              <code class="cmd">npm install @mdgate/converters</code>
-            </dd>
-            <dt>One format</dt>
-            <dd>
-              <span class="dollar">$</span>
-              <code class="cmd">npm install @mdgate/docx</code>
-            </dd>
-          </dl>
-          <pre class="snippet"><code>import { toMarkdown } from '@mdgate/converters';
-
-const bytes = new Uint8Array(await file.arrayBuffer());
-const markdown = await toMarkdown(bytes, { path: file.name });</code></pre>
+        <section class="band" id="agents">
+          <h2>Give your agent files it can actually read.</h2>
           <p class="prose">
-            The same function works in Node, Edge, and the browser. Compose a
-            smaller set with <code>create()</code>, or hand images, audio, and
-            video to a model. See the
-            <a href="https://github.com/mdgate/converters#quick-start">README</a>.
+            Turn Word, spreadsheets, presentations, email, PDFs, and other
+            real-world files into Markdown your agent can grep, search, chunk,
+            index, cite, and reason over.
+          </p>
+          <ol class="flow" aria-label="Files become Markdown through mdgate/converters, then grep, search, chunk, index, and cite">
+            <li>
+              <ul>
+                <li>.pdf</li>
+                <li>.docx</li>
+                <li>.xlsx</li>
+                <li>.pptx</li>
+                <li>.hwp</li>
+                <li>.pages</li>
+                <li>.msg</li>
+                <li class="more">…</li>
+              </ul>
+            </li>
+            <li>
+              <span class="flow-brand"><span>mdgate</span><span class="slash">/</span><span>converters</span></span>
+            </li>
+            <li><span class="flow-out">Markdown</span></li>
+            <li>
+              <ul>
+                <li>grep</li>
+                <li>search</li>
+                <li>chunk</li>
+                <li>index</li>
+                <li>cite</li>
+              </ul>
+            </li>
+          </ol>
+        </section>
+
+        <section class="band" id="why">
+          <h2>Why this converter</h2>
+          <div class="why">
+            <article>
+              <h3>Runs where your JavaScript runs</h3>
+              <p>Node.js, Cloudflare Workers, Edge runtimes, and browsers. No second runtime required.</p>
+            </article>
+            <article>
+              <h3>Files stay local</h3>
+              <p>Deterministic formats can be converted without sending the document to an external parsing service.</p>
+            </article>
+            <article>
+              <h3>Detects the file, not just the extension</h3>
+              <p>PDF signatures, Office containers, OLE streams, package metadata, and other format signals are detected from the bytes.</p>
+            </article>
+            <article>
+              <h3>One Markdown output</h3>
+              <p>Documents from different ecosystems converge on a consistent GitHub-Flavored Markdown representation.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="band" id="faq">
+          <h2>FAQ</h2>
+          <h3>Are files uploaded to mdgate?</h3>
+          <p>
+            No. The converter on this page runs in a Web Worker and locally supported files stay in your browser.
+          </p>
+          <h3>What file formats can it convert?</h3>
+          <p>
+            PDF, Word, Excel, PowerPoint, OpenDocument, Apple iWork, HWP, WPS, email, OneNote, Visio, ebooks, archives, data files, and more.
+          </p>
+          <h3>Can I use it in Cloudflare Workers?</h3>
+          <p>
+            Yes. The converters are written in TypeScript and run in Cloudflare Workers without Python, native addons, or WASM.
+          </p>
+          <h3>Can I install only one format?</h3>
+          <p>
+            Yes. For example, use @mdgate/pdf, @mdgate/docx, or @mdgate/hwp.
+          </p>
+          <h3>What about scanned PDFs, images, audio, and video?</h3>
+          <p>
+            Deterministic document content is parsed locally. Media that requires model understanding can be connected to a model callback supplied by your application.
           </p>
         </section>
       </main>

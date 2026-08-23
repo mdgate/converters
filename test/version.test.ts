@@ -29,7 +29,7 @@ test('published packages declare homepage and repository', () => {
       homepage?: string;
       repository?: { type?: string; url?: string; directory?: string };
     };
-    expect(json.homepage, pkg.json.name).toBe('https://demo.mdgate.dev');
+    expect(json.homepage, pkg.json.name).toBe('https://convert.mdgate.dev');
     expect(json.repository, pkg.json.name).toEqual({
       type: 'git',
       url: 'git+https://github.com/mdgate/converters.git',

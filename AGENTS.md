@@ -48,7 +48,7 @@ Review every prose output against these rules before delivering.
 - **Public API**: `@mdgate/converters` is the official bundle (`toMarkdown`, `create`, `all`). Each format is also its own package (`@mdgate/docx`, `@mdgate/pdf`, …) with the same `toMarkdown` function. Compose a custom set with `create()` from `@mdgate/core`.
 - **Detection**: converters `sniff` bytes (and optional `hint.path`). Path is a sniff hint only, never read from disk. Needed for signature-less formats such as CSV.
 - **Callbacks**: raster images, audio, and video need a registered callback (`image()`, `audio()`, `video()`). SVG converts locally. Those callbacks are not in `all()`.
-- **Demo**: `apps/demo` (`@mdgate/demo`) at `demo.mdgate.dev`. Runs the library in a Web Worker. Files convert locally and never leave the machine.
+- **Demo**: `apps/demo` (`@mdgate/demo`) at `convert.mdgate.dev`. Runs the library in a Web Worker. Files convert locally and never leave the machine.
 
 ### Engineering
 
@@ -220,7 +220,7 @@ When closing issues via commit:
 
 - Repo: `github.com/mdgate/converters`.
 - Cloudflare account id: `b1a1e79c50cbd7f8b2cfb5b74c5d76db` (pinned in `apps/demo/wrangler.jsonc`).
-- Production Worker: `mdgate-demo` → `https://demo.mdgate.dev`.
+- Production Worker: `mdgate-demo` → `https://convert.mdgate.dev`.
 - Auto-deploy: Workers Builds is connected to this GitHub repo. A push to `main` builds packages, then runs `bun run deploy:demo`. Settings live on the Worker (Settings > Builds), not in git:
   - Root: `/`
   - Build: `bun run build`
