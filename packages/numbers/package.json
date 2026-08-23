@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/numbers",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "description": "mdgate Apple Numbers converter",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.11",
-    "@mdgate/document": "0.6.11",
-    "@mdgate/iwork-common": "0.6.11",
-    "@mdgate/utils": "0.6.11"
+    "@mdgate/core": "0.6.12",
+    "@mdgate/document": "0.6.12",
+    "@mdgate/iwork-common": "0.6.12",
+    "@mdgate/utils": "0.6.12"
   },
   "publishConfig": {
     "access": "public"
