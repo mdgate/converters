@@ -624,6 +624,22 @@ A committed fixture corpus under `test/fixtures/` is snapshot-tested. `test/robu
 
 ---
 
+## Acknowledgements
+
+The converters are original TypeScript. The projects below were references during development, not runtime dependencies.
+
+- [firecrawl/anydoc](https://github.com/firecrawl/anydoc): early work started as a TypeScript port of this library, then diverged.
+- [mozilla/pdf.js](https://github.com/mozilla/pdf.js): layout of PDF standard encoding tables.
+- [BurntSushi/rust-csv](https://github.com/BurntSushi/rust-csv): CSV record state machine.
+- [mdsteele/rust-cfb](https://github.com/mdsteele/rust-cfb): OLE compound-file FAT checks.
+- [ashtuchkin/iconv-lite](https://github.com/ashtuchkin/iconv-lite): single-byte encoding tables.
+- [adobe-type-tools/agl-aglfn](https://github.com/adobe-type-tools/agl-aglfn): Adobe Glyph List for PDF glyph names.
+- [adobe-type-tools/cmap-resources](https://github.com/adobe-type-tools/cmap-resources): CMap files for PDF CID encodings.
+- [adobe-type-tools/mapping-resources-pdf](https://github.com/adobe-type-tools/mapping-resources-pdf): CID-to-Unicode maps for PDF text.
+- [Unicode UCD](https://www.unicode.org/Public/UCD/latest/): Equivalent Unified Ideograph mappings.
+
+---
+
 ## License
 
 [MIT](LICENSE)
