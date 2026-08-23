@@ -75,12 +75,35 @@ export const LEGACY_SLUGS: Record<string, string> = {
   'visio-to-markdown': 'vsd-to-markdown',
 };
 
-function displayName(ext: string): string {
-  return DISPLAY[ext] ?? ext.toUpperCase();
+export const EXT_ALIASES: Record<string, string> = {
+  heif: 'heic',
+  htm: 'html',
+  html4: 'html',
+  html5: 'html',
+  jpg: 'jpeg',
+  markdown: 'md',
+  qt: 'mov',
+  svgz: 'svg',
+  text: 'txt',
+  tif: 'tiff',
+  wave: 'wav',
+  webvtt: 'vtt',
+  yml: 'yaml',
+};
+
+export function slugFor(ext: string): string {
+  return `${ext.replace(/\./g, '-')}-to-markdown`;
 }
 
-function slugFor(ext: string): string {
-  return `${ext.replace(/\./g, '-')}-to-markdown`;
+export const REDIRECTS: Record<string, string> = {
+  ...LEGACY_SLUGS,
+  ...Object.fromEntries(
+    Object.entries(EXT_ALIASES).map(([from, to]) => [slugFor(from), slugFor(to)]),
+  ),
+};
+
+function displayName(ext: string): string {
+  return DISPLAY[ext] ?? ext.toUpperCase();
 }
 
 function fill(template: string, name: string): string {
@@ -92,11 +115,18 @@ function composeFor(pkg: string): [string, string] {
   return [picked[0]!, picked[1]!];
 }
 
+function canonicalExt(ext: string): string {
+  return EXT_ALIASES[ext] ?? ext;
+}
+
 function relatedFor(ext: string, family: Family): string[] {
-  const siblings = family.extensions.filter((item) => item !== ext);
-  const extras = [...family.related, ...POPULAR].filter(
-    (item) => item !== ext && !siblings.includes(item),
-  );
+  const self = canonicalExt(ext);
+  const siblings = family.extensions
+    .map(canonicalExt)
+    .filter((item) => item !== self && EXT_ALIASES[item] === undefined);
+  const extras = [...family.related, ...POPULAR]
+    .map(canonicalExt)
+    .filter((item) => item !== self && !siblings.includes(item));
   const picked: string[] = [];
   for (const item of [...siblings, ...extras]) {
     if (picked.includes(item)) continue;
@@ -506,7 +536,7 @@ const FAMILIES: Family[] = [
   },
   {
     pkg: 'html',
-    extensions: ['html', 'htm', 'html4', 'html5', 'xhtml', 'mhtml', 'mht'],
+    extensions: ['html', 'xhtml', 'mhtml', 'mht'],
     parse: 'HTML tree parsing',
     structure: 'headings · lists · tables · links',
     extracts: [
@@ -715,7 +745,7 @@ const FAMILIES: Family[] = [
   },
   {
     pkg: 'data',
-    extensions: ['json', 'jsonl', 'xml', 'yaml', 'yml'],
+    extensions: ['json', 'jsonl', 'xml', 'yaml'],
     parse: 'structured-data parsing',
     structure: 'objects · arrays · nested text',
     extracts: [
@@ -740,9 +770,7 @@ const FAMILIES: Family[] = [
     pkg: 'text',
     extensions: [
       'txt',
-      'text',
       'md',
-      'markdown',
       'mdx',
       'js',
       'jsx',
@@ -790,19 +818,7 @@ const FAMILIES: Family[] = [
   },
   {
     pkg: 'subtitle',
-    extensions: [
-      'srt',
-      'vtt',
-      'webvtt',
-      'ass',
-      'ssa',
-      'lrc',
-      'sub',
-      'sbv',
-      'ttml',
-      'jss',
-      'jacosub',
-    ],
+    extensions: ['srt', 'vtt', 'ass', 'ssa', 'lrc', 'sub', 'sbv', 'ttml', 'jss', 'jacosub'],
     parse: 'cue parsing',
     structure: 'timing · text · emphasis',
     extracts: [
@@ -846,20 +862,7 @@ const FAMILIES: Family[] = [
   },
   {
     pkg: 'image',
-    extensions: [
-      'svg',
-      'svgz',
-      'jpeg',
-      'jpg',
-      'png',
-      'webp',
-      'gif',
-      'tiff',
-      'tif',
-      'heic',
-      'heif',
-      'bmp',
-    ],
+    extensions: ['svg', 'jpeg', 'png', 'webp', 'gif', 'tiff', 'heic', 'bmp'],
     parse: 'image detection',
     structure: 'SVG text · your vision callback',
     extracts: [
@@ -889,7 +892,7 @@ const FAMILIES: Family[] = [
   },
   {
     pkg: 'audio',
-    extensions: ['mp3', 'wav', 'wave', 'm4a', 'aac', 'ogg', 'flac', 'weba'],
+    extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'weba'],
     parse: 'audio detection',
     structure: 'your transcription callback',
     extracts: [
@@ -921,7 +924,7 @@ const FAMILIES: Family[] = [
   },
   {
     pkg: 'video',
-    extensions: ['mp4', 'm4v', 'mov', 'qt', 'webm', 'mkv', 'mk3d', 'avi'],
+    extensions: ['mp4', 'm4v', 'mov', 'webm', 'mkv', 'mk3d', 'avi'],
     parse: 'video detection',
     structure: 'your video callback',
     extracts: [
@@ -953,51 +956,66 @@ const FAMILIES: Family[] = [
   },
 ];
 
+function fileSuffix(ext: string): string {
+  const base = ext.includes('.') ? ext.slice(ext.lastIndexOf('.') + 1) : ext;
+  return `.${base}`;
+}
+
+function acceptFor(ext: string): string {
+  const aliases = Object.entries(EXT_ALIASES)
+    .filter(([, to]) => to === ext)
+    .map(([from]) => from);
+  return [...new Set([ext, ...aliases].map(fileSuffix))].join(',');
+}
+
 function expand(family: Family): ConverterPage[] {
-  return family.extensions.map((ext) => {
-    const name = displayName(ext);
-    const svg = ext === 'svg' || ext === 'svgz';
-    const local = family.pkg === 'image' ? svg : (family.local ?? true);
-    const snippet: ConverterPage['snippet'] =
-      family.pkg === 'image' ? (svg ? 'default' : 'callback') : (family.snippet ?? 'default');
-    const sniff =
-      family.sniff !== undefined
-        ? fill(family.sniff, ext)
-        : `Recognizes ${name} files from their contents, not only the filename.`;
-    const sampleFile = SAMPLES[ext];
-    const acceptExt = ext.includes('.') ? `.${ext.slice(ext.lastIndexOf('.') + 1)}` : `.${ext}`;
-    return {
-      pkg: family.pkg,
-      ext,
-      slug: slugFor(ext),
-      name,
-      stay: `Your ${name}`,
-      files: `${name} files`,
-      accept: acceptExt,
-      sample:
-        sampleFile === undefined ? undefined : { file: sampleFile, button: `Try a sample ${name}` },
-      how: {
-        source: name,
-        parse: family.parse,
-        structure: family.structure,
-      },
-      extracts: family.extracts,
-      runtimes: {
-        node: fill(family.node, name),
-        workers: fill(family.workers, name),
-        browser: fill(family.browser, name),
-        edge: fill(family.edge, name),
-      },
-      split: family.split,
-      related: relatedFor(ext, family),
-      faq: defaultFaq(family, name, `${name} files`, local),
-      why: defaultWhy(name, sniff, local),
-      snippet,
-      compose: composeFor(family.pkg),
-      sniff,
-      local,
-    };
-  });
+  return family.extensions
+    .filter((ext) => EXT_ALIASES[ext] === undefined)
+    .map((ext) => {
+      const name = displayName(ext);
+      const svg = ext === 'svg' || ext === 'svgz';
+      const local = family.pkg === 'image' ? svg : (family.local ?? true);
+      const snippet: ConverterPage['snippet'] =
+        family.pkg === 'image' ? (svg ? 'default' : 'callback') : (family.snippet ?? 'default');
+      const sniff =
+        family.sniff !== undefined
+          ? fill(family.sniff, ext)
+          : `Recognizes ${name} files from their contents, not only the filename.`;
+      const sampleFile = SAMPLES[ext];
+      return {
+        pkg: family.pkg,
+        ext,
+        slug: slugFor(ext),
+        name,
+        stay: `Your ${name}`,
+        files: `${name} files`,
+        accept: acceptFor(ext),
+        sample:
+          sampleFile === undefined
+            ? undefined
+            : { file: sampleFile, button: `Try a sample ${name}` },
+        how: {
+          source: name,
+          parse: family.parse,
+          structure: family.structure,
+        },
+        extracts: family.extracts,
+        runtimes: {
+          node: fill(family.node, name),
+          workers: fill(family.workers, name),
+          browser: fill(family.browser, name),
+          edge: fill(family.edge, name),
+        },
+        split: family.split,
+        related: relatedFor(ext, family),
+        faq: defaultFaq(family, name, `${name} files`, local),
+        why: defaultWhy(name, sniff, local),
+        snippet,
+        compose: composeFor(family.pkg),
+        sniff,
+        local,
+      };
+    });
 }
 
 export const PAGES: ConverterPage[] = FAMILIES.flatMap(expand);
@@ -1017,4 +1035,13 @@ for (const page of PAGES) {
       throw new Error(`unknown related extension ${related} on ${page.ext}`);
     }
   }
+}
+
+const pageSlugs = new Set(PAGES.map((page) => page.slug));
+for (const [from, to] of Object.entries(REDIRECTS)) {
+  if (pageSlugs.has(from)) throw new Error(`redirect ${from} still has a page`);
+  if (!pageSlugs.has(to)) throw new Error(`redirect ${from} -> missing ${to}`);
+}
+for (const target of Object.values(EXT_ALIASES)) {
+  if (!PAGE_BY_EXT.has(target)) throw new Error(`alias target ${target} has no page`);
 }

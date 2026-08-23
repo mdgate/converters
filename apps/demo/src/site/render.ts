@@ -1,5 +1,5 @@
-import type { ConverterPage } from './pages';
-import { PAGE_BY_EXT } from './pages';
+import type { ConverterPage, Faq } from './pages';
+import { PAGE_BY_EXT, PAGES, REDIRECTS } from './pages';
 
 const SITE = 'https://convert.mdgate.dev';
 const GITHUB = 'https://github.com/mdgate/converters';
@@ -64,6 +64,157 @@ function esc(value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+const HOME_DESCRIPTION =
+  'Convert PDF, Word, Excel, PowerPoint, Pages, HWP, email, ebooks and more to Markdown directly in your browser. Local, private, and open source.';
+
+const HOME_FAQ: Faq[] = [
+  {
+    q: 'Are files uploaded to mdgate?',
+    a: 'No. The converter on this page runs in a Web Worker and locally supported files stay in your browser.',
+  },
+  {
+    q: 'What file formats can it convert?',
+    a: 'PDF, Word, Excel, PowerPoint, OpenDocument, Apple iWork, HWP, WPS, email, OneNote, Visio, ebooks, archives, data files, and more.',
+  },
+  {
+    q: 'Can I use it in Cloudflare Workers?',
+    a: 'Yes. The converters are written in TypeScript and run in Cloudflare Workers without Python, native addons, or WASM.',
+  },
+  {
+    q: 'Can I install only one format?',
+    a: 'Yes. For example, use @mdgate/pdf, @mdgate/docx, or @mdgate/hwp.',
+  },
+  {
+    q: 'What about scanned PDFs, images, audio, and video?',
+    a: 'Deterministic document content is parsed locally. Media that requires model understanding can be connected to a model callback supplied by your application.',
+  },
+];
+
+function jsonLdScript(id: string, data: unknown): string {
+  return `<script type="application/ld+json" id="${esc(id)}">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+}
+
+function faqEntities(faq: Faq[]): unknown[] {
+  return faq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  }));
+}
+
+function socialMeta(title: string, description: string, url: string): string {
+  return `<meta property="og:title" content="${esc(title)}" />
+    <meta property="og:description" content="${esc(description)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="${esc(url)}" />
+    <meta property="og:site_name" content="mdgate" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="${SITE}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Convert files to Markdown with mdgate" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${esc(title)}" />
+    <meta name="twitter:description" content="${esc(description)}" />
+    <meta name="twitter:image" content="${SITE}/og.png" />`;
+}
+
+function converterJsonLd(page: ConverterPage, url: string, pkg: string): string {
+  return jsonLdScript('page-jsonld', {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebApplication',
+        name: `${page.name} to Markdown`,
+        url,
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: pkg,
+        url: `https://www.npmjs.com/package/${pkg}`,
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqEntities(page.faq),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'mdgate converters', item: `${SITE}/` },
+          { '@type': 'ListItem', position: 2, name: `${page.name} to Markdown`, item: url },
+        ],
+      },
+    ],
+  });
+}
+
+function homeJsonLd(): string {
+  return jsonLdScript('home-jsonld', {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        name: 'mdgate converters',
+        url: `${SITE}/`,
+        description: HOME_DESCRIPTION,
+      },
+      {
+        '@type': 'WebApplication',
+        name: 'mdgate converters',
+        url: `${SITE}/`,
+        applicationCategory: 'UtilitiesApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: faqEntities(HOME_FAQ),
+      },
+    ],
+  });
+}
+
+export function renderFormatCatalog(pages: ConverterPage[] = PAGES): string {
+  const groups: { pkg: string; pages: ConverterPage[] }[] = [];
+  for (const page of pages) {
+    const last = groups.at(-1);
+    if (last?.pkg === page.pkg) last.pages.push(page);
+    else groups.push({ pkg: page.pkg, pages: [page] });
+  }
+  return groups
+    .map((group) => {
+      const links = group.pages
+        .map((page) => {
+          const cls = page.local ? '' : ' class="note"';
+          return `<a${cls} href="/${esc(page.slug)}">${esc(page.ext)}</a>`;
+        })
+        .join('');
+      return `<tr>
+                <th scope="row"><a href="${GITHUB}/tree/main/packages/${esc(group.pkg)}">@mdgate/${esc(group.pkg)}</a></th>
+                <td>
+                  ${links}
+                </td>
+              </tr>`;
+    })
+    .join('\n              ');
+}
+
+export function enhanceHomeHtml(html: string): string {
+  const catalog = html.replace(
+    /(<table class="catalog">[\s\S]*?<tbody>)([\s\S]*?)(<\/tbody>)/,
+    `$1\n              ${renderFormatCatalog()}\n            $3`,
+  );
+  if (catalog === html) throw new Error('home catalog tbody not found');
+  if (catalog.includes('id="home-jsonld"')) return catalog;
+  return catalog.replace('</head>', `    ${homeJsonLd()}\n  </head>`);
 }
 
 function lockup(href: string): string {
@@ -137,7 +288,7 @@ export function renderConverterPage(page: ConverterPage): string {
   const url = `${SITE}/${page.slug}`;
   const npm = `https://www.npmjs.com/package/${pkg}`;
   const githubPkg = `${GITHUB}/tree/main/packages/${page.pkg}`;
-  const title = `${page.name} to Markdown - convert ${page.files} in your browser | mdgate`;
+  const title = `${page.name} to Markdown in your browser | mdgate`;
   const description = `Convert ${page.files} to GitHub-Flavored Markdown directly in your browser. ${page.stay} stays on your device. No upload. No account.`;
   const [composeA, composeB] = page.compose;
   const config = JSON.stringify({ pkg: page.pkg, name: page.name }).replace(/</g, '\\u003c');
@@ -160,13 +311,8 @@ export function renderConverterPage(page: ConverterPage): string {
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(description)}" />
     <link rel="canonical" href="${esc(url)}" />
-    <meta property="og:title" content="${esc(title)}" />
-    <meta property="og:description" content="${esc(description)}" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="${esc(url)}" />
-    <meta property="og:image" content="${SITE}/og.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="${SITE}/og.png" />
+    ${socialMeta(title, description, url)}
+    ${converterJsonLd(page, url, pkg)}
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preload" href="/fonts/geist-sans-400.woff2" as="font" type="font/woff2" crossorigin />
@@ -415,6 +561,13 @@ export function renderRobots(): string {
   return `User-agent: *
 Allow: /
 
-Sitemap: ${SITE}/sitemaps.xml
+Sitemap: ${SITE}/sitemap.xml
 `;
+}
+
+export function renderRedirects(): string {
+  return [
+    ...Object.entries(REDIRECTS).map(([from, to]) => `/${from} /${to} 301`),
+    '/sitemaps.xml /sitemap.xml 301',
+  ].join('\n');
 }
