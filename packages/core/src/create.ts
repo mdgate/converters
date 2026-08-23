@@ -1,8 +1,20 @@
 import type { Convert, Converter, ConvertHint, ConvertOptions } from './converter.js';
 import { ConvertError } from './error.js';
 
+const MAX_NESTING = 16;
+
 export function create(converters: readonly Converter[]): Convert {
-  const run = async (bytes: Uint8Array, hint: ConvertHint | undefined): Promise<string> => {
+  const run = async (
+    bytes: Uint8Array,
+    hint: ConvertHint | undefined,
+    depth: number,
+  ): Promise<string> => {
+    if (depth > MAX_NESTING) {
+      throw ConvertError.resourceLimit(
+        'max_nesting',
+        `nested conversion exceeded ${MAX_NESTING} levels`,
+      );
+    }
     if (!(bytes instanceof Uint8Array)) {
       throw ConvertError.unsupported('input must be a Uint8Array');
     }
@@ -27,11 +39,11 @@ export function create(converters: readonly Converter[]): Convert {
 
     const options: ConvertOptions = {
       ...hint,
-      convert: (inner, innerHint) => run(inner, innerHint),
+      convert: (inner, innerHint) => run(inner, innerHint, depth + 1),
     };
     const result = await best.convert(bytes, options);
     return result.markdown;
   };
 
-  return (bytes, hint) => run(bytes, hint);
+  return (bytes, hint) => run(bytes, hint, 0);
 }

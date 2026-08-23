@@ -51,25 +51,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isNotebook(value: unknown): value is Record<string, unknown> {
-  return isRecord(value) && typeof value.nbformat === 'number' && Array.isArray(value.cells);
+  if (!isRecord(value) || typeof value.nbformat !== 'number') return false;
+  if (Array.isArray(value.cells)) return true;
+  return Array.isArray(value.worksheets);
+}
+
+function notebookCells(nb: Record<string, unknown>): unknown[] {
+  if (Array.isArray(nb.cells)) return nb.cells;
+  if (!Array.isArray(nb.worksheets)) return [];
+  const cells: unknown[] = [];
+  for (const ws of nb.worksheets) {
+    if (!isRecord(ws) || !Array.isArray(ws.cells)) continue;
+    for (const cell of ws.cells) cells.push(cell);
+  }
+  return cells;
+}
+
+function cellSource(cell: Record<string, unknown>): string {
+  if (cell.source !== undefined) return joinSource(cell.source);
+  return joinSource(cell.input);
 }
 
 function notebookToDocument(nb: Record<string, unknown>): Document {
   const lang = notebookLanguage(nb);
   const doc = emptyDocument();
-  const cells = nb.cells;
-  if (!Array.isArray(cells)) return doc;
-  for (const cell of cells) {
+  for (const cell of notebookCells(nb)) {
     if (!isRecord(cell)) continue;
     const kind = typeof cell.cell_type === 'string' ? cell.cell_type : '';
     if (kind === 'markdown' || kind === 'raw') {
-      pushMarkdown(doc, joinSource(cell.source));
+      pushMarkdown(doc, cellSource(cell));
     } else if (kind === 'code') {
-      pushCode(doc, joinSource(cell.source), lang);
+      pushCode(doc, cellSource(cell), lang);
       if (Array.isArray(cell.outputs)) pushOutputs(doc, cell.outputs);
     } else if (kind === 'heading') {
       const level = typeof cell.level === 'number' ? cell.level : 1;
-      const text = joinSource(cell.source).trim();
+      const text = cellSource(cell).trim();
       if (text.length > 0) doc.blocks.push(heading(level, parseInlines(text)));
     }
   }

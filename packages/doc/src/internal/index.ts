@@ -62,11 +62,16 @@ export function parse(bytes: Uint8Array): Document {
   }
 
   const wordDoc = readOleStream(ole, 'WordDocument');
-  if (getU16(wordDoc, 0) !== 0xa5ec) {
+  const magic = getU16(wordDoc, 0);
+  if (magic !== 0xa5ec && magic !== 0xa5dc) {
     throw ConvertError.malformedPart('WordDocument', 'invalid FIB magic');
   }
+  const nFib = getU16(wordDoc, 2) ?? 0;
   const flags = getU16(wordDoc, 0x0a) ?? 0;
   if ((flags & 0x0100) !== 0) throw ConvertError.encrypted();
+  if (magic === 0xa5dc || nFib < 0xc1) {
+    return parseLegacyWord(wordDoc);
+  }
   const [tableName, otherTable] =
     (flags & 0x0200) !== 0 ? (['1Table', '0Table'] as const) : (['0Table', '1Table'] as const);
   const table = tryOleStream(ole, tableName) ?? tryOleStream(ole, otherTable) ?? new Uint8Array();
@@ -272,6 +277,29 @@ function prm0Grpprl(prm: number): Uint8Array | undefined {
       return undefined;
   }
   return Uint8Array.of(sprm & 0xff, sprm >>> 8, val);
+}
+
+function parseLegacyWord(wordDoc: Uint8Array): Document {
+  const pieces = legacySinglePiece(wordDoc);
+  const totalCp = pieces[0] !== undefined ? pieces[0].cpEnd : 0;
+  const lid = getU16(wordDoc, 0x06) ?? 0;
+  const encoding = lidEncoding(lid);
+  const text = extractText(wordDoc, pieces, totalCp, encoding);
+  const blocks: Block[] = [];
+  let buf = '';
+  const flush = (): void => {
+    const t = buf;
+    buf = '';
+    if (t.length === 0) return;
+    blocks.push({ type: 'paragraph', inlines: [{ type: 'text', text: t, style: { ...PLAIN } }] });
+  };
+  for (const c of text.chars) {
+    if (c === '\r' || c === '\n' || c === '\f') flush();
+    else if (c === '\u0007') continue;
+    else buf += c;
+  }
+  flush();
+  return { blocks, notes: [], assets: [] };
 }
 
 function legacySinglePiece(wordDoc: Uint8Array): Piece[] {

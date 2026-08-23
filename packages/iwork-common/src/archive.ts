@@ -2,7 +2,7 @@ import { Package } from '@mdgate/containers';
 import { ConvertError } from '@mdgate/core';
 import { warn } from '@mdgate/utils';
 import { type IwaObject, parseIwa } from './iwa.js';
-import { detectPreIwaKind } from './pre-iwa.js';
+import { detectPreIwaKind, isEpubZip } from './pre-iwa.js';
 import { fieldBytes, type ProtoField, readReference, readReferences } from './protobuf.js';
 import { type IWorkKind, TYPE } from './types.js';
 
@@ -62,6 +62,7 @@ export function openIWork(bytes: Uint8Array, expected?: IWorkKind): IWorkArchive
 
 export function detectIWorkKind(bytes: Uint8Array): IWorkKind | undefined {
   if (!isZip(bytes)) return undefined;
+  if (isEpubZip(bytes)) return undefined;
   try {
     const archive = openIWork(bytes);
     return archive.kind;
@@ -156,6 +157,7 @@ function classifyDocumentType1(fields: readonly ProtoField[]): IWorkKind | undef
 }
 
 function isEncryptedPackage(pkg: Package): boolean {
+  if (pkg.hasEncryptedEntries()) return true;
   for (const name of pkg.partNames()) {
     const lower = name.toLowerCase();
     if (lower.includes('encrypted') || lower.endsWith('.iwae')) return true;

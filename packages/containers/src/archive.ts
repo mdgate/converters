@@ -10,6 +10,13 @@ const SIG_ZIP64_EOCD = 0x06064b50;
 const SIG_ZIP64_LOCATOR = 0x07064b50;
 const METHOD_STORE = 0;
 const METHOD_DEFLATE = 8;
+const METHOD_AES = 99;
+const METHOD_APPLE_ENC = 0x636b;
+const METHOD_APPLE_ENC2 = 0x636c;
+
+function isEncryptedMethod(method: number): boolean {
+  return method === METHOD_AES || method === METHOD_APPLE_ENC || method === METHOD_APPLE_ENC2;
+}
 
 interface ZipEntry {
   name: string;
@@ -111,6 +118,14 @@ class ZipArchive {
     return [...this.byName.keys()];
   }
 
+  hasEncryptedEntries(): boolean {
+    for (const e of this.byName.values()) {
+      if ((e.flags & 1) !== 0) return true;
+      if (isEncryptedMethod(e.method)) return true;
+    }
+    return false;
+  }
+
   readCompressed(entry: ZipEntry): Uint8Array {
     const dv = view(this.bytes);
     const off = entry.headerOffset;
@@ -184,6 +199,11 @@ export class Package {
     return this.zip.partNames();
   }
 
+  /** True when any entry is password-protected or uses an Apple/AES zip method. */
+  hasEncryptedEntries(): boolean {
+    return this.zip.hasEncryptedEntries();
+  }
+
   requiredPart(name: string): Uint8Array {
     const bytes = this.part(name);
     if (bytes === undefined) throw ConvertError.missingPart(name);
@@ -221,8 +241,8 @@ export class Package {
   }
 
   private decompress(entry: ZipEntry, maxOut: number): Uint8Array {
-    if ((entry.flags & 1) !== 0) {
-      throw new Error('encrypted zip entry');
+    if ((entry.flags & 1) !== 0 || isEncryptedMethod(entry.method)) {
+      throw ConvertError.encrypted();
     }
     let compressed: Uint8Array;
     try {

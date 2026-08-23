@@ -81,6 +81,33 @@ describe('protobuf groups', () => {
 });
 
 describe('pre-IWA packages', () => {
+  it('collects sf:ct table cell strings', () => {
+    const bytes = zipStore({
+      'presentation.apxl': new TextEncoder().encode(`<?xml version="1.0"?>
+<key:presentation xmlns:key="http://developer.apple.com/namespaces/keynote2" xmlns:sf="http://developer.apple.com/namespaces/sf" xmlns:sfa="http://developer.apple.com/namespaces/sfa">
+  <sf:p><sf:text>Title</sf:text></sf:p>
+  <sf:table>
+    <sf:ct sfa:s="Cell A1"/>
+    <sf:ct sfa:s="Cell B1"/>
+  </sf:table>
+</key:presentation>`),
+    });
+    expect(detectIWorkKind(bytes)).toBe('keynote');
+    const doc = parsePreIwa(bytes, 'keynote');
+    const json = JSON.stringify(doc);
+    expect(json).toContain('Title');
+    expect(json).toContain('Cell A1');
+    expect(json).toContain('Cell B1');
+  });
+
+  it('does not classify an EPUB/iBooks package as pages', () => {
+    const bytes = zipStore({
+      mimetype: new TextEncoder().encode('application/x-ibooks+zip'),
+      'META-INF/container.xml': new TextEncoder().encode('<container/>'),
+    });
+    expect(detectIWorkKind(bytes)).toBeUndefined();
+  });
+
   it('detects and extracts text from index.xml', () => {
     const bytes = zipStore({
       'index.xml': new TextEncoder().encode(`<?xml version="1.0"?>
