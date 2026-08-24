@@ -6,6 +6,7 @@ export interface TableTextItem {
   y: number;
   width: number;
   page: number;
+  fontSize?: number;
 }
 
 export interface TableLine {
@@ -380,14 +381,22 @@ function joinCellText(items: TableTextItem[]): string {
   for (const item of items) {
     const t = item.text.trim();
     if (t.length === 0) continue;
-    if (prev) {
-      const gap = item.x - (prev.x + Math.max(prev.width, 0));
-      if (gap > 0.6) out += ' ';
-    }
+    if (prev && cellNeedsSpace(prev, item, out)) out += ' ';
     out += t;
     prev = item;
   }
   return out;
+}
+
+function cellNeedsSpace(prev: TableTextItem, curr: TableTextItem, out: string): boolean {
+  if (out.endsWith(' ') || curr.text.startsWith(' ') || prev.text.endsWith(' ')) return true;
+  const currFirst = [...curr.text.trimStart()][0];
+  if (currFirst !== undefined && ".,;!?)]}'".includes(currFirst)) return false;
+  const gap = curr.x - (prev.x + Math.max(prev.width, 0));
+  const fs = Math.max(prev.fontSize ?? 12, curr.fontSize ?? 12, 8);
+  if (gap > fs * 3 || gap < -fs) return true;
+  if (gap < fs * 0.12) return false;
+  return true;
 }
 
 function isTableRow(row: RowCand): boolean {
