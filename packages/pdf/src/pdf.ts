@@ -70,9 +70,19 @@ function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
   const pageRects: PdfRect[] = [];
   const images: PlacedImage[] = [];
   const imageCache = new Map<string, PlacedImage | null>();
+  const annotSeen = new Set<PdfDict>();
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   for (let i = 0; i < pages.length; i += 1) {
-    const extracted = extractPage(doc, pages[i]!, i + 1, wantImages, imageCache);
+    const extracted = extractPage(
+      doc,
+      pages[i]!,
+      i + 1,
+      wantImages,
+      imageCache,
+      [1, 0, 0, 1, 0, 0],
+      0,
+      annotSeen,
+    );
     items.push(...extracted.items);
     strokeLines.push(...extracted.lines);
     pageRects.push(...extracted.rects);
@@ -749,6 +759,14 @@ function readEncryptParams(doc: PdfDocument, enc: PdfDict): EncryptParams | unde
   };
 }
 
+function decryptLoadedObject(doc: PdfDocument, num: number, gen: number, value: PdfValue): void {
+  const crypt = doc.crypt;
+  if (!crypt || (crypt.stm === 'none' && crypt.str === 'none')) return;
+  const encryptRef = doc.trailer.map.get('/Encrypt');
+  if (isRef(encryptRef) && encryptRef.num === num && encryptRef.gen === gen) return;
+  decryptValue(crypt, value, num, gen);
+}
+
 function decryptValue(crypt: FileCrypt, value: PdfValue, num: number, gen: number): void {
   if (value instanceof Uint8Array) return;
   if (Array.isArray(value)) {
@@ -857,7 +875,10 @@ function parseXrefAt(doc: PdfDocument, offset: number, seen: Set<number>): PdfDi
   if (obj === undefined || !isDict(obj.value)) return undefined;
   const key = refKey(obj.num, obj.gen);
   const stored = doc.objects.get(key);
-  if (!isDict(stored)) doc.objects.set(key, obj.value);
+  if (!isDict(stored)) {
+    decryptLoadedObject(doc, obj.num, obj.gen, obj.value);
+    doc.objects.set(key, obj.value);
+  }
   const dict = isDict(stored) ? stored : obj.value;
   if (nameOf(dict.map.get('/Type')) === '/XRef') {
     applyXrefStream(doc, dict);
@@ -929,7 +950,10 @@ function applyXrefStream(doc: PdfDocument, xref: PdfDict): void {
         const key = refKey(num, field3);
         if (doc.objects.has(key)) continue;
         const parsed = parseIndirectAt(doc.bytes, field2);
-        if (parsed !== undefined) doc.objects.set(key, parsed.value);
+        if (parsed !== undefined) {
+          decryptLoadedObject(doc, num, field3, parsed.value);
+          doc.objects.set(key, parsed.value);
+        }
       } else if (type === 2) {
         objstms.add(field2);
       }
@@ -1358,11 +1382,13 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
   if (!isCid) {
     applySimpleFontEncoding(doc, encVal, name, subtype, (flags & 0x4) !== 0, cmap);
   }
+  let hasToUnicode = false;
   const tu = d.map.get('/ToUnicode');
   if (tu !== undefined) {
     const parsed = parseToUnicode(decodeStream(doc, tu));
     for (const [k, v] of parsed.map) cmap.set(k, v);
     if (!encCmap && !uni) codeByteLength = parsed.codeByteLength;
+    hasToUnicode = parsed.map.size > 0;
   }
 
   const first = asNumber(dictGet(doc, d, '/FirstChar')) ?? 0;
@@ -1432,7 +1458,7 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
     symbolic,
     encodingCmap: encCmap,
     uniKind: uni,
-    legacyCjk: isCid ? undefined : detectLegacyCjk(name),
+    legacyCjk: isCid || hasToUnicode ? undefined : detectLegacyCjk(name),
   };
 }
 
@@ -1441,7 +1467,6 @@ function detectLegacyCjk(name: string): 'gbk' | 'big5' | 'shift_jis' | undefined
   if (/gb2312|gbk|gb18030|gbsn|gkai/.test(n)) return 'gbk';
   if (/big5|mingliu|pmingliu/.test(n)) return 'big5';
   if (/shiftjis|shift_jis|90ms|sjis/.test(n)) return 'shift_jis';
-  if (isCjkFontName(name)) return 'gbk';
   const bytes = new Uint8Array(name.length);
   for (let i = 0; i < name.length; i += 1) bytes[i] = name.charCodeAt(i) & 0xff;
   const asGbk = decode(bytes, 'gbk');
@@ -2028,7 +2053,6 @@ function decodeLegacyCjk(font: FontInfo, raw: Uint8Array): DecodedChar[] {
 }
 
 function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
-  if (font.legacyCjk && !font.isCid) return decodeLegacyCjk(font, raw);
   if (font.uniKind) {
     const out: DecodedChar[] = [];
     let i = 0;
@@ -2057,6 +2081,8 @@ function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
     return out;
   }
 
+  if (font.legacyCjk && !font.isCid) return decodeLegacyCjk(font, raw);
+
   if (font.codeByteLength !== 2) return decodeOneByte(font, raw);
 
   // Odd-length strings sometimes mean the producer emitted 1-byte codes on a Type0 font.
@@ -2082,6 +2108,7 @@ function extractPage(
   imageCache: Map<string, PlacedImage | null>,
   startCtm: number[] = [1, 0, 0, 1, 0, 0],
   depth = 0,
+  annotSeen: Set<PdfDict> = new Set(),
 ): PageExtract {
   const fonts = loadPageFonts(doc, page);
   const contents = dictGet(doc, page, '/Contents');
@@ -2372,7 +2399,7 @@ function extractPage(
 
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
   extractAnnotationAppearances(doc, page, pageResources, pageNo, items, lines, rects, stats, depth);
-  items.push(...collectAnnotationItems(doc, page, pageNo));
+  items.push(...collectAnnotationItems(doc, page, pageNo, annotSeen, depth === 0));
   return { items, lines, rects, images, stats };
 }
 
@@ -2451,17 +2478,24 @@ function stripXmlTags(s: string): string {
     .trim();
 }
 
-function collectAnnotationItems(doc: PdfDocument, page: PdfDict, pageNo: number): TextItem[] {
+function collectAnnotationItems(
+  doc: PdfDocument,
+  page: PdfDict,
+  pageNo: number,
+  seen: Set<PdfDict>,
+  includeAcroForm: boolean,
+): TextItem[] {
   const annots = dictGet(doc, page, '/Annots');
   const values: PdfValue[] = Array.isArray(annots) ? annots : [];
-  const root = deref(doc, doc.trailer.map.get('/Root'));
-  const acro = isDict(root) ? dictGet(doc, root, '/AcroForm') : undefined;
-  if (isDict(acro)) {
-    const fields = dictGet(doc, acro, '/Fields');
-    if (Array.isArray(fields)) values.push(...fields);
+  if (includeAcroForm) {
+    const root = deref(doc, doc.trailer.map.get('/Root'));
+    const acro = isDict(root) ? dictGet(doc, root, '/AcroForm') : undefined;
+    if (isDict(acro)) {
+      const fields = dictGet(doc, acro, '/Fields');
+      if (Array.isArray(fields)) values.push(...fields);
+    }
   }
   const items: TextItem[] = [];
-  const seen = new Set<PdfDict>();
   const walk = (v: PdfValue | undefined): void => {
     const ad = deref(doc, v);
     if (!isDict(ad) || seen.has(ad)) return;
