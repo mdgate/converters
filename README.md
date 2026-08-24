@@ -5,7 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
 [![convert](https://img.shields.io/badge/convert-convert.mdgate.dev-0f766e)](https://convert.mdgate.dev)
 
-**Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
+**Real-world files to Markdown, in pure TypeScript.**
+
+Convert PDF, Word, Excel, PowerPoint, OpenDocument, Apple iWork, HWP, WPS, email, OneNote, Visio, ebooks, archives, and more into GitHub-Flavored Markdown.
+
+Runs in **Node.js, Cloudflare Workers, Edge runtimes, and browsers**.
 
 **No Python. No native addons. No WASM. No third-party runtime dependencies.**
 
@@ -21,15 +25,40 @@ const markdown = await toMarkdown(bytes, {
 });
 ```
 
-Bytes in. GitHub-Flavored Markdown out. Works in Node.js, Cloudflare Workers, Edge, and browsers.
+The input is bytes. The output is Markdown.
 
 [Try it in your browser](https://convert.mdgate.dev). Files convert locally and never leave your machine.
 
 <p align="center">
   <a href="https://convert.mdgate.dev">
-    <img src="apps/demo/public/og.png" alt="mdgate/converters: pure TypeScript converters for 150+ file types" width="800" />
+    <img src="apps/demo/public/og.png" alt="mdgate/converters: real-world files to Markdown, in pure TypeScript" width="800" />
   </a>
 </p>
+
+---
+
+## Why mdgate/converters?
+
+A JavaScript application that needs to read real-world files quickly becomes a collection of unrelated parsers and runtimes.
+
+PDF needs one solution. Word needs another. Then Excel, PowerPoint, email, Apple Pages, HWP, OneNote, Visio, ebooks, archives...
+
+`mdgate/converters` puts them behind one interface:
+
+```text
+Uint8Array → Markdown
+```
+
+It is designed to stay inside the JavaScript runtime your application already uses.
+
+* **Broad format coverage**: Office, PDF, iWork, HWP, WPS, email, ebooks, notebooks, archives, and more
+* **Portable TypeScript**: Node.js, Cloudflare Workers, Edge, and browser
+* **Local parsing**: deterministic formats are parsed without a remote conversion service
+* **One Markdown dialect**: official converters produce consistent GitHub-Flavored Markdown
+* **Content-based detection**: many formats are identified from their bytes, not just their extension
+* **Composable**: install every converter, one format, or your own combination
+* **Nested conversion**: archives and container formats can pass inner files through the same reader
+* **Small supply chain**: no third-party runtime dependencies, native addons, or WASM
 
 ---
 
@@ -47,7 +76,7 @@ import { toMarkdown } from '@mdgate/pdf';
 const markdown = await toMarkdown(bytes);
 ```
 
-Each format package exposes the same `toMarkdown(bytes)` model. The full package list is in [`@mdgate/converters`](packages/converters).
+Each format package exposes the same `toMarkdown(bytes)` model.
 
 ---
 
@@ -74,31 +103,31 @@ const markdown = await toMarkdown(bytes);
 
 ## Supported formats
 
-| Family               | Formats                                                                     |
-| -------------------- | --------------------------------------------------------------------------- |
-| Microsoft Word       | `.doc`, `.docx`, `.docm`                                                    |
-| Microsoft PowerPoint | `.ppt`, `.pps`, `.pot`, `.pptx`, `.pptm`, `.ppsx`, `.ppsm`                  |
-| Microsoft Excel      | `.xls`, `.xlsx`, `.xlsm`, `.xlsb`                                           |
-| OpenDocument         | `.odt`, `.ods`, `.odp`, `.odg`, templates and flat XML                      |
-| Apple iWork          | `.pages`, `.numbers`, `.key`                                                |
-| WPS Office           | `.wps`, `.wpt`, `.et`, `.ett`, `.dps`, `.dpt`                               |
-| Hangul / Hancom      | `.hwp`, `.hwpx`, `.hwt`, `.hwtx`                                            |
-| Rich Text            | `.rtf`                                                                      |
-| PDF                  | `.pdf`                                                                      |
-| HTML                 | `.html`, `.htm`, `.html4`, `.html5`, `.xhtml`, `.mhtml`, `.mht`             |
-| Email                | `.eml`, `.msg`, `.mbox`, `.emlx`                                            |
-| Jupyter              | `.ipynb`                                                                    |
-| Ebooks               | `.epub`, `.ibooks`, `.fb2`, `.mobi`, `.azw`, `.azw3`, `.prc`                |
-| LaTeX                | `.tex`, `.latex`, `.ltx`                                                    |
-| Microsoft Visio      | `.vsd`, `.vsdx`, `.vss`, `.vst`, `.vssx`, `.vstx`                           |
-| Microsoft OneNote    | `.one`, `.onetoc2`, `.onepkg`                                               |
-| Data                 | `.csv`, `.json`, `.jsonl`, `.xml`, `.yaml`                                  |
-| Text & source        | `.txt`, `.md`, source-code files                                            |
-| Subtitles            | `.srt`, `.vtt`, `.webvtt`, `.ass`, `.lrc`, `.sub`, `.sbv`, `.ttml`, `.jss`  |
-| Archives             | `.zip`, `.zipx`, `.jar`                                                     |
-| Images               | `.jpeg`\*, `.png`\*, `.webp`\*, `.gif`\*, `.tiff`\*, `.heic`\*, `.bmp`\*, `.svg`, `.svgz` |
-| Audio                | `.mp3`\*, `.wav`\*, `.m4a`\*, `.aac`\*, `.ogg`\*, `.flac`\*, `.weba`\*                    |
-| Video                | `.mp4`\*, `.m4v`\*, `.mov`\*, `.webm`\*, `.mkv`\*, `.avi`\*                             |
+| Family               | Formats                                                                                          | Package |
+| -------------------- | ------------------------------------------------------------------------------------------------ | ------- |
+| Microsoft Word       | `.doc`, `.docx`, `.docm`                                                                         | [`@mdgate/doc`](packages/doc), [`@mdgate/docx`](packages/docx) |
+| Microsoft PowerPoint | `.ppt`, `.pps`, `.pot`, `.pptx`, `.pptm`, `.ppsx`, `.ppsm`                                       | [`@mdgate/ppt`](packages/ppt), [`@mdgate/pptx`](packages/pptx) |
+| Microsoft Excel      | `.xls`, `.xlsx`, `.xlsm`, `.xlsb`                                                                | [`@mdgate/xlsx`](packages/xlsx) |
+| OpenDocument         | `.odt`, `.ods`, `.odp`, `.odg`, templates and flat XML                                           | [`@mdgate/odf`](packages/odf) |
+| Apple iWork          | `.pages`, `.numbers`, `.key`                                                                     | [`@mdgate/pages`](packages/pages), [`@mdgate/numbers`](packages/numbers), [`@mdgate/keynote`](packages/keynote) |
+| WPS Office           | `.wps`, `.wpt`, `.et`, `.ett`, `.dps`, `.dpt`                                                    | [`@mdgate/wps`](packages/wps) |
+| Hangul / Hancom      | `.hwp`, `.hwpx`, `.hwt`, `.hwtx`                                                                 | [`@mdgate/hwp`](packages/hwp) |
+| Rich Text            | `.rtf`                                                                                           | [`@mdgate/rtf`](packages/rtf) |
+| PDF                  | `.pdf`                                                                                           | [`@mdgate/pdf`](packages/pdf) |
+| HTML                 | `.html`, `.htm`, `.html4`, `.html5`, `.xhtml`, `.mhtml`, `.mht`                                  | [`@mdgate/html`](packages/html) |
+| Email                | `.eml`, `.msg`, `.mbox`, `.emlx`                                                                 | [`@mdgate/email`](packages/email) |
+| Jupyter              | `.ipynb`                                                                                         | [`@mdgate/ipynb`](packages/ipynb) |
+| Ebooks               | `.epub`, `.ibooks`, `.fb2`, `.mobi`, `.azw`, `.azw3`, `.prc`                                     | [`@mdgate/epub`](packages/epub), [`@mdgate/fb2`](packages/fb2), [`@mdgate/mobi`](packages/mobi) |
+| LaTeX                | `.tex`, `.latex`, `.ltx`                                                                         | [`@mdgate/latex`](packages/latex) |
+| Microsoft Visio      | `.vsd`, `.vsdx`, `.vss`, `.vst`, `.vssx`, `.vstx`                                                | [`@mdgate/visio`](packages/visio) |
+| Microsoft OneNote    | `.one`, `.onetoc2`, `.onepkg`                                                                    | [`@mdgate/onenote`](packages/onenote) |
+| Data                 | `.csv`, `.json`, `.jsonl`, `.xml`, `.yaml`                                                       | [`@mdgate/csv`](packages/csv), [`@mdgate/data`](packages/data) |
+| Text & source        | `.txt`, `.md`, source-code files                                                                 | [`@mdgate/text`](packages/text) |
+| Subtitles            | `.srt`, `.vtt`, `.webvtt`, `.ass`, `.lrc`, `.sub`, `.sbv`, `.ttml`, `.jss`                       | [`@mdgate/subtitle`](packages/subtitle) |
+| Archives             | `.zip`, `.zipx`, `.jar`                                                                          | [`@mdgate/zip`](packages/zip) |
+| Images               | `.jpeg`\*, `.png`\*, `.webp`\*, `.gif`\*, `.tiff`\*, `.heic`\*, `.bmp`\*, `.svg`, `.svgz`        | [`@mdgate/image`](packages/image) |
+| Audio                | `.mp3`\*, `.wav`\*, `.m4a`\*, `.aac`\*, `.ogg`\*, `.flac`\*, `.weba`\*                           | [`@mdgate/audio`](packages/audio) |
+| Video                | `.mp4`\*, `.m4v`\*, `.mov`\*, `.webm`\*, `.mkv`\*, `.avi`\*                                      | [`@mdgate/video`](packages/video) |
 
 \* Needs a callback: vision for raster images (`image()`), transcription for audio (`audio()`), video understanding for `video()`. Not registered by `all()`. SVG converts locally.
 
