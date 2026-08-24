@@ -382,7 +382,7 @@ function joinCellText(items: TableTextItem[]): string {
     if (t.length === 0) continue;
     if (prev) {
       const gap = item.x - (prev.x + Math.max(prev.width, 0));
-      if (gap > 0.6) out += ' ';
+      if (gap > 0.6 || item.text.startsWith(' ') || prev.text.endsWith(' ')) out += ' ';
     }
     out += t;
     prev = item;

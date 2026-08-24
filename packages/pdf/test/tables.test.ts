@@ -73,6 +73,23 @@ describe('ruled table detection', () => {
     expect(tables[0]!.markdown).toContain('|Bob|41|Paris|');
   });
 
+  it('keeps a word space when a cell fragment starts with one', () => {
+    const items = [
+      { text: 'W', x: 20, y: 80, width: 11, page: 1 },
+      { text: 'ide', x: 31, y: 80, width: 15, page: 1 },
+      { text: ' head', x: 46.1, y: 80, width: 22, page: 1 },
+      { text: 'End', x: 140, y: 80, width: 20, page: 1 },
+      { text: 'Tall', x: 20, y: 60, width: 24, page: 1 },
+      { text: 'B2', x: 80, y: 60, width: 16, page: 1 },
+      { text: 'C2', x: 140, y: 60, width: 16, page: 1 },
+      { text: 'B3', x: 80, y: 40, width: 16, page: 1 },
+      { text: 'C3', x: 140, y: 40, width: 16, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|Wide head|');
+  });
+
   it('keeps a three-column grid when one corner cell is empty', () => {
     const items = [
       { text: 'Wide', x: 20, y: 80, width: 28, page: 1 },
