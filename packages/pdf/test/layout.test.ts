@@ -134,3 +134,54 @@ ET
     expect(md.replace(/\s+/g, '')).toBe('55');
   });
 });
+
+describe('multi-column reading order', () => {
+  it('reads a two-column page top-to-bottom per column, not row-by-row', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 90 Tm
+(Alpha) Tj
+1 0 0 1 20 70 Tm
+(Bravo) Tj
+1 0 0 1 160 90 Tm
+(Charlie) Tj
+1 0 0 1 160 70 Tm
+(Delta) Tj
+ET
+`,
+        [0, 0, 300, 120],
+      ),
+    );
+    expect(md.indexOf('Alpha')).toBeLessThan(md.indexOf('Bravo'));
+    expect(md.indexOf('Bravo')).toBeLessThan(md.indexOf('Charlie'));
+    expect(md.indexOf('Charlie')).toBeLessThan(md.indexOf('Delta'));
+    expect(md).not.toMatch(/Alpha\s+Charlie/);
+  });
+
+  it('keeps a full-width title above both columns', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 110 Tm
+(Title Across Both Columns Here) Tj
+1 0 0 1 20 80 Tm
+(Left one) Tj
+1 0 0 1 20 60 Tm
+(Left two) Tj
+1 0 0 1 170 80 Tm
+(Right one) Tj
+1 0 0 1 170 60 Tm
+(Right two) Tj
+ET
+`,
+        [0, 0, 320, 140],
+      ),
+    );
+    expect(md.indexOf('Title')).toBeLessThan(md.indexOf('Left one'));
+    expect(md.indexOf('Left two')).toBeLessThan(md.indexOf('Right one'));
+    expect(md.indexOf('Right one')).toBeLessThan(md.indexOf('Right two'));
+  });
+});
