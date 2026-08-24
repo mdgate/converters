@@ -8,6 +8,8 @@ export interface LineItem {
   height: number;
   fontSize: number;
   page: number;
+  dx?: number;
+  dy?: number;
 }
 
 export interface LayoutBox {
@@ -30,6 +32,25 @@ const MERGE_TOL = 0.5;
 const MAX_DEPTH = 16;
 
 export function groupIntoLines<T extends LineItem>(items: T[]): T[][] {
+  const upright: T[] = [];
+  const rotated: T[] = [];
+  for (const item of items) {
+    if (isUpright(item)) upright.push(item);
+    else rotated.push(item);
+  }
+  const lines = groupAxisAligned(upright);
+  lines.push(...groupRotated(rotated));
+  lines.sort((a, b) => a[0]!.page - b[0]!.page || b[0]!.y - a[0]!.y || a[0]!.x - b[0]!.x);
+  return lines;
+}
+
+function isUpright(item: LineItem): boolean {
+  const dx = item.dx ?? 1;
+  const dy = item.dy ?? 0;
+  return Math.abs(dy) <= Math.abs(dx) * 0.35;
+}
+
+function groupAxisAligned<T extends LineItem>(items: T[]): T[][] {
   const sorted = items.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
   const rows: T[][] = [];
   for (const item of sorted) {
@@ -61,6 +82,53 @@ function splitRowByGap<T extends LineItem>(row: T[]): T[][] {
     else segs[segs.length - 1]!.push(curr);
   }
   return segs;
+}
+
+function groupRotated<T extends LineItem>(items: T[]): T[][] {
+  const buckets = new Map<string, T[]>();
+  for (const item of items) {
+    const dx = item.dx ?? 0;
+    const dy = item.dy ?? 1;
+    const deg = Math.round((Math.atan2(dy, dx) * 180) / Math.PI / 15) * 15;
+    const key = `${item.page}:${deg}`;
+    const cell = buckets.get(key);
+    if (cell) cell.push(item);
+    else buckets.set(key, [item]);
+  }
+  const lines: T[][] = [];
+  for (const group of buckets.values()) {
+    const first = group[0]!;
+    const dx = first.dx ?? 0;
+    const dy = first.dy ?? 1;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const px = -uy;
+    const py = ux;
+    group.sort(
+      (a, b) =>
+        a.x * px + a.y * py - (b.x * px + b.y * py) || a.x * ux + a.y * uy - (b.x * ux + b.y * uy),
+    );
+    let current: T[] = [];
+    let base = Number.NaN;
+    for (const item of group) {
+      const along = item.x * px + item.y * py;
+      if (current.length === 0 || Math.abs(along - base) < Math.max(3, item.fontSize * 0.35)) {
+        current.push(item);
+        if (Number.isNaN(base)) base = along;
+      } else {
+        current.sort((a, b) => a.x * ux + a.y * uy - (b.x * ux + b.y * uy));
+        lines.push(current);
+        current = [item];
+        base = along;
+      }
+    }
+    if (current.length > 0) {
+      current.sort((a, b) => a.x * ux + a.y * uy - (b.x * ux + b.y * uy));
+      lines.push(current);
+    }
+  }
+  return lines;
 }
 
 export function lineBox<T extends LineItem>(line: T[]): LayoutBox {
