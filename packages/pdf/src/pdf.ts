@@ -692,7 +692,7 @@ function applyEncryption(doc: PdfDocument): void {
     const parts = key.split(' ');
     const num = Number(parts[0]);
     const gen = Number(parts[1]);
-    decryptValue(crypt, obj, num, gen);
+    doc.objects.set(key, decryptValue(crypt, obj, num, gen));
   }
 }
 
@@ -760,42 +760,39 @@ function readEncryptParams(doc: PdfDocument, enc: PdfDict): EncryptParams | unde
   };
 }
 
-function decryptLoadedObject(doc: PdfDocument, num: number, gen: number, value: PdfValue): void {
+function decryptLoadedObject(
+  doc: PdfDocument,
+  num: number,
+  gen: number,
+  value: PdfValue,
+): PdfValue {
   const crypt = doc.crypt;
-  if (!crypt || (crypt.stm === 'none' && crypt.str === 'none')) return;
+  if (!crypt || (crypt.stm === 'none' && crypt.str === 'none')) return value;
   const encryptRef = doc.trailer.map.get('/Encrypt');
-  if (isRef(encryptRef) && encryptRef.num === num && encryptRef.gen === gen) return;
-  decryptValue(crypt, value, num, gen);
+  if (isRef(encryptRef) && encryptRef.num === num && encryptRef.gen === gen) return value;
+  return decryptValue(crypt, value, num, gen);
 }
 
-function decryptValue(crypt: FileCrypt, value: PdfValue, num: number, gen: number): void {
-  if (value instanceof Uint8Array) return;
+function decryptValue(crypt: FileCrypt, value: PdfValue, num: number, gen: number): PdfValue {
+  if (value instanceof Uint8Array) return decryptBytes(crypt, num, gen, value, 'str');
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
-      const el = value[i];
-      if (el instanceof Uint8Array) value[i] = decryptBytes(crypt, num, gen, el, 'str');
-      else decryptValue(crypt, el, num, gen);
+      value[i] = decryptValue(crypt, value[i], num, gen);
     }
-    return;
+    return value;
   }
-  if (!isDict(value)) return;
+  if (!isDict(value)) return value;
   for (const [k, v] of value.map) {
-    if (v instanceof Uint8Array) value.map.set(k, decryptBytes(crypt, num, gen, v, 'str'));
-    else decryptValue(crypt, v, num, gen);
+    value.map.set(k, decryptValue(crypt, v, num, gen));
   }
   if (value.stream) {
-    let data = value.stream;
-    const declared = asNumber(value.map.get('/Length'));
-    if (declared !== undefined && declared > 0 && declared <= data.length) {
-      data = data.subarray(0, declared);
-    } else {
-      data = trimStreamEol(data);
-    }
+    let data = trimStreamEol(value.stream);
     if (crypt.stm === 'aesv2' && data.length % 16 !== 0) {
       data = data.subarray(0, data.length - (data.length % 16));
     }
     value.stream = decryptBytes(crypt, num, gen, data, 'stm');
   }
+  return value;
 }
 
 function expandObjectStreams(doc: PdfDocument): void {
@@ -877,8 +874,7 @@ function parseXrefAt(doc: PdfDocument, offset: number, seen: Set<number>): PdfDi
   const key = refKey(obj.num, obj.gen);
   const stored = doc.objects.get(key);
   if (!isDict(stored)) {
-    decryptLoadedObject(doc, obj.num, obj.gen, obj.value);
-    doc.objects.set(key, obj.value);
+    doc.objects.set(key, decryptLoadedObject(doc, obj.num, obj.gen, obj.value));
   }
   const dict = isDict(stored) ? stored : obj.value;
   if (nameOf(dict.map.get('/Type')) === '/XRef') {
@@ -952,8 +948,7 @@ function applyXrefStream(doc: PdfDocument, xref: PdfDict): void {
         if (doc.objects.has(key)) continue;
         const parsed = parseIndirectAt(doc.bytes, field2);
         if (parsed !== undefined) {
-          decryptLoadedObject(doc, num, field3, parsed.value);
-          doc.objects.set(key, parsed.value);
+          doc.objects.set(key, decryptLoadedObject(doc, num, field3, parsed.value));
         }
       } else if (type === 2) {
         objstms.add(field2);
@@ -2399,9 +2394,66 @@ function extractPage(
   }
 
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
-  extractAnnotationAppearances(doc, page, pageResources, pageNo, items, lines, rects, stats, depth);
-  items.push(...collectAnnotationItems(doc, page, pageNo, annotSeen, depth === 0));
+  const apDrawn = extractAnnotationAppearances(
+    doc,
+    page,
+    pageResources,
+    pageNo,
+    items,
+    lines,
+    rects,
+    stats,
+    depth,
+  );
+  items.push(...collectAnnotationItems(doc, page, pageNo, annotSeen, depth === 0, apDrawn));
   return { items, lines, rects, images, stats };
+}
+
+function pdfRect4(v: PdfValue | undefined): [number, number, number, number] | undefined {
+  if (!Array.isArray(v) || v.length < 4) return undefined;
+  const a = v[0];
+  const b = v[1];
+  const c = v[2];
+  const d = v[3];
+  if (
+    typeof a !== 'number' ||
+    typeof b !== 'number' ||
+    typeof c !== 'number' ||
+    typeof d !== 'number'
+  ) {
+    return undefined;
+  }
+  return [a, b, c, d];
+}
+
+function annotationAppearanceCtm(doc: PdfDocument, annot: PdfDict, form: PdfDict): number[] {
+  const rect = pdfRect4(dictGet(doc, annot, '/Rect'));
+  const bbox = pdfRect4(dictGet(doc, form, '/BBox'));
+  if (!rect || !bbox) return [1, 0, 0, 1, 0, 0];
+  const matrixVal = dictGet(doc, form, '/Matrix');
+  const matrix =
+    Array.isArray(matrixVal) && matrixVal.length >= 6
+      ? matrixVal.map((n) => (typeof n === 'number' ? n : 0))
+      : [1, 0, 0, 1, 0, 0];
+  const corners = [
+    applyMat(matrix, bbox[0], bbox[1]),
+    applyMat(matrix, bbox[0], bbox[3]),
+    applyMat(matrix, bbox[2], bbox[1]),
+    applyMat(matrix, bbox[2], bbox[3]),
+  ];
+  const minX = Math.min(corners[0]![0], corners[1]![0], corners[2]![0], corners[3]![0]);
+  const minY = Math.min(corners[0]![1], corners[1]![1], corners[2]![1], corners[3]![1]);
+  const maxX = Math.max(corners[0]![0], corners[1]![0], corners[2]![0], corners[3]![0]);
+  const maxY = Math.max(corners[0]![1], corners[1]![1], corners[2]![1], corners[3]![1]);
+  const boxW = maxX - minX;
+  const boxH = maxY - minY;
+  const rx1 = Math.min(rect[0], rect[2]);
+  const ry1 = Math.min(rect[1], rect[3]);
+  const rectW = Math.abs(rect[2] - rect[0]);
+  const rectH = Math.abs(rect[3] - rect[1]);
+  const sx = boxW !== 0 ? rectW / boxW : 1;
+  const sy = boxH !== 0 ? rectH / boxH : 1;
+  return [sx, 0, 0, sy, rx1 - minX * sx, ry1 - minY * sy];
 }
 
 function extractAnnotationAppearances(
@@ -2414,9 +2466,10 @@ function extractAnnotationAppearances(
   rects: PdfRect[],
   stats: DecodeStats,
   depth: number,
-): void {
+): Map<PdfDict, string> {
+  const drawn = new Map<PdfDict, string>();
   const annots = dictGet(doc, page, '/Annots');
-  if (!Array.isArray(annots)) return;
+  if (!Array.isArray(annots)) return drawn;
   for (const a of annots) {
     const ad = deref(doc, a);
     if (!isDict(ad)) continue;
@@ -2433,11 +2486,12 @@ function extractAnnotationAppearances(
       for (const v of n.map.values()) pushForm(v);
     } else pushForm(n);
     for (const form of forms) {
+      const before = items.length;
       extractFormText(
         doc,
         form,
         parentResources,
-        [1, 0, 0, 1, 0, 0],
+        annotationAppearanceCtm(doc, ad, form),
         pageNo,
         items,
         lines,
@@ -2445,8 +2499,16 @@ function extractAnnotationAppearances(
         stats,
         depth,
       );
+      if (items.length > before) {
+        const text = items
+          .slice(before)
+          .map((it) => it.text)
+          .join('');
+        drawn.set(ad, (drawn.get(ad) ?? '') + text);
+      }
     }
   }
+  return drawn;
 }
 
 function displayFieldValue(doc: PdfDocument, field: PdfDict, value: PdfValue | undefined): string {
@@ -2485,6 +2547,7 @@ function collectAnnotationItems(
   pageNo: number,
   seen: Set<PdfDict>,
   includeAcroForm: boolean,
+  apDrawn: Map<PdfDict, string>,
 ): TextItem[] {
   const annots = dictGet(doc, page, '/Annots');
   const values: PdfValue[] = Array.isArray(annots) ? annots : [];
@@ -2529,7 +2592,10 @@ function collectAnnotationItems(
     if (rc && rc !== contents) texts.push(rc);
     const fieldVal = dictGet(doc, ad, '/V') ?? dictGet(doc, ad, '/DV');
     const fieldText = displayFieldValue(doc, ad, fieldVal);
-    if (fieldText && fieldText !== 'Off') texts.push(fieldText);
+    const painted = apDrawn.get(ad) ?? '';
+    if (fieldText && fieldText !== 'Off' && painted !== fieldText && !painted.includes(fieldText)) {
+      texts.push(fieldText);
+    }
     const title = pdfStringText(dictGet(doc, ad, '/T'));
     if (title && texts.length === 0 && (subtype === '/Widget' || subtype === undefined)) {
       texts.push(title);

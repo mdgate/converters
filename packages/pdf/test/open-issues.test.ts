@@ -441,4 +441,104 @@ endobj
   it('decrypts xref-loaded streams after the first encryption pass', () => {
     expect(toMarkdownFromPdf(buildEncryptedXrefContentPdf())).toContain('Hello');
   });
+
+  it('decrypts indirect string objects used as field values', () => {
+    const id = Uint8Array.from({ length: 16 }, (_, i) => i + 1);
+    const owner = Uint8Array.from({ length: 32 }, (_, i) => i);
+    const p = -4;
+    const key = fileKeyR4(owner, p, id);
+    const user = computeUR4(key, id);
+    const secret = encryptRc4Stream(key, 7, 0, new TextEncoder().encode('SecretVal'));
+    const bytes = buildPdf([
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [6 0 R] >> >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Annots [6 0 R] /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      '4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 12 Tf 1 0 0 1 20 80 Tm (Label) Tj ET\nendstream\nendobj\n',
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+      '6 0 obj\n<< /Type /Annot /Subtype /Widget /T (Name) /V 7 0 R /Rect [20 20 80 40] >>\nendobj\n',
+      `7 0 obj\n<${hexOf(secret)}>\nendobj\n`,
+      `8 0 obj
+<< /Filter /Standard /V 4 /R 4 /Length 128 /P ${p}
+   /O <${hexOf(owner)}>
+   /U <${hexOf(user)}>
+   /CF << /StdCF << /AuthEvent /DocOpen /CFM /V2 /Length 16 >> >>
+   /StmF /Identity /StrF /StdCF >>
+endobj
+`,
+    ]);
+    const encrypted = new TextEncoder().encode(
+      new TextDecoder('latin1')
+        .decode(bytes)
+        .replace(
+          '/Root 1 0 R >>',
+          `/Root 1 0 R /Encrypt 8 0 R /ID [<${hexOf(id)}> <${hexOf(id)}>] >>`,
+        ),
+    );
+    expect(toMarkdownFromPdf(encrypted)).toContain('SecretVal');
+  });
+
+  it('places appearance text in the annotation rect and emits the field value once', () => {
+    const ap = 'BT /F1 12 Tf 1 0 0 1 4 8 Tm (FieldVal) Tj ET\n';
+    const page = 'BT /F1 12 Tf 1 0 0 1 20 180 Tm (Header) Tj 1 0 0 1 20 20 Tm (Footer) Tj ET\n';
+    const bytes = buildPdf([
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [6 0 R] >> >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R /Annots [6 0 R] /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${page.length} >>\nstream\n${page}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+      '6 0 obj\n<< /Type /Annot /Subtype /Widget /T (Name) /V (FieldVal) /Rect [20 100 180 130] /AP << /N 7 0 R >> >>\nendobj\n',
+      `7 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 160 30] /Resources << /Font << /F1 5 0 R >> >> /Length ${ap.length} >>\nstream\n${ap}endstream\nendobj\n`,
+    ]);
+    const md = toMarkdownFromPdf(bytes);
+    expect(md).toMatch(/Header[\s\S]*FieldVal[\s\S]*Footer/);
+    expect(md.match(/FieldVal/g)?.length).toBe(1);
+  });
+
+  it('recovers encrypted streams when /Length is too short', () => {
+    const id = Uint8Array.from({ length: 16 }, (_, i) => i + 1);
+    const owner = Uint8Array.from({ length: 32 }, (_, i) => i);
+    const p = -4;
+    const key = fileKeyR4(owner, p, id);
+    const user = computeUR4(key, id);
+    const pageContent = new TextEncoder().encode(
+      'BT /F1 12 Tf 1 0 0 1 20 80 Tm (Hello) Tj 0 -20 Td (World) Tj ET\n',
+    );
+    const encContent = encryptRc4Stream(key, 4, 0, pageContent);
+    const chunks: Array<string | Uint8Array> = [];
+    let size = 0;
+    const add = (part: string | Uint8Array): void => {
+      chunks.push(part);
+      size += typeof part === 'string' ? part.length : part.length;
+    };
+    add('%PDF-1.4\n');
+    add('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+    add('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+    add(
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+    );
+    add('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n');
+    add(
+      `6 0 obj
+<< /Filter /Standard /V 4 /R 4 /Length 128 /P ${p}
+   /O <${hexOf(owner)}>
+   /U <${hexOf(user)}>
+   /CF << /StdCF << /AuthEvent /DocOpen /CFM /V2 /Length 16 >> >>
+   /StmF /StdCF /StrF /Identity >>
+endobj
+`,
+    );
+    add(`4 0 obj\n<< /Length 20 >>\nstream\n`);
+    add(encContent);
+    add('\nendstream\nendobj\n');
+    const xrefAt = size;
+    add(
+      `xref\n0 7\n0000000000 65535 f \n0000000009 00000 n \n0000000062 00000 n \n0000000119 00000 n \n0000000000 00000 n \n0000000000 00000 n \n0000000000 00000 n \n`,
+    );
+    add(
+      `trailer\n<< /Size 7 /Root 1 0 R /Encrypt 6 0 R /ID [<${hexOf(id)}> <${hexOf(id)}>] >>\nstartxref\n${xrefAt}\n%%EOF\n`,
+    );
+    const md = toMarkdownFromPdf(concatParts(chunks));
+    expect(md).toContain('Hello');
+    expect(md).toContain('World');
+  });
 });
