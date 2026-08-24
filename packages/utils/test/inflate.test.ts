@@ -64,4 +64,12 @@ describe('inflate', () => {
     expect(() => inflateZlib(Uint8Array.of(0x78, 0x01), 1024)).toThrow();
     expect(() => inflateGzip(Uint8Array.of(0x1f, 0x8b, 0x08), 1024)).toThrow();
   });
+
+  it('can ignore a bad zlib Adler32', () => {
+    const src = new TextEncoder().encode('hello world');
+    const wrapped = new Uint8Array(zlib.deflateSync(src));
+    wrapped[wrapped.length - 1] ^= 0xff;
+    expect(() => inflateZlib(wrapped, 1024)).toThrow();
+    eq(inflateZlib(wrapped, 1024, 'optional'), src);
+  });
 });

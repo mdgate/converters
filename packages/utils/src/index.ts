@@ -1,3 +1,4 @@
+export { inflateBrotli } from './brotli.js';
 export { asciiStartsWith } from './bytes.js';
 export { decode, encodingExists } from './encoding.js';
 export { fileExtension } from './filename.js';

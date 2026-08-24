@@ -13,6 +13,7 @@
       "!**/.wrangler",
       "!**/test/*.md",
       "!**/src/generated",
+      "!**/packages/utils/src/brotli-decode.ts",
       "!**/packages/pdf/data/encodings.js",
       "!**/apps/demo/*-to-markdown.html"
     ]

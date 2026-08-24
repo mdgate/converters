@@ -17,7 +17,11 @@ export function inflateRaw(data: Uint8Array, maxOut: number): Uint8Array {
 }
 
 /** zlib-wrapped DEFLATE (RFC 1950). */
-export function inflateZlib(data: Uint8Array, maxOut: number): Uint8Array {
+export function inflateZlib(
+  data: Uint8Array,
+  maxOut: number,
+  checksum: 'required' | 'optional' = 'required',
+): Uint8Array {
   if (data.length === 0) return new Uint8Array(0);
   if (data.length < 2) throw new Error('invalid zlib header');
   const cmf = data[0]!;
@@ -30,14 +34,19 @@ export function inflateZlib(data: Uint8Array, maxOut: number): Uint8Array {
   const bits = new BitStream(data, 2);
   const out = inflateStream(bits, maxOut);
   const adlerOff = bits.byteOffset;
-  if (adlerOff + 4 > data.length) throw new Error('truncated zlib checksum');
+  if (adlerOff + 4 > data.length) {
+    if (checksum === 'optional') return out;
+    throw new Error('truncated zlib checksum');
+  }
   const expect =
     ((data[adlerOff]! << 24) |
       (data[adlerOff + 1]! << 16) |
       (data[adlerOff + 2]! << 8) |
       data[adlerOff + 3]!) >>>
     0;
-  if (adler32(out) !== expect) throw new Error('zlib checksum mismatch');
+  if (adler32(out) !== expect && checksum === 'required') {
+    throw new Error('zlib checksum mismatch');
+  }
   return out;
 }
 

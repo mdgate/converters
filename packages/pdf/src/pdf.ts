@@ -1,8 +1,9 @@
 //! PDF frontend. Reconstructs reading order from positioned text.
 
 import { type Convert, ConvertError } from '@mdgate/core';
-import { inflateRaw, inflateZlib } from '@mdgate/utils';
+import { decode, inflateBrotli, inflateRaw, inflateZlib } from '@mdgate/utils';
 import { adobeOrderingKey, fillAdobeCidMap } from './adobe-cid.js';
+import { unwrapAppleSingle } from './apple-single.js';
 import { normalizeCjkText } from './cjk.js';
 import {
   decodeUni,
@@ -14,14 +15,18 @@ import {
   uniKind,
 } from './encoding-cmap.js';
 import { applyDifferences, applyNamedEncoding } from './encodings.js';
+import { decryptBytes, type EncryptParams, type FileCrypt, openEncrypt } from './encrypt.js';
 import { xObjectToImage } from './images.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
+import { looksLikeXfdf, xfdfToMarkdown } from './xfdf.js';
 
 export function toMarkdownFromPdf(bytes: Uint8Array): string;
 export function toMarkdownFromPdf(bytes: Uint8Array, convert: Convert): Promise<string>;
 export function toMarkdownFromPdf(bytes: Uint8Array, convert?: Convert): string | Promise<string> {
-  const extracted = extractPdf(bytes, convert !== undefined);
+  const inner = unwrapAppleSingle(bytes) ?? bytes;
+  if (looksLikeXfdf(inner)) return xfdfToMarkdown(inner);
+  const extracted = extractPdf(inner, convert !== undefined);
   if (convert === undefined) return finishPdf(extracted, []);
   return convertUniqueImages(extracted.images, convert).then((blocks) =>
     finishPdf(extracted, blocks),
@@ -55,7 +60,6 @@ interface MarkdownBlock {
 function extractPdf(bytes: Uint8Array, wantImages: boolean): ExtractedPdf {
   validatePdfBytes(bytes);
   const doc = parsePdf(bytes);
-  if (doc.encrypted) throw ConvertError.encrypted();
   const pages = collectPages(doc);
   if (pages.length === 0) {
     throw ConvertError.malformed('invalid PDF structure');
@@ -240,6 +244,7 @@ interface PdfDocument {
   objects: Map<string, PdfValue>;
   trailer: PdfDict;
   encrypted: boolean;
+  crypt?: FileCrypt;
 }
 
 function refKey(num: number, gen: number): string {
@@ -378,7 +383,23 @@ function parseName(c: Cursor): string {
     }
     c.i += 1;
   }
-  return asciiSlice(c.data, start, c.i);
+  return decodePdfName(asciiSlice(c.data, start, c.i));
+}
+
+function decodePdfName(raw: string): string {
+  let out = '';
+  for (let i = 0; i < raw.length; i += 1) {
+    if (raw[i] === '#' && i + 2 < raw.length) {
+      const n = Number.parseInt(raw.slice(i + 1, i + 3), 16);
+      if (Number.isFinite(n)) {
+        out += String.fromCharCode(n);
+        i += 2;
+        continue;
+      }
+    }
+    out += raw[i];
+  }
+  return out;
 }
 
 function parseKeyword(c: Cursor): string {
@@ -574,6 +595,7 @@ function parsePdf(bytes: Uint8Array): PdfDocument {
 
   const trailer = findTrailer(data) ?? { d: true, map: new Map() };
   const doc: PdfDocument = { bytes, objects, trailer, encrypted: false };
+  applyEncryption(doc);
   expandObjectStreams(doc);
   const xrefTrailer = loadXrefTrailer(doc);
   if (xrefTrailer !== undefined) {
@@ -581,7 +603,7 @@ function parsePdf(bytes: Uint8Array): PdfDocument {
       if (!doc.trailer.map.has(k)) doc.trailer.map.set(k, v);
     }
   }
-  doc.encrypted = doc.trailer.map.has('/Encrypt');
+  if (doc.crypt === undefined) applyEncryption(doc);
   return doc;
 }
 
@@ -636,6 +658,124 @@ function findTrailer(data: Uint8Array): PdfDict | undefined {
     return isDict(val) ? val : undefined;
   } catch {
     return undefined;
+  }
+}
+
+function applyEncryption(doc: PdfDocument): void {
+  if (doc.crypt !== undefined) return;
+  const enc = findEncryptDict(doc);
+  if (!enc) return;
+  const params = readEncryptParams(doc, enc);
+  if (!params) {
+    throw ConvertError.encrypted();
+  }
+  const crypt = openEncrypt(params);
+  if (!crypt) throw ConvertError.encrypted();
+  doc.crypt = crypt;
+  doc.encrypted = false;
+  if (crypt.stm === 'none' && crypt.str === 'none') return;
+  const encryptRef = doc.trailer.map.get('/Encrypt');
+  const skip = isRef(encryptRef) ? refKey(encryptRef.num, encryptRef.gen) : undefined;
+  for (const [key, obj] of doc.objects) {
+    if (key === skip) continue;
+    const parts = key.split(' ');
+    const num = Number(parts[0]);
+    const gen = Number(parts[1]);
+    decryptValue(crypt, obj, num, gen);
+  }
+}
+
+function findEncryptDict(doc: PdfDocument): PdfDict | undefined {
+  const fromTrailer = deref(doc, doc.trailer.map.get('/Encrypt'));
+  if (isDict(fromTrailer)) return fromTrailer;
+  for (const obj of doc.objects.values()) {
+    if (!isDict(obj)) continue;
+    if (nameOf(obj.map.get('/Filter')) !== '/Standard') continue;
+    if (obj.map.has('/O') && obj.map.has('/U')) return obj;
+  }
+  return undefined;
+}
+
+function asPdfBytes(v: PdfValue | undefined): Uint8Array | undefined {
+  if (v instanceof Uint8Array) return v;
+  return undefined;
+}
+
+function findFileId(doc: PdfDocument): Uint8Array | undefined {
+  const from = (v: PdfValue | undefined): Uint8Array | undefined => {
+    const idVal = deref(doc, v);
+    if (!Array.isArray(idVal)) return undefined;
+    return asPdfBytes(idVal[0]);
+  };
+  const direct = from(doc.trailer.map.get('/ID'));
+  if (direct) return direct;
+  for (const obj of doc.objects.values()) {
+    if (!isDict(obj)) continue;
+    const id = from(obj.map.get('/ID'));
+    if (id) return id;
+  }
+  return undefined;
+}
+
+function readEncryptParams(doc: PdfDocument, enc: PdfDict): EncryptParams | undefined {
+  const o = asPdfBytes(deref(doc, enc.map.get('/O')));
+  const u = asPdfBytes(deref(doc, enc.map.get('/U')));
+  if (!o || !u) return undefined;
+  const id = findFileId(doc);
+  if (!id) return undefined;
+  const v = asNumber(deref(doc, enc.map.get('/V'))) ?? 0;
+  const defaultF = v >= 4 ? '/Identity' : '/V2';
+  const stmF = nameOf(deref(doc, enc.map.get('/StmF'))) ?? defaultF;
+  const strF = nameOf(deref(doc, enc.map.get('/StrF'))) ?? defaultF;
+  let cfm = '';
+  const cf = deref(doc, enc.map.get('/CF'));
+  if (isDict(cf)) {
+    const std = deref(doc, cf.map.get('/StdCF')) ?? deref(doc, cf.map.get(stmF));
+    if (isDict(std)) cfm = nameOf(deref(doc, std.map.get('/CFM'))) ?? '';
+  }
+  const p = asNumber(deref(doc, enc.map.get('/P'))) ?? 0;
+  return {
+    v,
+    r: asNumber(deref(doc, enc.map.get('/R'))) ?? 0,
+    keyLength: asNumber(deref(doc, enc.map.get('/Length'))) ?? 40,
+    o,
+    u,
+    p,
+    id,
+    stmF,
+    strF,
+    cfm,
+    encryptMetadata: deref(doc, enc.map.get('/EncryptMetadata')) !== false,
+  };
+}
+
+function decryptValue(crypt: FileCrypt, value: PdfValue, num: number, gen: number): void {
+  if (value instanceof Uint8Array) return;
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const el = value[i];
+      if (el instanceof Uint8Array) value[i] = decryptBytes(crypt, num, gen, el, 'str');
+      else decryptValue(crypt, el, num, gen);
+    }
+    return;
+  }
+  if (!isDict(value)) return;
+  for (const [k, v] of value.map) {
+    if (v instanceof Uint8Array) value.map.set(k, decryptBytes(crypt, num, gen, v, 'str'));
+    else decryptValue(crypt, v, num, gen);
+  }
+  if (value.stream) {
+    let data = value.stream;
+    const declared = asNumber(value.map.get('/Length'));
+    if (declared !== undefined && declared > 0 && declared <= data.length) {
+      data = data.subarray(0, declared);
+    } else {
+      data = trimStreamEol(data);
+    }
+    if (crypt.stm === 'aesv2' && data.length % 16 !== 0) {
+      data = data.subarray(0, data.length - (data.length % 16));
+    }
+    value.stream = decryptBytes(crypt, num, gen, data, 'stm');
   }
 }
 
@@ -715,13 +855,14 @@ function parseXrefAt(doc: PdfDocument, offset: number, seen: Set<number>): PdfDi
   }
   const obj = parseIndirectAt(doc.bytes, offset);
   if (obj === undefined || !isDict(obj.value)) return undefined;
-  if (!doc.objects.has(refKey(obj.num, obj.gen))) {
-    doc.objects.set(refKey(obj.num, obj.gen), obj.value);
+  const key = refKey(obj.num, obj.gen);
+  const stored = doc.objects.get(key);
+  if (!isDict(stored)) doc.objects.set(key, obj.value);
+  const dict = isDict(stored) ? stored : obj.value;
+  if (nameOf(dict.map.get('/Type')) === '/XRef') {
+    applyXrefStream(doc, dict);
   }
-  if (nameOf(obj.value.map.get('/Type')) === '/XRef') {
-    applyXrefStream(doc, obj.value);
-  }
-  const prev = asNumber(obj.value.map.get('/Prev'));
+  const prev = asNumber(dict.map.get('/Prev'));
   if (prev !== undefined) parseXrefAt(doc, prev, seen);
   return obj.value;
 }
@@ -854,11 +995,16 @@ function inflateOne(
 }
 
 function inflateCapped(data: Uint8Array, maxOut: number): Uint8Array {
-  // PDF FlateDecode is zlib-wrapped; a few producers emit raw DEFLATE.
+  // PDF FlateDecode is zlib-wrapped; a few producers emit raw DEFLATE
+  // or a truncated Adler32. Try strict zlib, then checksum-optional, then raw.
   try {
     return inflateOne(inflateZlib, data, maxOut);
   } catch {
-    return inflateOne(inflateRaw, data, maxOut);
+    try {
+      return inflateZlib(data, maxOut, 'optional');
+    } catch {
+      return inflateOne(inflateRaw, data, maxOut);
+    }
   }
 }
 
@@ -867,19 +1013,43 @@ function streamLength(doc: PdfDocument, dict: PdfDict): number | undefined {
   return typeof len === 'number' && len >= 0 ? len : undefined;
 }
 
-function decodeStream(doc: PdfDocument, obj: PdfValue | undefined): Uint8Array {
-  const resolved = deref(doc, obj);
-  if (!isDict(resolved) || resolved.stream === undefined) return new Uint8Array();
-  let data = resolved.stream;
-  const declared = streamLength(doc, resolved);
-  if (declared !== undefined && declared <= data.length) {
-    data = data.subarray(0, declared);
-  } else if (data.length >= 2 && data[data.length - 2] === 13 && data[data.length - 1] === 10) {
-    data = data.subarray(0, data.length - 2);
-  } else if (data.length >= 1 && (data[data.length - 1] === 10 || data[data.length - 1] === 13)) {
-    data = data.subarray(0, data.length - 1);
+function trimStreamEol(data: Uint8Array): Uint8Array {
+  if (data.length >= 2 && data[data.length - 2] === 13 && data[data.length - 1] === 10) {
+    return data.subarray(0, data.length - 2);
   }
-  const filterVal = deref(doc, resolved.map.get('/Filter'));
+  if (data.length >= 1 && (data[data.length - 1] === 10 || data[data.length - 1] === 13)) {
+    return data.subarray(0, data.length - 1);
+  }
+  return data;
+}
+
+function filterNames(doc: PdfDocument, dict: PdfDict): string[] {
+  const filterVal = deref(doc, dict.map.get('/Filter'));
+  const filters = Array.isArray(filterVal) ? filterVal : filterVal !== undefined ? [filterVal] : [];
+  return filters.map((f) => nameOf(deref(doc, f))).filter((n): n is string => n !== undefined);
+}
+
+function streamPayloads(doc: PdfDocument, dict: PdfDict): Uint8Array[] {
+  const raw = dict.stream;
+  if (!raw) return [];
+  const trimmed = trimStreamEol(raw);
+  const declared = streamLength(doc, dict);
+  const compressed = filterNames(doc, dict).some(
+    (n) => n === '/FlateDecode' || n === '/Fl' || n === '/BrotliDecode',
+  );
+  const declaredSlice =
+    declared !== undefined && declared <= raw.length ? raw.subarray(0, declared) : undefined;
+  if (!compressed) {
+    return declaredSlice && declaredSlice.length >= trimmed.length ? [declaredSlice] : [trimmed];
+  }
+  const out: Uint8Array[] = [];
+  if (declaredSlice) out.push(declaredSlice);
+  if (out.every((p) => p.length !== trimmed.length)) out.push(trimmed);
+  return out.length > 0 ? out : [trimmed];
+}
+
+function applyFilters(doc: PdfDocument, dict: PdfDict, data: Uint8Array): Uint8Array {
+  const filterVal = deref(doc, dict.map.get('/Filter'));
   const filters: PdfValue[] = Array.isArray(filterVal)
     ? filterVal
     : filterVal !== undefined
@@ -888,19 +1058,32 @@ function decodeStream(doc: PdfDocument, obj: PdfValue | undefined): Uint8Array {
   for (const f of filters) {
     const name = nameOf(deref(doc, f));
     if (name === '/FlateDecode' || name === '/Fl') {
-      try {
-        data = inflateCapped(data, Number.MAX_SAFE_INTEGER);
-      } catch {
-        // Producer quirks: skip an unreadable stream rather than fail the file.
-        return new Uint8Array();
-      }
+      data = inflateCapped(data, Number.MAX_SAFE_INTEGER);
     } else if (name === '/ASCIIHexDecode' || name === '/AHx') {
       data = decodeAsciiHex(data);
     } else if (name === '/ASCII85Decode' || name === '/A85') {
       data = decodeAscii85(data);
+    } else if (name === '/BrotliDecode') {
+      data = inflateBrotli(data, Number.MAX_SAFE_INTEGER);
     }
   }
-  return applyPredictor(doc, resolved, data);
+  return applyPredictor(doc, dict, data);
+}
+
+function decodeStream(doc: PdfDocument, obj: PdfValue | undefined): Uint8Array {
+  const resolved = deref(doc, obj);
+  if (!isDict(resolved) || resolved.stream === undefined) return new Uint8Array();
+  const payloads = streamPayloads(doc, resolved);
+  let lastErr: unknown;
+  for (const data of payloads) {
+    try {
+      return applyFilters(doc, resolved, data);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (lastErr) return new Uint8Array();
+  return new Uint8Array();
 }
 
 function applyPredictor(doc: PdfDocument, dict: PdfDict, data: Uint8Array): Uint8Array {
@@ -1047,15 +1230,21 @@ function collectPages(doc: PdfDocument): PdfDict[] {
   return walkPages(doc, deref(doc, root.map.get('/Pages')), []);
 }
 
-function walkPages(doc: PdfDocument, node: PdfValue | undefined, inherited: PdfDict[]): PdfDict[] {
-  if (!isDict(node)) return [];
+function walkPages(
+  doc: PdfDocument,
+  node: PdfValue | undefined,
+  inherited: PdfDict[],
+  seen: Set<PdfDict> = new Set(),
+): PdfDict[] {
+  if (!isDict(node) || seen.has(node)) return [];
+  seen.add(node);
   const type = nameOf(dictGet(doc, node, '/Type'));
   const kids = dictGet(doc, node, '/Kids');
   if (type === '/Pages' || Array.isArray(kids)) {
     const nextInherited = node.map.has('/Resources') ? [...inherited, node] : inherited;
     const out: PdfDict[] = [];
     if (Array.isArray(kids)) {
-      for (const k of kids) out.push(...walkPages(doc, deref(doc, k), nextInherited));
+      for (const k of kids) out.push(...walkPages(doc, deref(doc, k), nextInherited, seen));
     }
     return out;
   }
@@ -1096,6 +1285,7 @@ interface FontInfo {
   symbolic: boolean;
   encodingCmap?: EncodingCmap;
   uniKind?: UniKind;
+  legacyCjk?: 'gbk' | 'big5' | 'shift_jis';
 }
 
 function isBoldFontName(name: string): boolean {
@@ -1242,17 +1432,65 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
     symbolic,
     encodingCmap: encCmap,
     uniKind: uni,
+    legacyCjk: isCid ? undefined : detectLegacyCjk(name),
   };
+}
+
+function detectLegacyCjk(name: string): 'gbk' | 'big5' | 'shift_jis' | undefined {
+  const n = normalizeFontName(name);
+  if (/gb2312|gbk|gb18030|gbsn|gkai/.test(n)) return 'gbk';
+  if (/big5|mingliu|pmingliu/.test(n)) return 'big5';
+  if (/shiftjis|shift_jis|90ms|sjis/.test(n)) return 'shift_jis';
+  if (isCjkFontName(name)) return 'gbk';
+  const bytes = new Uint8Array(name.length);
+  for (let i = 0; i < name.length; i += 1) bytes[i] = name.charCodeAt(i) & 0xff;
+  const asGbk = decode(bytes, 'gbk');
+  if (/[\u4e00-\u9fff]/.test(asGbk)) return 'gbk';
+  return undefined;
 }
 
 function pdfText(v: PdfValue | undefined): string | undefined {
   if (typeof v === 'string') return v.startsWith('/') ? v.slice(1) : v;
-  if (v instanceof Uint8Array) {
-    let s = '';
-    for (const b of v) s += String.fromCharCode(b);
-    return s;
-  }
+  if (v instanceof Uint8Array) return decodePdfString(v);
   return undefined;
+}
+
+function decodePdfString(data: Uint8Array): string {
+  if (data.length >= 2 && data[0] === 0xfe && data[1] === 0xff) {
+    return decode(data, 'utf-16be');
+  }
+  if (data.length >= 2 && data[0] === 0xff && data[1] === 0xfe) {
+    return decode(data, 'utf-16le');
+  }
+  if (data.length >= 3 && data[0] === 0xef && data[1] === 0xbb && data[2] === 0xbf) {
+    return decode(data.subarray(3), 'utf-8');
+  }
+  if (looksLikeUtf8(data)) return decode(data, 'utf-8');
+  return latin1Decode(data);
+}
+
+function looksLikeUtf8(data: Uint8Array): boolean {
+  let i = 0;
+  let multi = 0;
+  while (i < data.length) {
+    const b = data[i]!;
+    if (b <= 0x7f) {
+      i += 1;
+      continue;
+    }
+    let n = 0;
+    if ((b & 0xe0) === 0xc0) n = 1;
+    else if ((b & 0xf0) === 0xe0) n = 2;
+    else if ((b & 0xf8) === 0xf0) n = 3;
+    else return false;
+    if (i + n >= data.length) return false;
+    for (let k = 1; k <= n; k += 1) {
+      if ((data[i + k]! & 0xc0) !== 0x80) return false;
+    }
+    i += n + 1;
+    multi += 1;
+  }
+  return multi > 0;
 }
 
 function applySimpleFontEncoding(
@@ -1562,7 +1800,7 @@ function normalizeFontName(name: string): string {
 
 function isCjkFontName(name: string): boolean {
   const n = normalizeFontName(name);
-  return /simsun|nsimsun|simhei|simkai|simfang|fangsong|kaiti|heiti|songti|mingliu|pmingliu|msmincho|mspmincho|msgothic|mspgothic|meiryo|yugothic|yumincho|hiragino|gothicbbb|stsong|stheiti|stkaiti|stfangsong|stxihei|pingfang|heitisc|heititc|songtisc|songtitc|kaitisc|notosanscjk|notoserifcjk|sourcehan|wenquanyi|adobesong|adobehei|adobekai|adobefang|gbsn|gkai|hygothic|batang|dotum|gulim|malgun|nanum|applegothic|applemyungjo/.test(
+  return /simsun|nsimsun|simhei|simkai|simfang|fangsong|kaiti|heiti|songti|mingliu|pmingliu|msmincho|mspmincho|msgothic|mspgothic|meiryo|yugothic|yumincho|hiragino|gothicbbb|stsong|stheiti|stkaiti|stfangsong|stxihei|pingfang|heitisc|heititc|songtisc|songtitc|kaitisc|notosanscjk|notoserifcjk|sourcehan|wenquanyi|adobesong|adobehei|adobekai|adobefang|gbsn|gkai|gb2312|gbk|gb18030|hygothic|batang|dotum|gulim|malgun|nanum|applegothic|applemyungjo/.test(
     n,
   );
 }
@@ -1614,6 +1852,8 @@ interface TextItem {
   isItalic: boolean;
   isUnderline: boolean;
   isStrikeout: boolean;
+  dx: number;
+  dy: number;
 }
 
 interface StrokeLine {
@@ -1763,7 +2003,32 @@ function decodeOneByte(font: FontInfo, raw: Uint8Array): DecodedChar[] {
   return out;
 }
 
+function decodeLegacyCjk(font: FontInfo, raw: Uint8Array): DecodedChar[] {
+  const enc = font.legacyCjk ?? 'gbk';
+  const out: DecodedChar[] = [];
+  let i = 0;
+  while (i < raw.length) {
+    const b = raw[i]!;
+    if (b < 0x80) {
+      out.push(mapDecoded(font, b, b, false));
+      i += 1;
+      continue;
+    }
+    const pair = raw.subarray(i, Math.min(i + 2, raw.length));
+    if (pair.length < 2) {
+      out.push({ ch: '', code: b, mapped: false });
+      break;
+    }
+    const text = decode(pair, enc);
+    const ch = [...text].filter((c) => c !== '\uFFFD').join('');
+    out.push({ ch: stripInvisibles(ch), code: (b << 8) | pair[1]!, mapped: ch.length > 0 });
+    i += 2;
+  }
+  return out;
+}
+
 function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
+  if (font.legacyCjk && !font.isCid) return decodeLegacyCjk(font, raw);
   if (font.uniKind) {
     const out: DecodedChar[] = [];
     let i = 0;
@@ -1864,7 +2129,8 @@ function extractPage(
     if (!font || artifact > 0) return;
     const decoded = decodeFontBytes(font, raw);
     countDecoded(stats, decoded);
-    const rendered = Math.abs(fontSize) * matrixScale(mulMat(tm, ctm));
+    const dirMat = mulMat(tm, ctm);
+    const rendered = Math.abs(fontSize) * matrixScale(dirMat);
     let buf = '';
     let startX: number | undefined;
     let startY = 0;
@@ -1888,6 +2154,8 @@ function extractPage(
         isItalic: font!.italic,
         isUnderline: false,
         isStrikeout: false,
+        dx: dirMat[0]!,
+        dy: dirMat[1]!,
       });
       buf = '';
       widthAcc = 0;
@@ -2103,7 +2371,179 @@ function extractPage(
   }
 
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
+  extractAnnotationAppearances(doc, page, pageResources, pageNo, items, lines, rects, stats, depth);
+  items.push(...collectAnnotationItems(doc, page, pageNo));
   return { items, lines, rects, images, stats };
+}
+
+function extractAnnotationAppearances(
+  doc: PdfDocument,
+  page: PdfDict,
+  parentResources: PdfValue | undefined,
+  pageNo: number,
+  items: TextItem[],
+  lines: StrokeLine[],
+  rects: PdfRect[],
+  stats: DecodeStats,
+  depth: number,
+): void {
+  const annots = dictGet(doc, page, '/Annots');
+  if (!Array.isArray(annots)) return;
+  for (const a of annots) {
+    const ad = deref(doc, a);
+    if (!isDict(ad)) continue;
+    const ap = dictGet(doc, ad, '/AP');
+    if (!isDict(ap)) continue;
+    const n = dictGet(doc, ap, '/N');
+    const forms: PdfDict[] = [];
+    const pushForm = (v: PdfValue | undefined): void => {
+      const d = deref(doc, v);
+      if (isDict(d)) forms.push(d);
+    };
+    if (isDict(n) && n.stream) pushForm(n);
+    else if (isDict(n)) {
+      for (const v of n.map.values()) pushForm(v);
+    } else pushForm(n);
+    for (const form of forms) {
+      extractFormText(
+        doc,
+        form,
+        parentResources,
+        [1, 0, 0, 1, 0, 0],
+        pageNo,
+        items,
+        lines,
+        rects,
+        stats,
+        depth,
+      );
+    }
+  }
+}
+
+function displayFieldValue(doc: PdfDocument, field: PdfDict, value: PdfValue | undefined): string {
+  const raw = pdfStringText(value);
+  const opt = dictGet(doc, field, '/Opt');
+  if (!Array.isArray(opt) || raw.length === 0) return raw;
+  for (const entry of opt) {
+    if (Array.isArray(entry) && entry.length >= 2) {
+      if (pdfStringText(entry[0]) === raw) {
+        const shown = pdfStringText(entry[1]);
+        if (shown) return shown;
+      }
+    } else if (pdfStringText(entry) === raw) {
+      return raw;
+    }
+  }
+  return raw;
+}
+
+function pdfStringText(v: PdfValue | undefined): string {
+  if (typeof v === 'string') return v.startsWith('/') ? v.slice(1) : v;
+  if (v instanceof Uint8Array) return decodePdfString(v).trim();
+  return '';
+}
+
+function stripXmlTags(s: string): string {
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function collectAnnotationItems(doc: PdfDocument, page: PdfDict, pageNo: number): TextItem[] {
+  const annots = dictGet(doc, page, '/Annots');
+  const values: PdfValue[] = Array.isArray(annots) ? annots : [];
+  const root = deref(doc, doc.trailer.map.get('/Root'));
+  const acro = isDict(root) ? dictGet(doc, root, '/AcroForm') : undefined;
+  if (isDict(acro)) {
+    const fields = dictGet(doc, acro, '/Fields');
+    if (Array.isArray(fields)) values.push(...fields);
+  }
+  const items: TextItem[] = [];
+  const seen = new Set<PdfDict>();
+  const walk = (v: PdfValue | undefined): void => {
+    const ad = deref(doc, v);
+    if (!isDict(ad) || seen.has(ad)) return;
+    seen.add(ad);
+    const kids = dictGet(doc, ad, '/Kids');
+    if (Array.isArray(kids)) {
+      for (const k of kids) walk(k);
+    }
+    const subtype = nameOf(dictGet(doc, ad, '/Subtype'));
+    if (
+      subtype === '/Link' ||
+      subtype === '/Popup' ||
+      (subtype !== undefined &&
+        subtype !== '/Widget' &&
+        subtype !== '/Text' &&
+        subtype !== '/FreeText' &&
+        subtype !== '/Highlight' &&
+        subtype !== '/Underline' &&
+        subtype !== '/StrikeOut' &&
+        subtype !== '/Caret' &&
+        subtype !== '/FileAttachment' &&
+        subtype !== '/Stamp')
+    ) {
+      return;
+    }
+    const texts: string[] = [];
+    const contents = pdfStringText(dictGet(doc, ad, '/Contents'));
+    if (contents) texts.push(contents);
+    const rc = stripXmlTags(pdfStringText(dictGet(doc, ad, '/RC')));
+    if (rc && rc !== contents) texts.push(rc);
+    const fieldVal = dictGet(doc, ad, '/V') ?? dictGet(doc, ad, '/DV');
+    const fieldText = displayFieldValue(doc, ad, fieldVal);
+    if (fieldText && fieldText !== 'Off') texts.push(fieldText);
+    const title = pdfStringText(dictGet(doc, ad, '/T'));
+    if (title && texts.length === 0 && (subtype === '/Widget' || subtype === undefined)) {
+      texts.push(title);
+    }
+    if (subtype === '/FileAttachment') {
+      const fs = dictGet(doc, ad, '/FS');
+      const fname = isDict(fs)
+        ? pdfStringText(dictGet(doc, fs, '/F') ?? dictGet(doc, fs, '/UF'))
+        : pdfStringText(fs);
+      const desc = pdfStringText(dictGet(doc, ad, '/Desc'));
+      if (fname) texts.push(fname);
+      if (desc) texts.push(desc);
+    }
+    const text = texts.filter((t) => t.length > 0).join(' ');
+    if (text.length === 0) return;
+    const rect = dictGet(doc, ad, '/Rect');
+    let x = 0;
+    let y = 0;
+    let width = 10;
+    let height = 12;
+    if (Array.isArray(rect) && rect.length >= 4) {
+      const x1 = typeof rect[0] === 'number' ? rect[0] : 0;
+      const y1 = typeof rect[1] === 'number' ? rect[1] : 0;
+      const x2 = typeof rect[2] === 'number' ? rect[2] : 0;
+      const y2 = typeof rect[3] === 'number' ? rect[3] : 0;
+      x = Math.min(x1, x2);
+      y = Math.min(y1, y2);
+      width = Math.abs(x2 - x1) || 10;
+      height = Math.abs(y2 - y1) || 12;
+    }
+    items.push({
+      text,
+      x,
+      y,
+      width,
+      height,
+      font: 'Annot',
+      fontSize: Math.max(height * 0.8, 10),
+      page: pageNo,
+      isBold: false,
+      isItalic: false,
+      isUnderline: false,
+      isStrikeout: false,
+      dx: 1,
+      dy: 0,
+    });
+  };
+  for (const a of values) walk(a);
+  return items;
 }
 
 function extractFormText(
@@ -2497,7 +2937,28 @@ function mergeScriptItems(items: TextItem[]): TextItem[] {
 // Line grouping + markdown
 // ---------------------------------------------------------------------------
 
+function writingAngle(item: TextItem): number {
+  return Math.atan2(item.dy, item.dx);
+}
+
+function isUpright(item: TextItem): boolean {
+  return Math.abs(item.dy) <= Math.abs(item.dx) * 0.35;
+}
+
 function groupIntoLines(items: TextItem[]): TextItem[][] {
+  const upright: TextItem[] = [];
+  const rotated: TextItem[] = [];
+  for (const item of items) {
+    if (isUpright(item)) upright.push(item);
+    else rotated.push(item);
+  }
+  const lines = groupAxisAligned(upright);
+  lines.push(...groupRotated(rotated));
+  lines.sort((a, b) => a[0]!.page - b[0]!.page || b[0]!.y - a[0]!.y || a[0]!.x - b[0]!.x);
+  return lines;
+}
+
+function groupAxisAligned(items: TextItem[]): TextItem[][] {
   const sorted = items.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
   const lines: TextItem[][] = [];
   for (const item of sorted) {
@@ -2517,6 +2978,49 @@ function groupIntoLines(items: TextItem[]): TextItem[][] {
     }
   }
   for (const line of lines) line.sort((a, b) => a.x - b.x);
+  return lines;
+}
+
+function groupRotated(items: TextItem[]): TextItem[][] {
+  const buckets = new Map<string, TextItem[]>();
+  for (const item of items) {
+    const deg = Math.round((writingAngle(item) * 180) / Math.PI / 15) * 15;
+    const key = `${item.page}:${deg}`;
+    const cell = buckets.get(key);
+    if (cell) cell.push(item);
+    else buckets.set(key, [item]);
+  }
+  const lines: TextItem[][] = [];
+  for (const group of buckets.values()) {
+    const first = group[0]!;
+    const len = Math.hypot(first.dx, first.dy) || 1;
+    const ux = first.dx / len;
+    const uy = first.dy / len;
+    const px = -uy;
+    const py = ux;
+    group.sort(
+      (a, b) =>
+        a.x * px + a.y * py - (b.x * px + b.y * py) || a.x * ux + a.y * uy - (b.x * ux + b.y * uy),
+    );
+    let current: TextItem[] = [];
+    let base = Number.NaN;
+    for (const item of group) {
+      const along = item.x * px + item.y * py;
+      if (current.length === 0 || Math.abs(along - base) < Math.max(3, item.fontSize * 0.35)) {
+        current.push(item);
+        if (Number.isNaN(base)) base = along;
+      } else {
+        current.sort((a, b) => a.x * ux + a.y * uy - (b.x * ux + b.y * uy));
+        lines.push(current);
+        current = [item];
+        base = along;
+      }
+    }
+    if (current.length > 0) {
+      current.sort((a, b) => a.x * ux + a.y * uy - (b.x * ux + b.y * uy));
+      lines.push(current);
+    }
+  }
   return lines;
 }
 
