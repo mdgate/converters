@@ -90,6 +90,28 @@ describe('ruled table detection', () => {
     expect(tables[0]!.markdown).toContain('|Wide head|');
   });
 
+  it('joins a hyphenated wrap inside a ruled cell without a space', () => {
+    const items = [
+      { text: 'some-', x: 22, y: 82, width: 30, page: 1, fontSize: 12 },
+      { text: 'thing', x: 22, y: 72, width: 28, page: 1, fontSize: 12 },
+      { text: 'Age', x: 82, y: 82, width: 20, page: 1, fontSize: 12 },
+      { text: 'Ada', x: 22, y: 52, width: 20, page: 1, fontSize: 12 },
+      { text: '36', x: 82, y: 52, width: 16, page: 1, fontSize: 12 },
+    ];
+    const rects = [
+      { x: 20, y: 90, width: 120, height: 1, page: 1 },
+      { x: 20, y: 65, width: 120, height: 1, page: 1 },
+      { x: 20, y: 40, width: 120, height: 1, page: 1 },
+      { x: 20, y: 40, width: 1, height: 50, page: 1 },
+      { x: 70, y: 40, width: 1, height: 50, page: 1 },
+      { x: 140, y: 40, width: 1, height: 50, page: 1 },
+    ];
+    const tables = detectTables(items, [], rects);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|some-thing|Age|');
+    expect(tables[0]!.markdown).not.toContain('some- thing');
+  });
+
   it('keeps a word space when cell fragments sit a space-width apart', () => {
     const items = [
       { text: 'Wide', x: 20, y: 80, width: 24, page: 1, fontSize: 12 },

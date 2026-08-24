@@ -390,6 +390,7 @@ function joinCellText(items: TableTextItem[]): string {
 
 function cellNeedsSpace(prev: TableTextItem, curr: TableTextItem, out: string): boolean {
   if (out.endsWith(' ') || curr.text.startsWith(' ') || prev.text.endsWith(' ')) return true;
+  if (out.endsWith('-') || curr.text.startsWith('-') || curr.text.trim() === '-') return false;
   const currFirst = [...curr.text.trimStart()][0];
   if (currFirst !== undefined && ".,;!?)]}'".includes(currFirst)) return false;
   const gap = curr.x - (prev.x + Math.max(prev.width, 0));
