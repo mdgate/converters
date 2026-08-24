@@ -15,6 +15,7 @@ import {
 } from './encoding-cmap.js';
 import { applyDifferences, applyNamedEncoding } from './encodings.js';
 import { xObjectToImage } from './images.js';
+import { groupIntoLines, lineBox, orderBoxes } from './layout.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
 
@@ -2497,29 +2498,6 @@ function mergeScriptItems(items: TextItem[]): TextItem[] {
 // Line grouping + markdown
 // ---------------------------------------------------------------------------
 
-function groupIntoLines(items: TextItem[]): TextItem[][] {
-  const sorted = items.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
-  const lines: TextItem[][] = [];
-  for (const item of sorted) {
-    const last = lines[lines.length - 1];
-    if (last && last[0]!.page === item.page && Math.abs(last[0]!.y - item.y) < 3) {
-      const first = last[0]!;
-      const tail = last[last.length - 1]!;
-      if (Math.abs(item.x - first.x) < 5 && Math.abs(item.y - first.y) > 0.5) {
-        lines.push([item]);
-      } else if (item.x < tail.x - 10 && Math.abs(item.y - first.y) > 0.5) {
-        lines.push([item]);
-      } else {
-        last.push(item);
-      }
-    } else {
-      lines.push([item]);
-    }
-  }
-  for (const line of lines) line.sort((a, b) => a.x - b.x);
-  return lines;
-}
-
 function shouldJoinItems(prev: TextItem, curr: TextItem): boolean {
   if (prev.text.endsWith(' ') || curr.text.startsWith(' ')) return false;
   const currFirst = [...curr.text.trimStart()][0];
@@ -2632,6 +2610,17 @@ function isListItem(text: string): boolean {
   return false;
 }
 
+interface FlowBlock {
+  kind: 'line' | 'table' | 'image';
+  page: number;
+  x: number;
+  y: number;
+  x2: number;
+  y2: number;
+  items?: TextItem[];
+  markdown?: string;
+}
+
 function itemsToMarkdown(
   items: TextItem[],
   strokeLines: StrokeLine[],
@@ -2644,14 +2633,48 @@ function itemsToMarkdown(
     for (const idx of table.itemIndices) claimed.add(idx);
   }
   const remaining = items.filter((_, i) => !claimed.has(i));
-  const lines = groupIntoLines(remaining);
+  const rawLines = groupIntoLines(remaining);
+  const flow: FlowBlock[] = [
+    ...rawLines.map((line) => {
+      const box = lineBox(line);
+      return { kind: 'line' as const, page: line[0]!.page, ...box, items: line };
+    }),
+    ...tables.map((t) => ({
+      kind: 'table' as const,
+      page: t.page,
+      x: t.x,
+      y: t.y,
+      x2: t.x2,
+      y2: t.y2,
+      markdown: t.markdown,
+    })),
+    ...imageBlocks.map((b) => ({
+      kind: 'image' as const,
+      page: b.page,
+      x: b.x,
+      y: b.y,
+      x2: b.x + 1,
+      y2: b.y - 1,
+      markdown: b.markdown,
+    })),
+  ];
+  const byPage = new Map<number, FlowBlock[]>();
+  for (const block of flow) {
+    const list = byPage.get(block.page) ?? [];
+    list.push(block);
+    byPage.set(block.page, list);
+  }
+  const ordered: FlowBlock[] = [];
+  for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
+    ordered.push(...orderBoxes(byPage.get(page)!));
+  }
+  const lines = ordered.filter((b) => b.kind === 'line').map((b) => b.items!);
   if (lines.length === 0 && tables.length === 0 && imageBlocks.length === 0) return '';
   if (lines.length === 0) {
-    const blocks = [
-      ...tables.map((t) => ({ page: t.page, x: t.x, y: t.y, markdown: t.markdown })),
-      ...imageBlocks,
-    ].sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
-    return `${blocks.map((b) => b.markdown.trimEnd()).join('\n\n')}\n`;
+    return `${ordered
+      .map((b) => b.markdown?.trimEnd() ?? '')
+      .filter((s) => s.length > 0)
+      .join('\n\n')}\n`;
   }
 
   const sizeCounts = new Map<number, number>();
@@ -2740,39 +2763,37 @@ function itemsToMarkdown(
   let prevY = Number.POSITIVE_INFINITY;
   let prevPage = 0;
   let lastListX: number | undefined;
+  let lineIndex = 0;
 
-  const pendingBlocks = [
-    ...tables.map((t) => ({ page: t.page, x: t.x, y: t.y, markdown: t.markdown })),
-    ...imageBlocks,
-  ].sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
-  const flushBlocksBefore = (page: number, y: number): void => {
-    while (pendingBlocks.length > 0) {
-      const next = pendingBlocks[0]!;
-      if (next.page < page || (next.page === page && next.y >= y - 1)) {
-        if (inPara) {
-          out += '\n\n';
-          inPara = false;
-        }
-        out += `${pendingBlocks.shift()!.markdown.trimEnd()}\n\n`;
-        inList = false;
-      } else {
-        break;
-      }
+  const emitBreak = (): void => {
+    if (inPara) {
+      out += '\n\n';
+      inPara = false;
     }
+    inList = false;
+    lastListX = undefined;
   };
 
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]!;
+  for (const block of ordered) {
+    if (block.kind !== 'line') {
+      emitBreak();
+      const md = block.markdown?.trimEnd() ?? '';
+      if (md.length > 0) out += `${md}\n\n`;
+      prevY = block.y2;
+      prevPage = block.page;
+      continue;
+    }
+
+    const line = block.items!;
     const page = line[0]!.page;
     const y = line[0]!.y;
-    flushBlocksBefore(page, y);
     if (page !== prevPage) {
       prevY = Number.POSITIVE_INFINITY;
       prevPage = page;
       inList = false;
     }
     const yGap = prevY - y;
-    if (Math.abs(yGap) > paraTh && inPara) {
+    if (inPara && (yGap > paraTh || yGap < -base * 0.8)) {
       out += '\n\n';
       inPara = false;
     }
@@ -2784,6 +2805,8 @@ function itemsToMarkdown(
       .map((it) => it.text)
       .join('')
       .trim();
+    const i = lineIndex;
+    lineIndex += 1;
     if (trimmed.length === 0) continue;
 
     const lvl = headerLevel(i, line, plain);
@@ -2821,8 +2844,6 @@ function itemsToMarkdown(
     out += trimmed;
     inPara = true;
   }
-
-  flushBlocksBefore(Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY);
 
   out = out.replace(/\n{3,}/g, '\n\n').trim();
   return out.length === 0 ? '' : `${out}\n`;

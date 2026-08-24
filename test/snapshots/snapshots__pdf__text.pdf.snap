@@ -18,7 +18,10 @@ i.Roman sub sub
 V.Roman five •Bullet one •Bullet two ◦Nested bullet
 ## Table
 
-Wide head End Tall B2 C2 B3 C3
+|Widehead||End|
+|---|---|---|
+|Tall|B2|C2|
+||B3|C3|
 
 ## Notes and special text
 
