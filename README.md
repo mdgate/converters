@@ -5,7 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-teal.svg)](LICENSE)
 [![convert](https://img.shields.io/badge/convert-convert.mdgate.dev-0f766e)](https://convert.mdgate.dev)
 
-**Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
+**Real-world files to Markdown, in pure TypeScript.**
+
+Convert PDF, Word, Excel, PowerPoint, OpenDocument, Apple iWork, HWP, WPS, email, OneNote, Visio, ebooks, archives, and more into GitHub-Flavored Markdown.
+
+Runs in **Node.js, Cloudflare Workers, Edge runtimes, and browsers**.
 
 **No Python. No native addons. No WASM. No third-party runtime dependencies.**
 
@@ -21,13 +25,13 @@ const markdown = await toMarkdown(bytes, {
 });
 ```
 
-Bytes in. GitHub-Flavored Markdown out. Works in Node.js, Cloudflare Workers, Edge, and browsers.
+The input is bytes. The output is Markdown.
 
 [Try it in your browser](https://convert.mdgate.dev). Files convert locally and never leave your machine.
 
 <p align="center">
   <a href="https://convert.mdgate.dev">
-    <img src="apps/demo/public/og.png" alt="mdgate/converters: pure TypeScript converters for 150+ file types" width="800" />
+    <img src="apps/demo/public/og.png" alt="mdgate/converters: real-world files to Markdown, in pure TypeScript" width="800" />
   </a>
 </p>
 

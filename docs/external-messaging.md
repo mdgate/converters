@@ -12,13 +12,19 @@ We are marketing:
 
 > **mdgate/converters**
 
-Canonical description:
+Canonical description (GitHub About, npm `description`):
 
-> **Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
+> **Pure TypeScript converters for 150+ file types to Markdown, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
+
+Project message (README hero, project copy):
+
+> **Real-world files to Markdown, in pure TypeScript.**
 
 Longer version:
 
-> `mdgate/converters` converts 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email, into GitHub-Flavored Markdown. It is written in TypeScript and runs in Node, Edge, and browsers.
+> `mdgate/converters` converts real-world files to GitHub-Flavored Markdown in pure TypeScript: PDF, Word, Excel, PowerPoint, iWork, HWP, WPS, email, and 150+ other types. It runs in Node.js, Cloudflare Workers, Edge, and browsers.
+
+Do not collapse the project message and the canonical description into one sentence.
 
 ---
 
@@ -76,11 +82,17 @@ The user or coding agent should be able to decide quickly:
 
 Use when describing the whole repository:
 
-> **Pure TypeScript converters for 150+ file types, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
+> **Real-world files to Markdown, in pure TypeScript.**
 
 Supporting line:
 
 > One format, your own set, or the complete converter collection.
+
+### Metadata message
+
+Use for GitHub About and npm `description`:
+
+> **Pure TypeScript converters for 150+ file types to Markdown, including DOCX, PDF, PPTX, XLSX, iWork, HWP, and email. Runs in Node, Edge, and browsers.**
 
 ---
 
