@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/csv",
-  "version": "0.6.16",
+  "version": "0.6.17",
   "description": "mdgate CSV converter",
   "type": "module",
   "license": "MIT",
@@ -28,9 +28,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.16",
-    "@mdgate/document": "0.6.16",
-    "@mdgate/utils": "0.6.16"
+    "@mdgate/core": "0.6.17",
+    "@mdgate/document": "0.6.17",
+    "@mdgate/utils": "0.6.17"
   },
   "publishConfig": {
     "access": "public"
