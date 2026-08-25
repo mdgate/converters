@@ -185,3 +185,70 @@ ET
     expect(md.indexOf('Right one')).toBeLessThan(md.indexOf('Right two'));
   });
 });
+
+describe('tagged artifacts', () => {
+  it('keeps running header and page-number text marked as artifacts', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`BT
+/F1 12 Tf
+1 0 0 1 20 90 Tm
+/Artifact << /O /Layout >> BDC
+(YARROW) Tj
+EMC
+1 0 0 1 20 50 Tm
+(Body paragraph here) Tj
+1 0 0 1 180 12 Tm
+/Artifact << /Type /Pagination >> BDC
+(5) Tj
+EMC
+ET
+`),
+    );
+    expect(md).toContain('YARROW');
+    expect(md).toContain('Body paragraph here');
+    expect(md).toContain('5');
+    expect(md.indexOf('YARROW')).toBeLessThan(md.indexOf('Body paragraph here'));
+    expect(md.indexOf('Body paragraph here')).toBeLessThan(md.indexOf('5'));
+  });
+
+  it('keeps a pagination footer and does not drop nested marked content', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`/Artifact << /O /Layout >> BDC
+BT
+/F1 12 Tf
+1 0 0 1 20 90 Tm
+(314) Tj
+ET
+BT
+/Span << /Lang (en-GB) >> BDC
+/F1 12 Tf
+1 0 0 1 50 90 Tm
+( ) Tj
+EMC
+ET
+BT
+/F1 12 Tf
+1 0 0 1 56 90 Tm
+(YARROW) Tj
+ET
+EMC
+BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(Body paragraph here) Tj
+ET
+/Artifact << /Type /Pagination /Subtype /Footer >> BDC
+BT
+/F1 8 Tf
+1 0 0 1 20 12 Tm
+(PRICE TRANSPARENCY 1) Tj
+ET
+EMC
+`),
+    );
+    expect(md).toContain('314');
+    expect(md).toContain('YARROW');
+    expect(md).toContain('Body paragraph here');
+    expect(md).toContain('PRICE TRANSPARENCY 1');
+  });
+});
