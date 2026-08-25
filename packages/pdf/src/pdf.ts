@@ -2101,6 +2101,17 @@ function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
   return out;
 }
 
+function trackMarkedArtifact(stack: boolean[], op: string, args: PdfValue[]): void {
+  if (op === 'BMC') {
+    stack.push(nameOf(args[args.length - 1]) === '/Artifact');
+  } else if (op === 'BDC') {
+    const tag = args.length >= 2 ? args[args.length - 2] : args[args.length - 1];
+    stack.push(nameOf(tag) === '/Artifact');
+  } else if (op === 'EMC') {
+    stack.pop();
+  }
+}
+
 function extractPage(
   doc: PdfDocument,
   page: PdfDict,
@@ -2146,7 +2157,7 @@ function extractPage(
   let rise = 0;
   let path: [number, number][] = [];
   let pathStart: [number, number] | undefined;
-  let artifact = 0;
+  const marked: boolean[] = [];
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   const args: PdfValue[] = [];
   const pageResources = dictGet(doc, page, '/Resources');
@@ -2154,7 +2165,7 @@ function extractPage(
   const formFonts = fonts;
 
   const emitText = (raw: Uint8Array): void => {
-    if (!font || artifact > 0) return;
+    if (!font) return;
     const decoded = decodeFontBytes(font, raw);
     countDecoded(stats, decoded);
     const dirMat = mulMat(tm, ctm);
@@ -2286,13 +2297,8 @@ function extractPage(
           else if (typeof el === 'number') applyTjAdjust(el);
         }
       }
-    } else if (op === 'BMC') {
-      if (nameOf(args[args.length - 1]) === '/Artifact') artifact += 1;
-    } else if (op === 'BDC') {
-      const tag = args.length >= 2 ? args[args.length - 2] : args[args.length - 1];
-      if (nameOf(tag) === '/Artifact') artifact += 1;
-    } else if (op === 'EMC') {
-      if (artifact > 0) artifact -= 1;
+    } else if (op === 'BMC' || op === 'BDC' || op === 'EMC') {
+      trackMarkedArtifact(marked, op, args);
     } else if (op === 'm' && args.length >= 2) {
       const p = applyMat(ctm, lastNum(2), lastNum(1));
       path = [p];
@@ -2310,7 +2316,7 @@ function extractPage(
       const p3 = applyMat(ctm, x, y + h);
       path = [p0, p1, p2, p3, p0];
       pathStart = p0;
-      if (artifact === 0) {
+      if (!marked.includes(true)) {
         const xs = [p0[0], p1[0], p2[0], p3[0]];
         const ys = [p0[1], p1[1], p2[1], p3[1]];
         const minX = Math.min(...xs);
@@ -2327,7 +2333,7 @@ function extractPage(
       if (pathStart) path.push(pathStart);
     } else if (op === 'S' || op === 's') {
       if (op === 's' && pathStart) path.push(pathStart);
-      if (artifact === 0) {
+      if (!marked.includes(true)) {
         for (let i = 1; i < path.length; i += 1) {
           const a = path[i - 1]!;
           const b = path[i]!;
@@ -2337,11 +2343,12 @@ function extractPage(
         if (filled) rects.push(filled);
       }
       path = [];
-    } else if (op === 'Do' && artifact === 0) {
+    } else if (op === 'Do') {
       const name =
         typeof args[args.length - 1] === 'string' ? (args[args.length - 1] as string) : '';
       const xobj = xobjects.get(name);
       if (xobj !== undefined) {
+        const inArtifact = marked.includes(true);
         extractFormText(
           doc,
           xobj.dict,
@@ -2349,8 +2356,8 @@ function extractPage(
           ctm,
           pageNo,
           items,
-          lines,
-          rects,
+          inArtifact ? [] : lines,
+          inArtifact ? [] : rects,
           stats,
           depth,
         );
@@ -2365,7 +2372,7 @@ function extractPage(
       op === 'b' ||
       op === 'b*'
     ) {
-      if (op !== 'n' && artifact === 0) {
+      if (op !== 'n' && !marked.includes(true)) {
         if (op === 'b' || op === 'b*') {
           if (pathStart) path.push(pathStart);
         }
@@ -2630,7 +2637,7 @@ function collectImages(
   const xobjects = loadXObjects(doc, isDict(resources) ? resources : undefined);
   const gs: number[][] = [];
   let ctm = startCtm.slice();
-  let artifact = 0;
+  const marked: boolean[] = [];
   const args: PdfValue[] = [];
 
   for (const tok of tokens) {
@@ -2649,14 +2656,9 @@ function collectImages(
         args.slice(-6).map((a) => (typeof a === 'number' ? a : 0)),
         ctm,
       );
-    } else if (op === 'BMC') {
-      if (nameOf(args[args.length - 1]) === '/Artifact') artifact += 1;
-    } else if (op === 'BDC') {
-      const tag = args.length >= 2 ? args[args.length - 2] : args[args.length - 1];
-      if (nameOf(tag) === '/Artifact') artifact += 1;
-    } else if (op === 'EMC') {
-      if (artifact > 0) artifact -= 1;
-    } else if (op === 'Do' && artifact === 0) {
+    } else if (op === 'BMC' || op === 'BDC' || op === 'EMC') {
+      trackMarkedArtifact(marked, op, args);
+    } else if (op === 'Do' && !marked.includes(true)) {
       const name =
         typeof args[args.length - 1] === 'string' ? (args[args.length - 1] as string) : '';
       const xobj = xobjects.get(name);
