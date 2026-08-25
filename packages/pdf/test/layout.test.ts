@@ -335,6 +335,26 @@ ET
     expect(md).not.toMatch(/next one\. The second paragraph/);
   });
 
+  it('keeps a hanging marker with its indented body', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 220 Tm
+(The notes section has enough words to stay ordinary body text here.) Tj
+1 0 0 1 20 205 Tm
+(i) Tj
+1 0 0 1 32 190 Tm
+(Endnote body text that belongs with the marker above it.) Tj
+ET
+`,
+        [0, 0, 420, 260],
+      ),
+    );
+    expect(md).toMatch(/i Endnote body text/);
+    expect(md).not.toMatch(/i\n\nEndnote body text/);
+  });
+
   it('keeps wrapped lines at the same left edge as one paragraph', () => {
     const md = toMarkdownFromPdf(
       pagePdf(

@@ -3086,9 +3086,10 @@ function isListItem(text: string): boolean {
   return false;
 }
 
-function isFirstLineIndent(prevX: number, currX: number, em: number): boolean {
-  const dx = currX - prevX;
-  return dx >= em * 0.5 && dx <= em * 3.5;
+function isFirstLineIndent(prev: LayoutBox, curr: LayoutBox, em: number): boolean {
+  const dx = curr.x - prev.x;
+  if (dx < em * 0.5 || dx > em * 3.5) return false;
+  return prev.x2 > curr.x;
 }
 
 interface FlowBlock {
@@ -3299,7 +3300,7 @@ function itemsToMarkdown(
 
     const yGap = prevY - y;
     const em = Math.max(line[0]!.fontSize, base);
-    const indented = prevBox !== undefined && isFirstLineIndent(prevBox.x, box.x, em);
+    const indented = prevBox !== undefined && isFirstLineIndent(prevBox, box, em);
     if (inPara && (yGap > paraTh || yGap < -base * 0.8 || indented)) {
       out += '\n\n';
       inPara = false;
