@@ -311,3 +311,89 @@ EMC
     expect(md).not.toMatch(/\|---\|/);
   });
 });
+
+describe('paragraph breaks', () => {
+  it('splits book-style first-line indents at the same line spacing', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 220 Tm
+(The first paragraph has enough words to stay body text on this line) Tj
+1 0 0 1 20 205 Tm
+(and it finishes without a larger gap before the next one.) Tj
+1 0 0 1 32 190 Tm
+(The second paragraph starts with a first-line indent and continues) Tj
+1 0 0 1 20 175 Tm
+(on the following line back at the left margin of the column.) Tj
+ET
+`,
+        [0, 0, 420, 260],
+      ),
+    );
+    expect(md).toMatch(/next one\.\n\nThe second paragraph/);
+    expect(md).not.toMatch(/next one\. The second paragraph/);
+  });
+
+  it('keeps wrapped lines at the same left edge as one paragraph', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 220 Tm
+(The first wrapped line has enough words to remain ordinary body text) Tj
+1 0 0 1 20 205 Tm
+(and the second wrapped line continues the same paragraph without a break) Tj
+1 0 0 1 20 190 Tm
+(and a third line still belongs with the sentence that started above.) Tj
+ET
+`,
+        [0, 0, 420, 260],
+      ),
+    );
+    expect(md).toMatch(/body text and the second wrapped line/);
+    expect(md).not.toMatch(/body text\n\n/);
+  });
+
+  it('splits body paragraphs separated by an empty spacer line', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 220 Tm
+(The opening paragraph has enough words to stay ordinary body text here) Tj
+1 0 0 1 20 205 Tm
+(and it ends just before a blank spacer that the PDF still paints.) Tj
+1 0 0 1 20 190 Tm
+( ) Tj
+1 0 0 1 20 175 Tm
+(The next paragraph should not be joined onto that previous sentence.) Tj
+ET
+`,
+        [0, 0, 420, 260],
+      ),
+    );
+    expect(md).toMatch(/paints\.\n\nThe next paragraph/);
+    expect(md).not.toMatch(/paints\. The next paragraph/);
+  });
+
+  it('does not glue the next paragraph onto the last list item', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 220 Tm
+(• A list item with enough words to wrap onto the following line) Tj
+1 0 0 1 32 205 Tm
+(and then a wrapped continuation of that same list item.) Tj
+1 0 0 1 20 180 Tm
+(After the list a new paragraph starts with many words of body text.) Tj
+ET
+`,
+        [0, 0, 420, 260],
+      ),
+    );
+    expect(md).toMatch(/list item\.\n\nAfter the list/);
+    expect(md).not.toMatch(/list item\. After the list/);
+  });
+});

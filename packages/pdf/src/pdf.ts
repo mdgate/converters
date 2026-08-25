@@ -17,7 +17,7 @@ import {
 import { applyDifferences, applyNamedEncoding } from './encodings.js';
 import { decryptBytes, type EncryptParams, type FileCrypt, openEncrypt } from './encrypt.js';
 import { xObjectToImage } from './images.js';
-import { groupIntoLines, lineBox, orderBoxes } from './layout.js';
+import { groupIntoLines, type LayoutBox, lineBox, orderBoxes } from './layout.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
 import { looksLikeXfdf, xfdfToMarkdown } from './xfdf.js';
@@ -3086,6 +3086,11 @@ function isListItem(text: string): boolean {
   return false;
 }
 
+function isFirstLineIndent(prevX: number, currX: number, em: number): boolean {
+  const dx = currX - prevX;
+  return dx >= em * 0.5 && dx <= em * 3.5;
+}
+
 interface FlowBlock {
   kind: 'line' | 'table' | 'image';
   page: number;
@@ -3200,7 +3205,8 @@ function itemsToMarkdown(
   if (gaps.length >= 5) {
     gaps.sort((a, b) => a - b);
     const median = gaps[Math.floor(gaps.length / 2)]!;
-    paraTh = Math.max(median * 1.3, base * 1.5);
+    const lineGap = gaps[Math.floor(gaps.length * 0.25)]!;
+    paraTh = Math.max(median * 1.3, lineGap * 1.35, base * 1.5);
   }
 
   const isolated = new Set<number>();
@@ -3238,6 +3244,7 @@ function itemsToMarkdown(
   let inList = false;
   let prevY = Number.POSITIVE_INFINITY;
   let prevPage = 0;
+  let prevBox: LayoutBox | undefined;
   let lastListX: number | undefined;
   let lineIndex = 0;
 
@@ -3250,12 +3257,21 @@ function itemsToMarkdown(
     lastListX = undefined;
   };
 
+  const closeList = (): void => {
+    inList = false;
+    lastListX = undefined;
+    if (out.endsWith('\n\n')) return;
+    if (!out.endsWith('\n')) out += '\n';
+    out += '\n';
+  };
+
   for (const block of ordered) {
     if (block.kind !== 'line') {
       emitBreak();
       const md = block.markdown?.trimEnd() ?? '';
       if (md.length > 0) out += `${md}\n\n`;
       prevY = block.y2;
+      prevBox = undefined;
       prevPage = block.page;
       continue;
     }
@@ -3263,18 +3279,7 @@ function itemsToMarkdown(
     const line = block.items!;
     const page = line[0]!.page;
     const y = line[0]!.y;
-    if (page !== prevPage) {
-      prevY = Number.POSITIVE_INFINITY;
-      prevPage = page;
-      inList = false;
-    }
-    const yGap = prevY - y;
-    if (inPara && (yGap > paraTh || yGap < -base * 0.8)) {
-      out += '\n\n';
-      inPara = false;
-    }
-    prevY = y;
-
+    const box = lineBox(line);
     const formatted = formatLine(line, true, true, true);
     const trimmed = formatted.trim();
     const plain = line
@@ -3283,7 +3288,24 @@ function itemsToMarkdown(
       .trim();
     const i = lineIndex;
     lineIndex += 1;
+    if (page !== prevPage) {
+      prevY = Number.POSITIVE_INFINITY;
+      prevBox = undefined;
+      prevPage = page;
+      inList = false;
+      lastListX = undefined;
+    }
     if (trimmed.length === 0) continue;
+
+    const yGap = prevY - y;
+    const em = Math.max(line[0]!.fontSize, base);
+    const indented = prevBox !== undefined && isFirstLineIndent(prevBox.x, box.x, em);
+    if (inPara && (yGap > paraTh || yGap < -base * 0.8 || indented)) {
+      out += '\n\n';
+      inPara = false;
+    }
+    prevY = y;
+    prevBox = box;
 
     const lvl = headerLevel(i, line, plain);
     if (lvl !== undefined) {
@@ -3291,6 +3313,7 @@ function itemsToMarkdown(
       out += `${'#'.repeat(lvl)} ${plain}\n\n`;
       inPara = false;
       inList = false;
+      lastListX = undefined;
       continue;
     }
 
@@ -3307,13 +3330,12 @@ function itemsToMarkdown(
     if (inList) {
       const currX = line[0]!.x;
       const xOk = lastListX !== undefined && currX >= lastListX - 5 && currX <= lastListX + 50;
-      if (xOk && yGap < base * 7 && !isListItem(plain)) {
+      if (xOk && yGap <= paraTh && yGap < base * 7) {
         if (out.endsWith('\n')) out = `${out.slice(0, -1)} `;
         out += `${trimmed}\n`;
         continue;
       }
-      inList = false;
-      lastListX = undefined;
+      closeList();
     }
 
     if (inPara) out += ' ';
