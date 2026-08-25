@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/docx",
-  "version": "0.6.15",
+  "version": "0.6.16",
   "description": "mdgate Word converter (docx/docm)",
   "type": "module",
   "license": "MIT",
@@ -28,11 +28,11 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.15",
-    "@mdgate/core": "0.6.15",
-    "@mdgate/document": "0.6.15",
-    "@mdgate/office-common": "0.6.15",
-    "@mdgate/utils": "0.6.15"
+    "@mdgate/containers": "0.6.16",
+    "@mdgate/core": "0.6.16",
+    "@mdgate/document": "0.6.16",
+    "@mdgate/office-common": "0.6.16",
+    "@mdgate/utils": "0.6.16"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/rtf",
-  "version": "0.6.15",
+  "version": "0.6.16",
   "description": "mdgate RTF converter",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.15",
-    "@mdgate/document": "0.6.15",
-    "@mdgate/office-common": "0.6.15",
-    "@mdgate/utils": "0.6.15"
+    "@mdgate/core": "0.6.16",
+    "@mdgate/document": "0.6.16",
+    "@mdgate/office-common": "0.6.16",
+    "@mdgate/utils": "0.6.16"
   },
   "publishConfig": {
     "access": "public"
