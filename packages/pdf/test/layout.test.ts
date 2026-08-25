@@ -251,4 +251,63 @@ EMC
     expect(md).toContain('Body paragraph here');
     expect(md).toContain('PRICE TRANSPARENCY 1');
   });
+
+  it('keeps form header text but drops header rules so they do not become a table', () => {
+    const formContent = `BT
+/F1 12 Tf
+1 0 0 1 20 120 Tm
+(YARROW) Tj
+1 0 0 1 22 82 Tm
+(a b c d e f g) Tj
+1 0 0 1 80 82 Tm
+(h i j k l m n) Tj
+1 0 0 1 22 52 Tm
+(o p q r s t u) Tj
+1 0 0 1 80 52 Tm
+(v w x y z a b) Tj
+ET
+20 90 160 1 re S
+20 70 160 1 re S
+20 40 160 1 re S
+20 40 1 50 re S
+70 40 1 50 re S
+180 40 1 50 re S
+`;
+    const formPdf = (pageContent: string): Uint8Array => {
+      const objects = [
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 220 140] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Fm1 6 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${pageContent.length} >>\nstream\n${pageContent}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+        `6 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 220 140] /Resources << /Font << /F1 5 0 R >> >> /Length ${formContent.length} >>\nstream\n${formContent}endstream\nendobj\n`,
+      ];
+      let pdf = '%PDF-1.4\n';
+      const offsets = [0];
+      for (const obj of objects) {
+        offsets.push(pdf.length);
+        pdf += obj;
+      }
+      const xrefAt = pdf.length;
+      let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+      for (let i = 1; i <= objects.length; i += 1) {
+        xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+      }
+      pdf += `${xref}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+      return new TextEncoder().encode(pdf);
+    };
+
+    const leaked = toMarkdownFromPdf(formPdf('/Fm1 Do\n'));
+    expect(leaked).toMatch(/\|---\|/);
+
+    const md = toMarkdownFromPdf(
+      formPdf(`/Artifact << /O /Layout >> BDC
+/Fm1 Do
+EMC
+`),
+    );
+    expect(md).toContain('YARROW');
+    expect(md).toContain('a b c d e f g');
+    expect(md).not.toMatch(/\|---\|/);
+  });
 });

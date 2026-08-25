@@ -2348,6 +2348,7 @@ function extractPage(
         typeof args[args.length - 1] === 'string' ? (args[args.length - 1] as string) : '';
       const xobj = xobjects.get(name);
       if (xobj !== undefined) {
+        const inArtifact = marked.includes(true);
         extractFormText(
           doc,
           xobj.dict,
@@ -2355,8 +2356,8 @@ function extractPage(
           ctm,
           pageNo,
           items,
-          lines,
-          rects,
+          inArtifact ? [] : lines,
+          inArtifact ? [] : rects,
           stats,
           depth,
         );
