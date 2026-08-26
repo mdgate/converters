@@ -1,5 +1,7 @@
 /** Ruled-grid and borderless table detection from lines, thin `re` borders, and aligned text. */
 
+import { isUpright } from './layout.js';
+
 export interface TableTextItem {
   text: string;
   x: number;
@@ -7,6 +9,8 @@ export interface TableTextItem {
   width: number;
   page: number;
   fontSize?: number;
+  dx?: number;
+  dy?: number;
 }
 
 export interface TableLine {
@@ -229,6 +233,7 @@ function buildGridTable(
     if (claimed.has(idx)) continue;
     const item = items[idx]!;
     if (item.page !== page || item.text.trim().length === 0) continue;
+    if (!isUpright(item)) continue;
     const cx = item.x + Math.max(item.width, 0) / 2;
     const cy = item.y;
     if (cx < xLeft - 4 || cx > xRight + 4 || cy < yBottom - 4 || cy > yTop + 4) continue;
@@ -314,6 +319,7 @@ function acceptGrid(grid: string[][]): boolean {
   if (avg > 220) return false;
   const long = lengths.filter((n) => n > 160).length;
   if (long > 0 && long / lengths.length > 0.2 && longCols > 2) return false;
+  if (looksLikeDateFragments(grid)) return false;
   return true;
 }
 
@@ -376,6 +382,7 @@ function collectAlignedRows(items: TableTextItem[], page: number, claimed: Set<n
     if (claimed.has(idx)) continue;
     const item = items[idx]!;
     if (item.page !== page || item.text.trim().length === 0) continue;
+    if (!isUpright(item)) continue;
     pts.push({ idx, item });
   }
   pts.sort((a, b) => b.item.y - a.item.y || a.item.x - b.item.x);
@@ -671,10 +678,21 @@ function acceptBorderless(
   if (words > MAX_TABLE_WORDS) return false;
   const avgChars = cells.reduce((n, c) => n + [...c].length, 0) / Math.max(cells.length, 1);
   const nCols = grid[0]!.length;
-  if (nCols === 2 && avgChars > PROSE_AVG_CELL_CHARS) {
+  if (nCols >= 2 && avgChars > PROSE_AVG_CELL_CHARS) {
     const avgWords = words / Math.max(cells.length, 1);
     if (avgWords > 4) return false;
   }
+  if (
+    looksLikeDateFragments(grid) ||
+    looksLikeChartLegend(grid) ||
+    looksLikeChartValues(grid, run) ||
+    looksLikeNumericScatter(grid) ||
+    looksLikeLabeledTicks(grid) ||
+    looksLikeHeaderlessJunk(grid)
+  ) {
+    return false;
+  }
+  if (mixedChartAndProse(grid)) return false;
   if (pageBox && nCols <= 2) {
     const x1 = Math.min(...run.flatMap((r) => r.segs.map((s) => s.x)));
     const x2 = Math.max(...run.flatMap((r) => r.segs.map((s) => s.x2)));
@@ -685,6 +703,111 @@ function acceptBorderless(
     if (area / pageArea > PAGE_COVER && avgChars > 20) return false;
   }
   return true;
+}
+
+function looksLikeDateFragments(grid: string[][]): boolean {
+  const cells = grid.flat().filter((c) => c.length > 0);
+  if (cells.length < 8) return false;
+  if (grid[0]!.length < 6) return false;
+  if (cells.some((c) => [...c].length > 5)) return false;
+  const frag = cells.filter((c) => /^(?:\d{1,4}\/?|\/?\d{1,4})$/.test(c.trim())).length;
+  return frag / cells.length >= 0.6;
+}
+
+function looksLikeChartLegend(grid: string[][]): boolean {
+  if (grid.length < 2 || grid.length > 3) return false;
+  if (grid[0]!.length < 3) return false;
+  const first = grid[0]!.filter((c) => c.length > 0);
+  const last = grid[grid.length - 1]!.filter((c) => c.length > 0);
+  if (first.length < 3 || last.length === 0) return false;
+  const categories = first.every((c) => wordCount(c) <= 2 && /[\p{L}]/u.test(c));
+  const years = last.every((c) => /^(?:19|20)\d{2}$/.test(c.trim()));
+  return categories && years;
+}
+
+function looksLikeChartValues(grid: string[][], run: RowCand[]): boolean {
+  const cells = grid.flat().filter((c) => c.length > 0);
+  if (cells.length < 4) return false;
+  const numeric = cells.filter((c) => /^-?[\d.,]+%?$/.test(c.trim())).length;
+  if (numeric / cells.length < 0.8) return false;
+  const avgLen = cells.reduce((n, c) => n + [...c].length, 0) / cells.length;
+  if (avgLen > 8) return false;
+  const nCols = grid[0]!.length;
+  const fill = cells.length / (grid.length * nCols);
+  return fill < 0.55 || rowPitchIrregular(run);
+}
+
+function mixedChartAndProse(grid: string[][]): boolean {
+  const cells = grid.flat().filter((c) => c.length > 0);
+  const long = cells.filter((c) => wordCount(c) >= 6).length;
+  const chartish = cells.filter((c) => /%/.test(c) || /^-?[\d.,]+%?$/.test(c.trim())).length;
+  return long >= 2 && chartish >= 3;
+}
+
+function isNumericToken(text: string): boolean {
+  const t = text.trim();
+  return /^-?[\d.,]+%?$/.test(t) || /^(?:19|20)\d{2}$/.test(t);
+}
+
+function looksLikeNumericScatter(grid: string[][]): boolean {
+  const header = grid[0]!.filter((c) => c.length > 0);
+  const headerLabels = header.filter((c) => /[\p{L}]/u.test(c) && !isNumericToken(c)).length;
+  if (header.length >= 2 && headerLabels >= Math.ceil(header.length * 0.6)) return false;
+  const col0 = grid.map((row) => row[0] ?? '').filter((c) => c.length > 0);
+  const col0Labels = col0.filter((c) => /[\p{L}]/u.test(c) && !isNumericToken(c)).length;
+  if (col0.length >= 2 && col0Labels / col0.length >= 0.6) return false;
+  const cells = grid.flat().filter((c) => c.length > 0);
+  const tokens = cells.flatMap((c) => c.split(/\s+/).filter((w) => w.length > 0));
+  if (tokens.length < 6) return false;
+  const numeric = tokens.filter((t) => isNumericToken(t)).length;
+  if (numeric / tokens.length < 0.45) return false;
+  const letters = tokens.filter((t) => /[\p{L}]{3,}/u.test(t) && !isNumericToken(t)).length;
+  return letters <= tokens.length * 0.4;
+}
+
+function looksLikeLabeledTicks(grid: string[][]): boolean {
+  const filled = grid.map((row) => row.filter((c) => c.length > 0)).filter((r) => r.length >= 2);
+  const percentRow = filled.some(
+    (r) =>
+      r.filter((c) => /%/.test(c) || /^-?[\d.,]+$/.test(c.trim())).length >=
+        Math.ceil(r.length * 0.7) && r.every((c) => wordCount(c) <= 2),
+  );
+  const labelRow = filled.some(
+    (r) =>
+      r.length >= 3 && r.every((c) => wordCount(c) <= 2 && /[\p{L}]/u.test(c) && !/\d/.test(c)),
+  );
+  return percentRow && labelRow;
+}
+
+function looksLikeHeaderlessJunk(grid: string[][]): boolean {
+  if (grid.length !== 2 || grid[0]!.length < 3) return false;
+  const r0 = grid[0]!.filter((c) => c.length > 0);
+  const r1 = grid[1]!.filter((c) => c.length > 0);
+  if (r0.length < 2 || r1.length === 0) return false;
+  const allLabels = (row: string[]): boolean =>
+    row.every((c) => !/\d/.test(c) && wordCount(c) <= 6);
+  const hasDigit = (row: string[]): boolean => row.some((c) => /\d/.test(c));
+  if (allLabels(r0) && hasDigit(r1)) return false;
+  if (!hasDigit(r0) || !hasDigit(r1)) return false;
+  const labels = r0.filter((c) => /[\p{L}]/u.test(c) && !isNumericToken(c)).length;
+  const years = r0.filter((c) => isNumericToken(c)).length;
+  if (labels >= 1 && years >= 2) return false;
+  return true;
+}
+
+function rowPitchIrregular(run: RowCand[]): boolean {
+  if (run.length < 3) return false;
+  const gaps: number[] = [];
+  for (let i = 1; i < run.length; i += 1) {
+    const g = run[i - 1]!.y - run[i]!.y;
+    if (g > 0.5) gaps.push(g);
+  }
+  if (gaps.length < 2) return false;
+  const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  let sumSq = 0;
+  for (const g of gaps) sumSq += (g - mean) ** 2;
+  const std = Math.sqrt(sumSq / gaps.length);
+  return std > mean * 0.45 && std > 6;
 }
 
 function nearestCol(colXs: number[], x: number): number {

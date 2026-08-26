@@ -49,7 +49,7 @@ export function groupIntoLines<T extends LineItem>(items: T[]): T[][] {
   return lines;
 }
 
-function isUpright(item: LineItem): boolean {
+export function isUpright(item: { dx?: number; dy?: number }): boolean {
   const dx = item.dx ?? 1;
   const dy = item.dy ?? 0;
   return Math.abs(dy) <= Math.abs(dx) * 0.35;

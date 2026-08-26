@@ -19,6 +19,7 @@ import { decryptBytes, type EncryptParams, type FileCrypt, openEncrypt } from '.
 import { xObjectToImage } from './images.js';
 import {
   groupIntoLines,
+  isUpright,
   type LayoutBox,
   lineBox,
   orderBoxes,
@@ -142,7 +143,7 @@ async function convertUniqueImages(
 
 function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): string {
   const markdown = itemsToMarkdown(
-    mergeScriptItems(dedupeOverlappingItems(extracted.items)),
+    mergeNumericFragments(mergeScriptItems(dedupeOverlappingItems(extracted.items))),
     extracted.strokeLines,
     extracted.pageRects,
     imageBlocks,
@@ -2868,6 +2869,14 @@ function markDecorations(items: TextItem[], lines: StrokeLine[], httpRects: Rect
     for (const rule of rules) {
       const overlap = Math.min(item.x + item.width, rule.x2) - Math.max(item.x, rule.x1);
       if (overlap < item.width * 0.6) continue;
+      const ruleW = rule.x2 - rule.x1;
+      const leftHang = Math.max(0, item.x - rule.x1);
+      const rightHang = Math.max(0, rule.x2 - (item.x + item.width));
+      const fs = Math.max(item.fontSize, 8);
+      const maxHang = Math.max(leftHang, rightHang);
+      if (ruleW > Math.max(item.width * 6, fs * 12) && maxHang > Math.max(item.width * 4, fs * 8)) {
+        continue;
+      }
       const below = Math.max(item.fontSize * 0.72, 3);
       if (!skipHttp && rule.y >= item.y - below && rule.y <= item.y + 1) {
         item.isUnderline = true;
@@ -2961,6 +2970,41 @@ function canAttachScript(parent: TextItem, item: TextItem): boolean {
   return true;
 }
 
+function isNumericFragment(text: string): boolean {
+  const t = text.trim();
+  return t.length > 0 && t.length <= 8 && /^[\d.,\s]+%?$/.test(t) && /[\d%]/.test(t);
+}
+
+function canMergeNumeric(prev: TextItem, item: TextItem): boolean {
+  if (prev.page !== item.page) return false;
+  if (!isUpright(prev) || !isUpright(item)) return false;
+  if (!isNumericFragment(prev.text) || !isNumericFragment(item.text)) return false;
+  const fs = Math.max(prev.fontSize, item.fontSize, 8);
+  if (Math.abs(prev.y - item.y) > fs * 0.6) return false;
+  const prevW = Math.max(prev.width, fs * 0.35);
+  const gap = item.x - (prev.x + prevW);
+  if (gap > fs * 0.55 || gap < -fs * 0.35) return false;
+  return true;
+}
+
+function mergeNumericFragments(items: TextItem[]): TextItem[] {
+  if (items.length < 2) return items;
+  const sorted = items.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
+  const out: TextItem[] = [];
+  for (const item of sorted) {
+    const prev = out[out.length - 1];
+    if (prev && canMergeNumeric(prev, item)) {
+      const next = item.text.trim();
+      prev.text = `${prev.text.trimEnd()}${next}`;
+      prev.width = Math.max(prev.width, item.x + item.width - prev.x);
+      prev.height = Math.max(prev.height, item.height);
+      continue;
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 function mergeScriptItems(items: TextItem[]): TextItem[] {
   if (items.length < 2) return items;
   const byPage = new Map<number, TextItem[]>();
@@ -3006,13 +3050,14 @@ function shouldJoinItems(prev: TextItem, curr: TextItem): boolean {
   if (currFirst !== undefined && ".,;!?)]}'".includes(currFirst)) return true;
   const prevLast = [...prev.text.trimEnd()].at(-1);
   if (prevLast === ':' && currFirst !== undefined && /[\p{L}\p{N}]/u.test(currFirst)) return false;
-  if (prev.width > 0) {
+  const fs = Math.max(prev.fontSize, curr.fontSize, 8);
+  if (isUpright(prev) && isUpright(curr) && prev.width > 0) {
     const gap = curr.x - (prev.x + prev.width);
-    const fs = prev.fontSize;
     if (gap > fs * 3 || gap < -fs) return false;
     return gap < fs * 0.12;
   }
-  return false;
+  const dist = Math.hypot(curr.x - prev.x, curr.y - prev.y);
+  return dist < fs * 1.8;
 }
 
 function needsSpace(prev: TextItem, curr: TextItem, result: string): boolean {

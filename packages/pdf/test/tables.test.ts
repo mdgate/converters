@@ -348,6 +348,102 @@ describe('ruled table detection', () => {
     expect(md).toContain('|Item|Qty|');
     expect(md).toContain('|Pen|2|');
   });
+
+  it('does not treat bar-chart categories and year ticks as a table', () => {
+    const items = [
+      { text: 'Event', x: 40, y: 80, width: 28, page: 1 },
+      { text: 'Celebration', x: 100, y: 80, width: 50, page: 1 },
+      { text: 'Information', x: 180, y: 80, width: 52, page: 1 },
+      { text: 'Videograph', x: 260, y: 80, width: 48, page: 1 },
+      { text: '2019', x: 120, y: 58, width: 22, page: 1 },
+      { text: '2020', x: 180, y: 58, width: 22, page: 1 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('does not treat stacked date-axis fragments as a table', () => {
+    const xs = [40, 70, 100, 130, 160, 190, 220, 250];
+    const items = [
+      ...xs.map((x) => ({ text: '9', x, y: 90, width: 6, page: 1 })),
+      ...xs.map((x) => ({ text: '201', x, y: 80, width: 16, page: 1 })),
+      ...xs.map((x, i) => ({ text: i % 2 === 0 ? '1/' : '3/', x, y: 70, width: 10, page: 1 })),
+      ...xs.map((x) => ({ text: '0', x, y: 60, width: 6, page: 1 })),
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('does not treat irregular bar-top numbers as a table', () => {
+    const items = [
+      { text: '1,450', x: 20, y: 120, width: 24, page: 1 },
+      { text: '1,427', x: 80, y: 118, width: 24, page: 1 },
+      { text: '1,393', x: 20, y: 96, width: 24, page: 1 },
+      { text: '1,386', x: 80, y: 84, width: 24, page: 1 },
+      { text: '1,368', x: 20, y: 70, width: 24, page: 1 },
+      { text: '1,232', x: 80, y: 40, width: 24, page: 1 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('does not treat a row of chart section titles as a table', () => {
+    const items = [
+      { text: 'Comparison with Beauty Commerce', x: 20, y: 120, width: 140, page: 1 },
+      { text: 'Domestic Subscription Platform Case', x: 180, y: 120, width: 160, page: 1 },
+      { text: 'Education Content Platform PoC Case', x: 360, y: 120, width: 150, page: 1 },
+      { text: 'Hit Ratio comparison of models', x: 20, y: 96, width: 140, page: 1 },
+      { text: 'Quantitative evaluations among content', x: 180, y: 96, width: 160, page: 1 },
+      { text: 'Prediction rates of student answers', x: 360, y: 96, width: 150, page: 1 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('keeps a two-row table whose header mixes a label with year columns', () => {
+    const items = [
+      { text: 'Product', x: 20, y: 80, width: 40, page: 1 },
+      { text: '2019', x: 90, y: 80, width: 22, page: 1 },
+      { text: '2020', x: 140, y: 80, width: 22, page: 1 },
+      { text: 'Widgets', x: 20, y: 60, width: 40, page: 1 },
+      { text: '12', x: 90, y: 60, width: 12, page: 1 },
+      { text: '15', x: 140, y: 60, width: 12, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|Product|2019|2020|');
+    expect(tables[0]!.markdown).toContain('|Widgets|12|15|');
+  });
+
+  it('does not treat percent bars with category ticks as a table', () => {
+    const items = [
+      { text: '7%', x: 40, y: 80, width: 16, page: 1 },
+      { text: '7%', x: 200, y: 80, width: 16, page: 1 },
+      { text: '5,4%', x: 250, y: 80, width: 22, page: 1 },
+      { text: 'OFTEN', x: 30, y: 50, width: 36, page: 1 },
+      { text: 'SOMETIMES', x: 90, y: 50, width: 60, page: 1 },
+      { text: 'RARELY', x: 170, y: 50, width: 40, page: 1 },
+      { text: 'NEVER', x: 240, y: 50, width: 36, page: 1 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('does not treat rotated axis labels as table cells', () => {
+    const items = [
+      { text: '0', x: 40, y: 50, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: '1', x: 40, y: 58, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: '/', x: 40, y: 66, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: '2', x: 40, y: 74, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: '0', x: 70, y: 50, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: '3', x: 70, y: 58, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: '/', x: 70, y: 66, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: '2', x: 70, y: 74, width: 0, page: 1, dx: 0, dy: 1 },
+      { text: 'Body', x: 20, y: 120, width: 24, page: 1 },
+      { text: 'text', x: 80, y: 120, width: 20, page: 1 },
+      { text: 'here', x: 20, y: 100, width: 22, page: 1 },
+      { text: 'now', x: 80, y: 100, width: 20, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    for (const t of tables) {
+      expect(t.markdown).not.toMatch(/0.*1.*\//);
+    }
+  });
 });
 
 function filledPathGridPdf(): Uint8Array {
@@ -465,5 +561,176 @@ ET
     expect(md).toMatch(/\|Name\|Age\|City\|/);
     expect(md).toMatch(/\|Ada\|36\|London\|/);
     expect(md).toMatch(/\|Bob\|41\|Paris\|/);
+  });
+
+  it('keeps chart axis ticks out of tables and does not underline them', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 24 80 Tm (35) Tj
+1 0 0 1 24 60 Tm (0) Tj
+1 0 0 1 70 40 Tm (Event) Tj
+1 0 0 1 130 40 Tm (Celebration) Tj
+1 0 0 1 210 40 Tm (Information) Tj
+1 0 0 1 300 40 Tm (Videograph) Tj
+1 0 0 1 150 22 Tm (2019) Tj
+1 0 0 1 210 22 Tm (2020) Tj
+ET
+20 58 360 1 re S
+`;
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 120] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 6\n0000000000 65535 f \n`;
+    for (let i = 1; i <= 5; i += 1) xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    body += `${xref}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    const md = toMarkdownFromPdf(new TextEncoder().encode(body));
+    expect(md).toContain('Event');
+    expect(md).toContain('Celebration');
+    expect(md).toContain('Information');
+    expect(md).toContain('Videograph');
+    expect(md).toContain('2019');
+    expect(md).toContain('2020');
+    expect(md).not.toMatch(/\|Event\|/);
+    expect(md).not.toContain('<u>');
+    expect(md).not.toContain('<s>');
+  });
+
+  it('still underlines a short rule under a word', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 70 Tm (underlined) Tj
+1 0 0 1 20 50 Tm (Body line follows here) Tj
+ET
+18 68 58 0.6 re S
+`;
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 80] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 6\n0000000000 65535 f \n`;
+    for (let i = 1; i <= 5; i += 1) xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    body += `${xref}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    const md = toMarkdownFromPdf(new TextEncoder().encode(body));
+    expect(md).toContain('<u>underlined</u>');
+  });
+
+  it('keeps a short underline across several words', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 70 Tm (a ) Tj
+(sibling) Tj
+( file) Tj
+1 0 0 1 20 50 Tm (Body line follows here) Tj
+ET
+20 68 78 0.6 re S
+`;
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 80] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 6\n0000000000 65535 f \n`;
+    for (let i = 1; i <= 5; i += 1) xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    body += `${xref}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    const md = toMarkdownFromPdf(new TextEncoder().encode(body));
+    expect(md).toContain('<u>a sibling file</u>');
+  });
+
+  it('assembles rotated date labels instead of a fragment table', () => {
+    const content = `BT
+/F1 10 Tf
+0 1 -1 0 80 40 Tm
+(0) Tj (1) Tj (/) Tj (2) Tj (0) Tj (1) Tj (9) Tj
+ET
+BT
+/F1 10 Tf
+0 1 -1 0 110 40 Tm
+(0) Tj (3) Tj (/) Tj (2) Tj (0) Tj (1) Tj (9) Tj
+ET
+`;
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 120] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 6\n0000000000 65535 f \n`;
+    for (let i = 1; i <= 5; i += 1) xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    body += `${xref}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    const md = toMarkdownFromPdf(new TextEncoder().encode(body));
+    expect(md).toContain('01/2019');
+    expect(md).toContain('03/2019');
+    expect(md).not.toMatch(/0\s+1\//);
+    expect(md).not.toMatch(/\|9\|/);
+    expect(md).not.toMatch(/\|201\|/);
+  });
+
+  it('joins a TJ-split bar percent into one token', () => {
+    const content = `BT
+/F1 8 Tf
+1 0 0 1 80 50 Tm
+[(5) 5 (3,9%)] TJ
+1 0 0 1 20 20 Tm
+(Body follows here) Tj
+ET
+`;
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 80] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 6\n0000000000 65535 f \n`;
+    for (let i = 1; i <= 5; i += 1) xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    body += `${xref}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    const md = toMarkdownFromPdf(new TextEncoder().encode(body));
+    expect(md).toContain('53,9%');
+    expect(md).not.toMatch(/\b5\b[\s\S]*3,9%/);
   });
 });
