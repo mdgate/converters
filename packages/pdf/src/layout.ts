@@ -580,3 +580,186 @@ function partitionX<T extends LayoutBox>(boxes: T[], splitX: number): [T[], T[]]
   if (left.length + right.length !== boxes.length) return undefined;
   return [left, right];
 }
+
+const SUP_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+
+export function peelFootnoteLines<T extends LineItem>(
+  lines: T[][],
+): { body: T[][]; notes: T[][]; footer: T[][]; drop: T[][] } {
+  if (lines.length < 2) return { body: lines, notes: [], footer: [], drop: [] };
+  const body: T[][] = [];
+  const notes: T[][] = [];
+  const footer: T[][] = [];
+  const drop: T[][] = [];
+  const byPage = new Map<number, T[][]>();
+  for (const line of lines) {
+    const page = line[0]!.page;
+    const list = byPage.get(page) ?? [];
+    list.push(line);
+    byPage.set(page, list);
+  }
+  for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
+    const split = splitPageFootnotes(byPage.get(page)!);
+    body.push(...split.body);
+    notes.push(...split.notes);
+    footer.push(...split.footer);
+    drop.push(...split.drop);
+  }
+  return { body, notes, footer, drop };
+}
+
+function splitPageFootnotes<T extends LineItem>(
+  lines: T[][],
+): { body: T[][]; notes: T[][]; footer: T[][]; drop: T[][] } {
+  if (lines.length < 2) return { body: lines, notes: [], footer: [], drop: [] };
+  const bodyFont = bodyFontSize(lines);
+  const ys = lines.map((line) => line[0]!.y);
+  const pageTop = Math.max(...ys);
+  const pageBottom = Math.min(...ys);
+  const height = Math.max(pageTop - pageBottom, 1);
+  const floor = pageBottom + height * 0.5;
+  const bodyLines = lines.filter((line) => line[0]!.y > floor);
+  const markers = new Set([
+    ...collectMarkers(bodyLines, bodyFont),
+    ...collectTrailingMarkers(lines),
+  ]);
+
+  const starts: T[][] = [];
+  for (const line of lines) {
+    if (line[0]!.y > floor) continue;
+    const text = linePlain(line);
+    if (isFooterText(text)) continue;
+    const n = noteStartNumber(text);
+    if (n !== undefined) {
+      if (markers.has(n) || isSmallNoteLine(line, bodyFont)) starts.push(line);
+      continue;
+    }
+    if (isOrphanMarkerLine(text, markers)) starts.push(line);
+  }
+  if (starts.length === 0) return { body: lines, notes: [], footer: [], drop: [] };
+
+  const regionTop = Math.max(...starts.map((line) => line[0]!.y));
+  const noteSet = new Set<T[]>(starts);
+  for (const line of lines) {
+    if (noteSet.has(line)) continue;
+    if (line[0]!.y > regionTop + 6) continue;
+    const text = linePlain(line);
+    if (isFooterText(text)) continue;
+    const fs = Math.max(...line.map((it) => it.fontSize));
+    if (fs > bodyFont * 0.98 && noteStartNumber(text) === undefined) continue;
+    noteSet.add(line);
+  }
+  if (noteSet.size > lines.length * 0.55) return { body: lines, notes: [], footer: [], drop: [] };
+
+  const notes = lines.filter((line) => noteSet.has(line));
+  const noteNums = new Set<string>();
+  for (const line of notes) {
+    const n = noteStartNumber(linePlain(line));
+    if (n !== undefined) noteNums.add(n);
+  }
+  const rest = lines.filter((line) => !noteSet.has(line));
+  const noteBottom = Math.min(...notes.map((line) => line[0]!.y));
+  const body: T[][] = [];
+  const footer: T[][] = [];
+  const drop: T[][] = [];
+  for (const line of rest) {
+    const text = linePlain(line);
+    if (line[0]!.y < noteBottom && isFooterText(text)) {
+      footer.push(line);
+      continue;
+    }
+    if (isOrphanMarkerLine(text, noteNums) || isOrphanMarkerLine(text, markers)) {
+      drop.push(line);
+      continue;
+    }
+    body.push(line);
+  }
+  return { body, notes, footer, drop };
+}
+
+function isOrphanMarkerLine(text: string, noteNums: Set<string>): boolean {
+  const ascii = text.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (c) => String(SUP_DIGITS.indexOf(c)));
+  const parts = ascii.split(/\s+/).filter(Boolean);
+  if (parts.length === 0 || parts.length > 3) return false;
+  return parts.every((p) => /^\d{1,3}$/.test(p) && noteNums.has(p));
+}
+
+function bodyFontSize<T extends LineItem>(lines: T[][]): number {
+  const counts = new Map<number, number>();
+  for (const line of lines) {
+    const fs = Math.round(Math.max(...line.map((it) => it.fontSize)) * 2) / 2;
+    if (fs < 9) continue;
+    counts.set(fs, (counts.get(fs) ?? 0) + 1);
+  }
+  let best = 12;
+  let bestN = -1;
+  for (const [fs, n] of counts) {
+    if (n > bestN || (n === bestN && fs > best)) {
+      best = fs;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
+function collectTrailingMarkers<T extends LineItem>(lines: T[][]): Set<string> {
+  const nums = new Set<string>();
+  const glued = /(?<=\p{L}{2,})(\d{1,3})(?=$|[^\d\p{L}])/gu;
+  for (const line of lines) {
+    const text = linePlain(line);
+    for (const m of text.matchAll(glued)) nums.add(m[1]!);
+  }
+  return nums;
+}
+
+function collectMarkers<T extends LineItem>(lines: T[][], bodyFont: number): Set<string> {
+  const nums = new Set<string>();
+  const re = /[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+  for (const line of lines) {
+    const text = linePlain(line);
+    for (const m of text.matchAll(re)) {
+      nums.add([...m[0]!].map((c) => String(SUP_DIGITS.indexOf(c))).join(''));
+    }
+    for (const it of line) {
+      const t = it.text.trim();
+      if (t.length === 0 || t.length > 4) continue;
+      if (![...t].every((c) => c >= '0' && c <= '9')) continue;
+      if (it.fontSize <= 0 || it.fontSize > bodyFont * 0.85) continue;
+      nums.add(t);
+    }
+  }
+  return nums;
+}
+
+function isSmallNoteLine<T extends LineItem>(line: T[], bodyFont: number): boolean {
+  const first = line[0]!;
+  const mark = first.text.trim().replace(/[.)]$/, '');
+  const firstIsMark =
+    mark.length > 0 && mark.length <= 3 && [...mark].every((c) => c >= '0' && c <= '9');
+  if (firstIsMark && first.fontSize <= bodyFont * 0.85) return true;
+  const fs = Math.max(...line.map((it) => it.fontSize));
+  return fs <= bodyFont * 0.92;
+}
+
+function noteStartNumber(text: string): string | undefined {
+  const ascii = text.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (c) => String(SUP_DIGITS.indexOf(c)));
+  const m = ascii.match(/^(\d{1,3})(?:[.)]\s+|\s+|(?=[A-Z]))/);
+  if (!m) return undefined;
+  const after = ascii.slice(m[0].length).trim();
+  if (after.length < 6) return undefined;
+  if (/^(figure|table|fig\.?)\b/i.test(after)) return undefined;
+  return m[1];
+}
+
+function isFooterText(text: string): boolean {
+  if (/^\d{1,4}$/.test(text)) return true;
+  return /^page\s+\d+$/i.test(text);
+}
+
+function linePlain<T extends LineItem>(line: T[]): string {
+  return line
+    .map((it) => it.text)
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

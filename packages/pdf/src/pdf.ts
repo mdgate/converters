@@ -17,7 +17,13 @@ import {
 import { applyDifferences, applyNamedEncoding } from './encodings.js';
 import { decryptBytes, type EncryptParams, type FileCrypt, openEncrypt } from './encrypt.js';
 import { xObjectToImage } from './images.js';
-import { groupIntoLines, type LayoutBox, lineBox, orderBoxes } from './layout.js';
+import {
+  groupIntoLines,
+  type LayoutBox,
+  lineBox,
+  orderBoxes,
+  peelFootnoteLines,
+} from './layout.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
 import { looksLikeXfdf, xfdfToMarkdown } from './xfdf.js';
@@ -2924,46 +2930,66 @@ function dedupeOverlappingItems(items: TextItem[]): TextItem[] {
 const SUP = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
 const SUB = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
 
-function mergeScriptItems(items: TextItem[]): TextItem[] {
-  if (items.length < 2) return items;
-  const groups: TextItem[][] = [];
-  for (const item of items) {
-    const found = groups.find((g) => g[0]!.page === item.page && Math.abs(g[0]!.y - item.y) < 5);
-    if (found) found.push(item);
-    else groups.push([item]);
-  }
-  const result: TextItem[] = [];
-  for (const group of groups) {
-    group.sort((a, b) => a.x - b.x);
-    const maxFs = group.reduce((m, it) => Math.max(m, it.fontSize), 0);
-    if (maxFs < 1) {
-      result.push(...group);
+function scriptDigits(text: string): string | undefined {
+  const t = text.trim();
+  if (t.length === 0 || t.length > 4) return undefined;
+  let out = '';
+  for (const c of t) {
+    if (c >= '0' && c <= '9') {
+      out += c;
       continue;
     }
-    const subTh = maxFs * 0.75;
+    const i = SUP.indexOf(c);
+    if (i < 0) return undefined;
+    out += String(i);
+  }
+  return out;
+}
+
+function canAttachScript(parent: TextItem, item: TextItem): boolean {
+  if (parent.page !== item.page) return false;
+  if (item.fontSize <= 0) return false;
+  if (scriptDigits(item.text) === undefined) return false;
+  if (parent.fontSize < item.fontSize * 1.15) return false;
+  const last = [...parent.text.trimEnd()].at(-1);
+  if (last === undefined) return false;
+  if (!/[\p{L}\p{N}\p{P}]/u.test(last)) return false;
+  const fs = Math.max(parent.fontSize, 8);
+  const gap = item.x - (parent.x + parent.width);
+  if (gap >= fs * 0.35 || gap <= -fs * 0.5) return false;
+  if (Math.abs(item.y - parent.y) > Math.max(fs * 0.8, 8)) return false;
+  return true;
+}
+
+function mergeScriptItems(items: TextItem[]): TextItem[] {
+  if (items.length < 2) return items;
+  const byPage = new Map<number, TextItem[]>();
+  for (const item of items) {
+    const list = byPage.get(item.page) ?? [];
+    list.push(item);
+    byPage.set(item.page, list);
+  }
+  const result: TextItem[] = [];
+  for (const pageItems of byPage.values()) {
+    pageItems.sort((a, b) => a.x - b.x || b.y - a.y);
     const merged: TextItem[] = [];
-    for (const item of group) {
-      const parent = merged[merged.length - 1];
-      if (
-        parent &&
-        item.fontSize < subTh &&
-        item.fontSize > 0 &&
-        item.text.length <= 4 &&
-        [...item.text].every((c) => c >= '0' && c <= '9')
-      ) {
-        const last = parent.text.at(-1);
-        if (parent.fontSize >= subTh && last !== undefined && /\p{L}/u.test(last)) {
-          const gap = item.x - (parent.x + parent.width);
-          if (gap < parent.fontSize * 0.2 && gap > -parent.fontSize * 0.3) {
-            const raised = item.y > parent.y + parent.fontSize * 0.1;
-            const table = raised ? SUP : SUB;
-            parent.text += [...item.text].map((c) => table[Number(c)]!).join('');
-            parent.width = item.x + item.width - parent.x;
-            continue;
-          }
+    for (const item of pageItems) {
+      let attached = false;
+      if (scriptDigits(item.text) !== undefined) {
+        for (let i = merged.length - 1; i >= 0; i -= 1) {
+          const parent = merged[i]!;
+          if (parent.x > item.x) continue;
+          if (!canAttachScript(parent, item)) continue;
+          const digits = scriptDigits(item.text)!;
+          const lowered = item.y < parent.y - parent.fontSize * 0.12;
+          const table = lowered ? SUB : SUP;
+          parent.text += [...digits].map((c) => table[Number(c)]!).join('');
+          parent.width = Math.max(parent.width, item.x + item.width - parent.x);
+          attached = true;
+          break;
         }
       }
-      merged.push(item);
+      if (!attached) merged.push(item);
     }
     result.push(...merged);
   }
@@ -3101,6 +3127,12 @@ interface FlowBlock {
   y2: number;
   items?: TextItem[];
   markdown?: string;
+  role?: 'note' | 'footer';
+}
+
+function lineFlow(line: TextItem[], role?: 'note' | 'footer'): FlowBlock {
+  const box = lineBox(line);
+  return { kind: 'line', page: line[0]!.page, ...box, items: line, role };
 }
 
 function itemsToMarkdown(
@@ -3109,18 +3141,22 @@ function itemsToMarkdown(
   pageRects: PdfRect[],
   imageBlocks: MarkdownBlock[] = [],
 ): string {
-  const tables = detectTables(items, strokeLines, pageRects);
+  const peeled = peelFootnoteLines(groupIntoLines(items));
+  const reserved = new Set([
+    ...peeled.notes.flat(),
+    ...peeled.footer.flat(),
+    ...peeled.drop.flat(),
+  ]);
+  const bodyItems = items.filter((it) => !reserved.has(it));
+  const tables = detectTables(bodyItems, strokeLines, pageRects);
   const claimed = new Set<number>();
   for (const table of tables) {
     for (const idx of table.itemIndices) claimed.add(idx);
   }
-  const remaining = items.filter((_, i) => !claimed.has(i));
+  const remaining = bodyItems.filter((_, i) => !claimed.has(i));
   const rawLines = groupIntoLines(remaining);
   const flow: FlowBlock[] = [
-    ...rawLines.map((line) => {
-      const box = lineBox(line);
-      return { kind: 'line' as const, page: line[0]!.page, ...box, items: line };
-    }),
+    ...rawLines.map((line) => lineFlow(line)),
     ...tables.map((t) => ({
       kind: 'table' as const,
       page: t.page,
@@ -3146,9 +3182,29 @@ function itemsToMarkdown(
     list.push(block);
     byPage.set(block.page, list);
   }
+  const notesByPage = new Map<number, FlowBlock[]>();
+  for (const line of peeled.notes) {
+    const page = line[0]!.page;
+    const list = notesByPage.get(page) ?? [];
+    list.push(lineFlow(line, 'note'));
+    notesByPage.set(page, list);
+  }
+  const footerByPage = new Map<number, FlowBlock[]>();
+  for (const line of peeled.footer) {
+    const page = line[0]!.page;
+    const list = footerByPage.get(page) ?? [];
+    list.push(lineFlow(line, 'footer'));
+    footerByPage.set(page, list);
+  }
   const ordered: FlowBlock[] = [];
-  for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
-    ordered.push(...orderBoxes(byPage.get(page)!));
+  const pages = new Set([...byPage.keys(), ...notesByPage.keys(), ...footerByPage.keys()]);
+  for (const page of [...pages].sort((a, b) => a - b)) {
+    const body = byPage.get(page) ?? [];
+    if (body.length > 0) ordered.push(...orderBoxes(body));
+    const notes = notesByPage.get(page) ?? [];
+    if (notes.length > 0) ordered.push(...orderBoxes(notes));
+    const footer = footerByPage.get(page) ?? [];
+    if (footer.length > 0) ordered.push(...orderBoxes(footer));
   }
   const lines = ordered.filter((b) => b.kind === 'line').map((b) => b.items!);
   if (lines.length === 0 && tables.length === 0 && imageBlocks.length === 0) return '';
@@ -3246,6 +3302,7 @@ function itemsToMarkdown(
   let prevY = Number.POSITIVE_INFINITY;
   let prevPage = 0;
   let prevBox: LayoutBox | undefined;
+  let prevRole: FlowBlock['role'];
   let lastListX: number | undefined;
   let lineIndex = 0;
 
@@ -3293,6 +3350,7 @@ function itemsToMarkdown(
       prevY = Number.POSITIVE_INFINITY;
       prevBox = undefined;
       prevPage = page;
+      prevRole = undefined;
       inList = false;
       lastListX = undefined;
     }
@@ -3301,14 +3359,24 @@ function itemsToMarkdown(
     const yGap = prevY - y;
     const em = Math.max(line[0]!.fontSize, base);
     const indented = prevBox !== undefined && isFirstLineIndent(prevBox, box, em);
-    if (inPara && (yGap > paraTh || yGap < -base * 0.8 || indented)) {
+    const noteStart =
+      block.role === 'note' && /^(?:\d{1,3}|[⁰¹²³⁴⁵⁶⁷⁸⁹]{1,3})[.)]?(?:\s+|[A-Z])/.test(plain);
+    const roleChange = block.role !== prevRole && block.role !== undefined;
+    if (roleChange || noteStart) {
+      if (inList) closeList();
+      else if (inPara) {
+        out += '\n\n';
+        inPara = false;
+      }
+    } else if (inPara && (yGap > paraTh || yGap < -base * 0.8 || indented)) {
       out += '\n\n';
       inPara = false;
     }
     prevY = y;
     prevBox = box;
+    prevRole = block.role;
 
-    const lvl = headerLevel(i, line, plain);
+    const lvl = block.role === undefined ? headerLevel(i, line, plain) : undefined;
     if (lvl !== undefined) {
       if (inPara) out += '\n\n';
       out += `${'#'.repeat(lvl)} ${plain}\n\n`;
