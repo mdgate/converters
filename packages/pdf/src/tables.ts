@@ -503,7 +503,7 @@ function inferColumns(run: RowCand[]): { colXs: number[]; edges: number[] } | un
   const matching = counts.filter((c) => c === nCols).length;
   if (nCols >= 3) {
     if (matching < 1) return undefined;
-  } else if (matching / run.length < 0.5) {
+  } else if (matching / full.length < 0.5) {
     return undefined;
   }
   const header = full.find((r) => r.segs.length === nCols) ?? full[0]!;
@@ -569,6 +569,7 @@ function foldRows(
       if (grid.length === 0) return false;
       if (cols.some((c) => wordCount(current![c]!) >= 3)) return false;
       if (line.segs.every((s) => /^[a-z(]/.test(s.text.trim()))) return false;
+      if (cols.length === 1 && current![cols[0]!]!.length > 0) return false;
       return true;
     }
     if (current[0]!.length === 0) return false;

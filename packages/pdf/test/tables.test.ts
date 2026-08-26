@@ -223,6 +223,56 @@ describe('ruled table detection', () => {
     expect(md.match(/^\|/gm)).toHaveLength(4);
   });
 
+  it('detects a two-column table when most value cells wrap', () => {
+    const items = [
+      { text: 'Field', x: 20, y: 240, width: 30, page: 1 },
+      { text: 'Value', x: 80, y: 240, width: 30, page: 1 },
+      { text: 'A', x: 20, y: 220, width: 10, page: 1 },
+      { text: 'One', x: 80, y: 220, width: 18, page: 1 },
+      { text: 'Two', x: 80, y: 206, width: 18, page: 1 },
+      { text: 'Three', x: 80, y: 192, width: 24, page: 1 },
+      { text: 'B', x: 20, y: 172, width: 10, page: 1 },
+      { text: 'Four', x: 80, y: 172, width: 22, page: 1 },
+      { text: 'Five', x: 80, y: 158, width: 22, page: 1 },
+      { text: 'Six', x: 80, y: 144, width: 18, page: 1 },
+      { text: 'C', x: 20, y: 124, width: 10, page: 1 },
+      { text: 'Seven', x: 80, y: 124, width: 26, page: 1 },
+      { text: 'Eight', x: 80, y: 110, width: 24, page: 1 },
+      { text: 'Nine', x: 80, y: 96, width: 22, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    const md = tables[0]!.markdown;
+    expect(md).toContain('|Field|Value|');
+    expect(md).toContain('|A|One Two Three|');
+    expect(md).toContain('|B|Four Five Six|');
+    expect(md).toContain('|C|Seven Eight Nine|');
+    expect(md.match(/^\|/gm)).toHaveLength(5);
+  });
+
+  it('folds a short capitalized wrap into the current cell', () => {
+    const items = [
+      { text: 'No.', x: 22, y: 120, width: 16, page: 1 },
+      { text: 'Name', x: 50, y: 120, width: 30, page: 1 },
+      { text: 'Count', x: 160, y: 120, width: 30, page: 1 },
+      { text: '1', x: 24, y: 92, width: 8, page: 1 },
+      { text: 'Acme Corp', x: 50, y: 92, width: 50, page: 1 },
+      { text: '12', x: 176, y: 92, width: 14, page: 1 },
+      { text: 'Inc', x: 50, y: 80, width: 16, page: 1 },
+      { text: '2', x: 24, y: 64, width: 8, page: 1 },
+      { text: 'New', x: 50, y: 64, width: 20, page: 1 },
+      { text: '9', x: 178, y: 64, width: 10, page: 1 },
+      { text: 'York', x: 50, y: 52, width: 24, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    const md = tables[0]!.markdown;
+    expect(md).toContain('|No.|Name|Count|');
+    expect(md).toContain('|1|Acme Corp Inc|12|');
+    expect(md).toContain('|2|New York|9|');
+    expect(md.match(/^\|/gm)).toHaveLength(4);
+  });
+
   it('keeps sparse Y/N cells in their columns across wrapped restriction text', () => {
     const items = [
       { text: 'Jurisdiction', x: 20, y: 214, width: 50, page: 1 },
