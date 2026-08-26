@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/ipynb",
-  "version": "0.6.17",
+  "version": "0.6.18",
   "description": "mdgate Jupyter notebook converter",
   "type": "module",
   "license": "MIT",
@@ -28,9 +28,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.17",
-    "@mdgate/document": "0.6.17",
-    "@mdgate/utils": "0.6.17"
+    "@mdgate/core": "0.6.18",
+    "@mdgate/document": "0.6.18",
+    "@mdgate/utils": "0.6.18"
   },
   "publishConfig": {
     "access": "public"

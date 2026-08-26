@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/video",
-  "version": "0.6.17",
+  "version": "0.6.18",
   "description": "mdgate video converter",
   "type": "module",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.17"
+    "@mdgate/core": "0.6.18"
   },
   "publishConfig": {
     "access": "public"
