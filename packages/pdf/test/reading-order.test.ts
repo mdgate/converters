@@ -130,6 +130,16 @@ describe('orderBoxes', () => {
     expect(ordered.map((b) => b.id)).toEqual(['T', 'L1', 'L2', 'L3', 'C1', 'L4']);
   });
 
+  it('keeps a same-baseline label and continuation across a wide hole', () => {
+    const ordered = orderBoxes([
+      { x: 56, y: 280, x2: 160, y2: 268, id: 'ABOVE' },
+      { x: 56, y: 250, x2: 105, y2: 238, id: 'LABEL' },
+      { x: 258, y: 250, x2: 325, y2: 238, id: 'AFTER' },
+      { x: 56, y: 230, x2: 157, y2: 218, id: 'NEXT' },
+    ]);
+    expect(ordered.map((b) => b.id)).toEqual(['ABOVE', 'LABEL', 'AFTER', 'NEXT']);
+  });
+
   it('emits a shorter left column first when the right column starts higher', () => {
     const ordered = orderBoxes([
       { x: 20, y: 140, x2: 110, y2: 128, id: 'C' },

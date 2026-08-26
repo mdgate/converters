@@ -549,7 +549,20 @@ function splitVerticalBands<T extends LayoutBox>(
     else right.push(b);
   }
   if (left.length === 0 || right.length === 0) return undefined;
+  if (left.length >= 2 && right.length >= 2) return { top, left, right, bottom };
+  if (!isColumnGutter(left, right, boxes)) return undefined;
   return { top, left, right, bottom };
+}
+
+function isColumnGutter(left: LayoutBox[], right: LayoutBox[], all: LayoutBox[]): boolean {
+  const leftRight = Math.max(...left.map((b) => b.x2));
+  const rightLeft = Math.min(...right.map((b) => b.x));
+  const gap = rightLeft - leftRight;
+  if (gap <= MIN_GAP) return false;
+  const minX = Math.min(...all.map((b) => b.x));
+  const maxX = Math.max(...all.map((b) => b.x2));
+  const maxGutter = Math.max(36, Math.max(maxX - minX, 1) * 0.15);
+  return gap <= maxGutter;
 }
 
 function partitionY<T extends LayoutBox>(boxes: T[], splitY: number): [T[], T[]] | undefined {
