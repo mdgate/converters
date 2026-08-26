@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/hwp",
-  "version": "0.6.18",
+  "version": "0.6.19",
   "description": "mdgate Hangul HWP / HWPX converter",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.18",
-    "@mdgate/core": "0.6.18",
-    "@mdgate/document": "0.6.18",
-    "@mdgate/utils": "0.6.18"
+    "@mdgate/containers": "0.6.19",
+    "@mdgate/core": "0.6.19",
+    "@mdgate/document": "0.6.19",
+    "@mdgate/utils": "0.6.19"
   },
   "publishConfig": {
     "access": "public"

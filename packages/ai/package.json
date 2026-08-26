@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/ai",
-  "version": "0.6.18",
+  "version": "0.6.19",
   "description": "Optional AI helper for mdgate: ai({ baseURL, apiKey, model }).convertImage / convertAudio / convertVideo",
   "type": "module",
   "license": "MIT",
@@ -28,9 +28,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.18",
-    "@mdgate/image": "0.6.18",
-    "@mdgate/video": "0.6.18"
+    "@mdgate/core": "0.6.19",
+    "@mdgate/image": "0.6.19",
+    "@mdgate/video": "0.6.19"
   },
   "publishConfig": {
     "access": "public"

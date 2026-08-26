@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/keynote",
-  "version": "0.6.18",
+  "version": "0.6.19",
   "description": "mdgate Apple Keynote converter",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.18",
-    "@mdgate/document": "0.6.18",
-    "@mdgate/iwork-common": "0.6.18",
-    "@mdgate/utils": "0.6.18"
+    "@mdgate/core": "0.6.19",
+    "@mdgate/document": "0.6.19",
+    "@mdgate/iwork-common": "0.6.19",
+    "@mdgate/utils": "0.6.19"
   },
   "publishConfig": {
     "access": "public"
