@@ -118,6 +118,18 @@ describe('orderBoxes', () => {
     expect(ids).not.toEqual(['T', 'L1', 'L2', 'C1', 'L3', 'C2', 'L4']);
   });
 
+  it('reads wrap text then a one-line figure caption', () => {
+    const ordered = orderBoxes([
+      { x: 20, y: 200, x2: 240, y2: 186, id: 'T' },
+      { x: 20, y: 170, x2: 110, y2: 158, id: 'L1' },
+      { x: 20, y: 150, x2: 110, y2: 138, id: 'L2' },
+      { x: 20, y: 130, x2: 110, y2: 118, id: 'L3' },
+      { x: 130, y: 150, x2: 230, y2: 138, id: 'C1' },
+      { x: 20, y: 100, x2: 240, y2: 86, id: 'L4' },
+    ]);
+    expect(ordered.map((b) => b.id)).toEqual(['T', 'L1', 'L2', 'L3', 'C1', 'L4']);
+  });
+
   it('emits a shorter left column first when the right column starts higher', () => {
     const ordered = orderBoxes([
       { x: 20, y: 140, x2: 110, y2: 128, id: 'C' },
@@ -156,5 +168,27 @@ describe('orderBoxes', () => {
     expect(ids.indexOf('L1')).toBeLessThan(ids.indexOf('L2'));
     expect(ids.indexOf('L2')).toBeLessThan(ids.indexOf('R1'));
     expect(ids.indexOf('arxiv')).toBeLessThan(ids.indexOf('L2'));
+  });
+
+  it('does not peel a thin figure as a page footer', () => {
+    const ordered = orderBoxes([
+      { x: 70, y: 100, x2: 71, y2: 40, id: 'IMG' },
+      { x: 310, y: 600, x2: 510, y2: 588, id: 'R1' },
+      { x: 310, y: 400, x2: 510, y2: 388, id: 'R2' },
+      { x: 310, y: 80, x2: 510, y2: 68, id: 'R3' },
+    ]);
+    const ids = ordered.map((b) => b.id);
+    expect(ids[ids.length - 1]).not.toBe('IMG');
+  });
+
+  it('keeps a thin figure that extends past column text in column order', () => {
+    const ordered = orderBoxes([
+      { x: 70, y: 600, x2: 270, y2: 588, id: 'L1' },
+      { x: 70, y: 250, x2: 270, y2: 238, id: 'L2' },
+      { x: 67, y: 400, x2: 68, y2: 300, id: 'IMG' },
+      { x: 310, y: 600, x2: 510, y2: 588, id: 'R1' },
+      { x: 310, y: 250, x2: 510, y2: 238, id: 'R2' },
+    ]);
+    expect(ordered.map((b) => b.id)).toEqual(['L1', 'IMG', 'L2', 'R1', 'R2']);
   });
 });

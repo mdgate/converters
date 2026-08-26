@@ -33,7 +33,7 @@ const MAX_DEPTH = 16;
 const GUTTER_HIT = 4;
 const GUTTER_MIN_GAP = 8;
 const NARROW_WIDTH_RATIO = 0.1;
-const MARGIN_WIDTH = 2;
+const MARGIN_WIDTH = 1;
 const COLUMN_OVERLAP = 0.2;
 
 export function groupIntoLines<T extends LineItem>(items: T[]): T[][] {
@@ -548,7 +548,7 @@ function splitVerticalBands<T extends LayoutBox>(
     if ((b.x + b.x2) / 2 < splitX) left.push(b);
     else right.push(b);
   }
-  if (left.length < 2 || right.length < 2) return undefined;
+  if (left.length === 0 || right.length === 0) return undefined;
   return { top, left, right, bottom };
 }
 
