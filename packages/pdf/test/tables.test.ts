@@ -156,6 +156,115 @@ describe('ruled table detection', () => {
     expect(detectTables(items, [], [])).toHaveLength(0);
   });
 
+  it('keeps a wrapped cell in one ruled row when verticals are short', () => {
+    const items = [
+      { text: 'Law', x: 30, y: 186, width: 24, page: 1 },
+      { text: 'Union/State', x: 90, y: 192, width: 50, page: 1 },
+      { text: 'Imprisonment', x: 160, y: 192, width: 50, page: 1 },
+      { text: 'rule', x: 100, y: 176, width: 22, page: 1 },
+      { text: 'clauses', x: 170, y: 176, width: 32, page: 1 },
+      { text: 'Arms Act, 1959', x: 24, y: 158, width: 50, page: 1 },
+      { text: 'Union', x: 96, y: 158, width: 28, page: 1 },
+      { text: '152', x: 168, y: 158, width: 20, page: 1 },
+      { text: 'Food Safety Act', x: 24, y: 130, width: 52, page: 1 },
+      { text: 'Licensing Rules', x: 24, y: 114, width: 52, page: 1 },
+      { text: 'Union', x: 96, y: 122, width: 28, page: 1 },
+      { text: '123', x: 168, y: 122, width: 20, page: 1 },
+      { text: 'Regulations, 2011', x: 24, y: 98, width: 56, page: 1 },
+    ];
+    const lines = [
+      { x1: 20, y1: 200, x2: 210, y2: 200, page: 1 },
+      { x1: 20, y1: 170, x2: 210, y2: 170, page: 1 },
+      { x1: 20, y1: 148, x2: 210, y2: 148, page: 1 },
+      { x1: 20, y1: 80, x2: 210, y2: 80, page: 1 },
+      { x1: 20, y1: 170, x2: 20, y2: 200, page: 1 },
+      { x1: 80, y1: 170, x2: 80, y2: 200, page: 1 },
+      { x1: 150, y1: 170, x2: 150, y2: 200, page: 1 },
+      { x1: 210, y1: 170, x2: 210, y2: 200, page: 1 },
+      { x1: 20, y1: 148, x2: 20, y2: 168, page: 1 },
+      { x1: 80, y1: 148, x2: 80, y2: 168, page: 1 },
+      { x1: 150, y1: 148, x2: 150, y2: 168, page: 1 },
+      { x1: 210, y1: 148, x2: 210, y2: 168, page: 1 },
+      { x1: 20, y1: 80, x2: 20, y2: 148, page: 1 },
+      { x1: 80, y1: 80, x2: 80, y2: 148, page: 1 },
+      { x1: 150, y1: 80, x2: 150, y2: 148, page: 1 },
+      { x1: 210, y1: 80, x2: 210, y2: 148, page: 1 },
+    ];
+    const tables = detectTables(items, lines, []);
+    expect(tables).toHaveLength(1);
+    const md = tables[0]!.markdown;
+    expect(md).toMatch(/\|Law\|Union\/State rule\|Imprisonment clauses\|/);
+    expect(md).toMatch(/\|Arms Act, 1959\|Union\|152\|/);
+    expect(md).toMatch(/\|Food Safety Act Licensing Rules Regulations, 2011\|Union\|123\|/);
+    expect(md.match(/^\|/gm)).toHaveLength(4);
+  });
+
+  it('keeps wrapped org names and the header inside one borderless table', () => {
+    const items = [
+      { text: 'No.', x: 22, y: 120, width: 16, page: 1 },
+      { text: 'Name of organization', x: 50, y: 120, width: 80, page: 1 },
+      { text: 'Number of accredited', x: 160, y: 120, width: 70, page: 1 },
+      { text: 'observers', x: 172, y: 108, width: 40, page: 1 },
+      { text: '1', x: 24, y: 92, width: 8, page: 1 },
+      { text: 'Union of Youth Federations', x: 50, y: 92, width: 90, page: 1 },
+      { text: '17,266', x: 176, y: 92, width: 30, page: 1 },
+      { text: '(UYFC)', x: 50, y: 80, width: 32, page: 1 },
+      { text: '2', x: 24, y: 64, width: 8, page: 1 },
+      { text: 'Cambodian Women for Peace', x: 50, y: 64, width: 90, page: 1 },
+      { text: '9,835', x: 178, y: 64, width: 26, page: 1 },
+      { text: 'Development', x: 50, y: 52, width: 48, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    const md = tables[0]!.markdown;
+    expect(md).toContain('|No.|Name of organization|Number of accredited observers|');
+    expect(md).toContain('|1|Union of Youth Federations (UYFC)|17,266|');
+    expect(md).toContain('|2|Cambodian Women for Peace Development|9,835|');
+    expect(md.match(/^\|/gm)).toHaveLength(4);
+  });
+
+  it('keeps sparse Y/N cells in their columns across wrapped restriction text', () => {
+    const items = [
+      { text: 'Jurisdiction', x: 20, y: 214, width: 50, page: 1 },
+      { text: 'GATS', x: 90, y: 214, width: 28, page: 1 },
+      { text: 'Permitted', x: 140, y: 214, width: 40, page: 1 },
+      { text: 'Restrictions', x: 200, y: 214, width: 50, page: 1 },
+      { text: 'Reporting', x: 320, y: 214, width: 40, page: 1 },
+      { text: '(1994)', x: 90, y: 200, width: 28, page: 1 },
+      { text: 'Requirements', x: 320, y: 200, width: 50, page: 1 },
+      { text: 'Argentina', x: 20, y: 180, width: 44, page: 1 },
+      { text: 'Y', x: 98, y: 180, width: 10, page: 1 },
+      { text: 'Y', x: 150, y: 180, width: 10, page: 1 },
+      { text: 'Prohibition on ownership of', x: 200, y: 180, width: 90, page: 1 },
+      { text: 'property that borders water.', x: 200, y: 166, width: 90, page: 1 },
+      { text: 'Australia', x: 20, y: 140, width: 44, page: 1 },
+      { text: 'N', x: 98, y: 140, width: 10, page: 1 },
+      { text: 'Y', x: 150, y: 140, width: 10, page: 1 },
+      { text: 'Approval is needed from the', x: 200, y: 140, width: 90, page: 1 },
+      { text: 'Treasurer for land purchases.', x: 200, y: 126, width: 90, page: 1 },
+      { text: 'Must report acquisitions.', x: 320, y: 140, width: 70, page: 1 },
+      { text: 'to the agency.', x: 320, y: 126, width: 50, page: 1 },
+      { text: 'Belgium', x: 20, y: 100, width: 40, page: 1 },
+      { text: 'N', x: 98, y: 100, width: 10, page: 1 },
+      { text: 'Y', x: 150, y: 100, width: 10, page: 1 },
+      { text: 'None.', x: 200, y: 100, width: 24, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    const md = tables[0]!.markdown;
+    expect(md).toContain(
+      '|Jurisdiction|GATS (1994)|Permitted|Restrictions|Reporting Requirements|',
+    );
+    expect(md).toContain(
+      '|Argentina|Y|Y|Prohibition on ownership of property that borders water.||',
+    );
+    expect(md).toContain(
+      '|Australia|N|Y|Approval is needed from the Treasurer for land purchases.|Must report acquisitions. to the agency.|',
+    );
+    expect(md).toContain('|Belgium|N|Y|None.||');
+    expect(md.match(/^\|/gm)).toHaveLength(5);
+  });
+
   it('detects two separate ruled grids on one page', () => {
     const items = [
       { text: 'Name', x: 22, y: 182, width: 30, page: 1 },

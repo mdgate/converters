@@ -37,16 +37,19 @@ export interface DetectedTable {
 
 const SNAP = 2.5;
 const THIN = 3;
-const MIN_RULE = 24;
+const MIN_RULE = 12;
 const COL_GAP_FACTOR = 1.0;
 const MIN_COLUMNS = 2;
 const MIN_ROWS = 2;
-const MAX_TABLE_ROWS = 40;
+const MAX_TABLE_ROWS = 60;
 const MAX_CELL_WORDS = 6;
 const MAX_KEY_VALUE_WORDS = 40;
-const MAX_TABLE_WORDS = 400;
+const MAX_TABLE_WORDS = 1500;
 const PROSE_AVG_CELL_CHARS = 18;
 const PAGE_COVER = 0.7;
+const OUTER_EDGE = 8;
+const RUN_GAP = 12 * 3.2;
+const WRAP_SPAN = 0.72;
 
 export function detectTables(
   items: TableTextItem[],
@@ -196,22 +199,31 @@ function buildGridTable(
     horiz.map((h) => h.y),
     SNAP,
   ).sort((a, b) => b - a);
-  if (xs.length < 3 || ys.length < 3) return undefined;
+  if (xs.length < 2 || ys.length < 2) return undefined;
 
-  const colEdges = xs;
-  const rowEdges = ys;
+  const hLeft = Math.min(...horiz.map((h) => h.x1));
+  const hRight = Math.max(...horiz.map((h) => h.x2));
+  const colEdges = xs.slice();
+  if (colEdges[0]! - hLeft > OUTER_EDGE) colEdges.unshift(hLeft);
+  if (hRight - colEdges[colEdges.length - 1]! > OUTER_EDGE) colEdges.push(hRight);
+
   const nCols = colEdges.length - 1;
-  const nRows = rowEdges.length - 1;
-  if (nCols < 2 || nRows < 2 || nCols > 20 || nRows > 60) return undefined;
+  const nRows = ys.length - 1;
+  if (nCols < 2 || nCols > 20 || nRows > 60) return undefined;
+
+  const xLeft = colEdges[0]!;
+  const xRight = colEdges[colEdges.length - 1]!;
+  const yTop = Math.max(ys[0]!, ...vert.map((v) => v.y2));
+  const yBottom = Math.min(ys[ys.length - 1]!, ...vert.map((v) => v.y1));
+
+  if (nRows < 2) {
+    return buildTextGrid(items, colEdges, xLeft, xRight, yTop, yBottom, page, claimed);
+  }
 
   const cellItems: { idx: number; item: TableTextItem }[][][] = Array.from({ length: nRows }, () =>
     Array.from({ length: nCols }, () => []),
   );
   const used: number[] = [];
-  const xLeft = colEdges[0]!;
-  const xRight = colEdges[colEdges.length - 1]!;
-  const yTop = rowEdges[0]!;
-  const yBottom = rowEdges[rowEdges.length - 1]!;
 
   for (let idx = 0; idx < items.length; idx += 1) {
     if (claimed.has(idx)) continue;
@@ -221,7 +233,7 @@ function buildGridTable(
     const cy = item.y;
     if (cx < xLeft - 4 || cx > xRight + 4 || cy < yBottom - 4 || cy > yTop + 4) continue;
     const col = findBand(colEdges, cx, false);
-    const row = findBand(rowEdges, cy, true);
+    const row = findBand(ys, cy, true);
     if (col === undefined || row === undefined) continue;
     cellItems[row]![col]!.push({ idx, item });
     used.push(idx);
@@ -255,17 +267,53 @@ function buildGridTable(
   };
 }
 
+function buildTextGrid(
+  items: TableTextItem[],
+  colEdges: number[],
+  xLeft: number,
+  xRight: number,
+  yTop: number,
+  yBottom: number,
+  page: number,
+  claimed: Set<number>,
+): DetectedTable | undefined {
+  const outside = new Set(claimed);
+  for (let idx = 0; idx < items.length; idx += 1) {
+    if (outside.has(idx)) continue;
+    const item = items[idx]!;
+    if (item.page !== page || item.text.trim().length === 0) {
+      outside.add(idx);
+      continue;
+    }
+    const cx = item.x + Math.max(item.width, 0) / 2;
+    const cy = item.y;
+    if (cx < xLeft - 4 || cx > xRight + 4 || cy < yBottom - 4 || cy > yTop + 4) outside.add(idx);
+  }
+  const rows = collectAlignedRows(items, page, outside);
+  if (rows.length < MIN_ROWS) return undefined;
+  const colXs = colEdges.slice(0, -1).map((x, i) => (x + colEdges[i + 1]!) / 2);
+  return finishAlignedTable(rows, colXs, page, undefined, colEdges);
+}
+
 function acceptGrid(grid: string[][]): boolean {
+  const nCols = grid[0]!.length;
   const filled = grid.flat().filter((c) => c.length > 0);
-  const fillRate = filled.length / (grid.length * grid[0]!.length);
+  const fillRate = filled.length / (grid.length * nCols);
   if (fillRate < 0.15) return false;
   const multi = grid.filter((row) => row.filter((c) => c.length > 0).length >= 2).length;
   if (multi * 2 < grid.length) return false;
   const lengths = filled.map((c) => [...c].length);
   const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-  if (avg > 80) return false;
+  const colAvgs = Array.from({ length: nCols }, (_, c) => {
+    const cells = grid.map((row) => row[c]!).filter((cell) => cell.length > 0);
+    if (cells.length === 0) return 0;
+    return cells.reduce((n, cell) => n + [...cell].length, 0) / cells.length;
+  });
+  const longCols = colAvgs.filter((n) => n > 80).length;
+  if (avg > 80 && longCols >= nCols) return false;
+  if (avg > 220) return false;
   const long = lengths.filter((n) => n > 160).length;
-  if (long > 0 && long / lengths.length > 0.2) return false;
+  if (long > 0 && long / lengths.length > 0.2 && longCols > 2) return false;
   return true;
 }
 
@@ -307,16 +355,16 @@ function detectBorderlessTables(
       const prev = run[run.length - 1]!;
       const cur = rows[j]!;
       const gap = prev.y - cur.y;
-      const fs = 12;
-      if (gap > fs * 3.2) break;
-      if (!isTableRow(cur)) break;
-      run.push(cur);
-      j += 1;
+      if (gap > RUN_GAP) break;
+      if (isTableRow(cur) || isContinuation(run, cur)) {
+        run.push(cur);
+        j += 1;
+        continue;
+      }
+      break;
     }
-    if (run.length >= MIN_ROWS) {
-      const table = buildAlignedTable(run, page, pageBox);
-      if (table) out.push(table);
-    }
+    const table = buildAlignedTable(run, page, pageBox);
+    if (table) out.push(table);
     i = Math.max(j, i + 1);
   }
   return out;
@@ -414,13 +462,41 @@ function isTableRow(row: RowCand): boolean {
   return true;
 }
 
-function buildAlignedTable(
-  run: RowCand[],
-  page: number,
-  pageBox: { x: number; y: number; x2: number; y2: number } | undefined,
-): DetectedTable | undefined {
-  if (run.length < MIN_ROWS || run.length > MAX_TABLE_ROWS) return undefined;
-  const counts = run.map((r) => r.segs.length);
+function isCaption(row: RowCand): boolean {
+  const text = row.segs
+    .map((s) => s.text)
+    .join(' ')
+    .trim();
+  return /^(source|note|notes|table|fig\.?|figure)\b[:\s]/i.test(text);
+}
+
+function isContinuation(run: RowCand[], cur: RowCand): boolean {
+  if (isCaption(cur)) return false;
+  const prev = run[run.length - 1]!;
+  if (prev.y - cur.y > RUN_GAP * 0.7) return false;
+  if (cur.segs.some((s) => s.words > MAX_KEY_VALUE_WORDS)) return false;
+  const full = run.filter((r) => r.segs.length >= MIN_COLUMNS);
+  if (full.length === 0) return false;
+  const template = full.reduce((a, b) => (b.segs.length >= a.segs.length ? b : a));
+  const colXs = template.segs.map((s) => (s.x + s.x2) / 2);
+  const tableX1 = Math.min(...run.flatMap((r) => r.segs.map((s) => s.x)));
+  const tableX2 = Math.max(...run.flatMap((r) => r.segs.map((s) => s.x2)));
+  const tableW = Math.max(tableX2 - tableX1, 1);
+  if (cur.segs.length === 1) {
+    const seg = cur.segs[0]!;
+    if ((seg.x2 - seg.x) / tableW > WRAP_SPAN) return false;
+  }
+  return cur.segs.every((s) => {
+    const mid = (s.x + s.x2) / 2;
+    const col = nearestCol(colXs, mid);
+    return Math.abs(mid - colXs[col]!) < tableW * 0.4;
+  });
+}
+
+function inferColumns(run: RowCand[]): { colXs: number[]; edges: number[] } | undefined {
+  const full = run.filter((r) => r.segs.length >= MIN_COLUMNS);
+  if (full.length === 0) return undefined;
+  const counts = full.map((r) => r.segs.length);
   const maxCols = Math.max(...counts);
   const nCols = maxCols >= 3 ? maxCols : medianInt(counts);
   if (nCols < MIN_COLUMNS) return undefined;
@@ -430,23 +506,105 @@ function buildAlignedTable(
   } else if (matching / run.length < 0.5) {
     return undefined;
   }
-
-  const header = run.find((r) => r.segs.length === nCols) ?? run[0]!;
+  const header = full.find((r) => r.segs.length === nCols) ?? full[0]!;
   const colXs = header.segs.map((s) => (s.x + s.x2) / 2);
+  const edges = [...header.segs.map((s) => s.x), header.segs[header.segs.length - 1]!.x2];
+  return { colXs, edges };
+}
 
+function edgesFromCenters(run: RowCand[], colXs: number[]): number[] | undefined {
+  const header = run.find((r) => r.segs.length === colXs.length);
+  if (header) {
+    return [...header.segs.map((s) => s.x), header.segs[header.segs.length - 1]!.x2];
+  }
+  return undefined;
+}
+
+function appendCell(row: string[], col: number, text: string): void {
+  const prev = row[col]!;
+  row[col] = prev.length === 0 ? text : `${prev} ${text}`;
+}
+
+function columnIndex(x: number, colXs: number[], edges?: number[]): number {
+  if (edges && edges.length === colXs.length + 1) {
+    const band = findBand(edges, x, false);
+    if (band !== undefined) return band;
+  }
+  for (let i = 0; i < colXs.length - 1; i += 1) {
+    if (x < (colXs[i]! + colXs[i + 1]!) / 2) return i;
+  }
+  return colXs.length - 1;
+}
+
+function foldRows(
+  run: RowCand[],
+  colXs: number[],
+  edges?: number[],
+): { grid: string[][]; used: number[] } {
+  const nCols = colXs.length;
   const grid: string[][] = [];
   const used: number[] = [];
-  for (const row of run) {
-    const cells = Array.from({ length: nCols }, () => '');
-    for (const seg of row.segs) {
-      const col = nearestCol(colXs, (seg.x + seg.x2) / 2);
-      const prev = cells[col]!;
-      cells[col] = prev.length === 0 ? seg.text : `${prev} ${seg.text}`;
+  let current: string[] | undefined;
+
+  const colOf = (seg: CellSeg): number => columnIndex((seg.x + seg.x2) / 2, colXs, edges);
+  const filledCount = (row: string[]): number => row.filter((c) => c.length > 0).length;
+  const mostlyFilled = (row: string[]): boolean => {
+    const n = filledCount(row);
+    return n >= nCols - 1 || (n >= 2 && row[0]!.length > 0);
+  };
+
+  const startsRow = (line: RowCand): boolean => {
+    if (!current) return true;
+    const cols = [...new Set(line.segs.map(colOf))];
+    const hasKey = cols.includes(0);
+    if (!hasKey) {
+      const text = line.segs
+        .map((s) => s.text)
+        .join(' ')
+        .trim();
+      if (/^(total|sum|subtotal|average|overall)\b/i.test(text) && mostlyFilled(current)) {
+        return true;
+      }
+      if (!mostlyFilled(current)) return false;
+      if (grid.length === 0) return false;
+      if (cols.some((c) => wordCount(current![c]!) >= 3)) return false;
+      if (line.segs.every((s) => /^[a-z(]/.test(s.text.trim()))) return false;
+      return true;
+    }
+    if (current[0]!.length === 0) return false;
+    if (cols.length === 1) return false;
+    const key = line.segs.find((s) => colOf(s) === 0);
+    const keyText = key?.text.trim() ?? '';
+    if (/^[a-z(]/.test(keyText)) return false;
+    return cols.some((c) => c > 0 && current![c]!.length > 0);
+  };
+
+  for (const line of run) {
+    if (startsRow(line)) {
+      if (current) grid.push(current);
+      current = Array.from({ length: nCols }, () => '');
+    }
+    for (const seg of line.segs) {
+      appendCell(current!, colOf(seg), seg.text);
       used.push(...seg.indices);
     }
-    grid.push(cells);
   }
+  if (current) grid.push(current);
+  return { grid, used };
+}
 
+function finishAlignedTable(
+  run: RowCand[],
+  colXs: number[],
+  page: number,
+  pageBox: { x: number; y: number; x2: number; y2: number } | undefined,
+  edges?: number[],
+): DetectedTable | undefined {
+  if (colXs.length < MIN_COLUMNS) return undefined;
+  const colEdges = edges ?? edgesFromCenters(run, colXs);
+  const { grid, used } = foldRows(run, colXs, colEdges);
+  if (grid.length < MIN_ROWS || grid.length > MAX_TABLE_ROWS) return undefined;
+  if (grid[0]!.length < MIN_COLUMNS) return undefined;
   if (!acceptGrid(grid)) return undefined;
   if (looksLikePageColumns(run, grid)) return undefined;
   if (!acceptBorderless(grid, run, pageBox)) return undefined;
@@ -464,6 +622,16 @@ function buildAlignedTable(
     markdown,
     itemIndices: unique(used),
   };
+}
+
+function buildAlignedTable(
+  run: RowCand[],
+  page: number,
+  pageBox: { x: number; y: number; x2: number; y2: number } | undefined,
+): DetectedTable | undefined {
+  const cols = inferColumns(run);
+  if (!cols) return undefined;
+  return finishAlignedTable(run, cols.colXs, page, pageBox, cols.edges);
 }
 
 function looksLikePageColumns(run: RowCand[], grid: string[][]): boolean {
@@ -506,7 +674,7 @@ function acceptBorderless(
     const avgWords = words / Math.max(cells.length, 1);
     if (avgWords > 4) return false;
   }
-  if (pageBox) {
+  if (pageBox && nCols <= 2) {
     const x1 = Math.min(...run.flatMap((r) => r.segs.map((s) => s.x)));
     const x2 = Math.max(...run.flatMap((r) => r.segs.map((s) => s.x2)));
     const y1 = Math.max(...run.map((r) => r.y));
