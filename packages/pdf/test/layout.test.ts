@@ -417,3 +417,128 @@ ET
     expect(md).not.toMatch(/list item\. After the list/);
   });
 });
+
+describe('footnotes', () => {
+  it('attaches a raised digit after punctuation instead of dropping it into the next line', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 220 Tm
+(from FY2019.) Tj
+/F1 7 Tf
+4 Ts
+(4) Tj
+0 Ts
+/F1 12 Tf
+( The data collected after implementation) Tj
+1 0 0 1 20 200 Tm
+(of the FIT scheme revealed the costs.) Tj
+/F1 8 Tf
+1 0 0 1 20 40 Tm
+(4 Biomass of waste is not eligible from FY2021.) Tj
+ET
+`,
+        [0, 0, 420, 280],
+      ),
+    );
+    expect(md).toContain('FY2019.⁴');
+    expect(md).not.toMatch(/implementation 4 of/);
+    expect(md).toMatch(/costs\.\n\n4 Biomass of waste/);
+  });
+
+  it('reads two-column notes after both columns of body, not mixed into the other column', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 240 Tm
+(Alpha) Tj
+1 0 0 1 20 220 Tm
+(Bravo) Tj
+1 0 0 1 220 240 Tm
+(Charlie) Tj
+1 0 0 1 220 220 Tm
+(Delta) Tj
+/F1 8 Tf
+1 0 0 1 20 50 Tm
+(25 Left note continues here.) Tj
+1 0 0 1 20 35 Tm
+(26 Left note also continues.) Tj
+1 0 0 1 220 50 Tm
+(30 Right note continues here.) Tj
+1 0 0 1 220 35 Tm
+(31 Right note also continues.) Tj
+ET
+`,
+        [0, 0, 420, 280],
+      ),
+    );
+    expect(md.indexOf('Alpha')).toBeLessThan(md.indexOf('Bravo'));
+    expect(md.indexOf('Bravo')).toBeLessThan(md.indexOf('Charlie'));
+    expect(md.indexOf('Charlie')).toBeLessThan(md.indexOf('Delta'));
+    expect(md.indexOf('Delta')).toBeLessThan(md.indexOf('25 Left note'));
+    expect(md.indexOf('25 Left note')).toBeLessThan(md.indexOf('26 Left note'));
+    expect(md.indexOf('26 Left note')).toBeLessThan(md.indexOf('30 Right note'));
+    expect(md).not.toMatch(/Bravo[\s\S]*25 Left note[\s\S]*Charlie/);
+    expect(md).toMatch(/25 Left note continues here\.\n\n26 Left note also continues/);
+    expect(md).toMatch(/30 Right note continues here\.\n\n31 Right note also continues/);
+  });
+
+  it('does not glue footer notes onto the last body paragraph', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 120 Tm
+(This report surveys land.) Tj
+/F1 7 Tf
+4 Ts
+(1) Tj
+0 Ts
+/F1 12 Tf
+1 0 0 1 20 100 Tm
+(Coverage is selected to stay representative.) Tj
+/F1 8 Tf
+1 0 0 1 20 40 Tm
+(1 The surveyed jurisdictions are listed in the appendix text.) Tj
+1 0 0 1 20 25 Tm
+(2 World Bank Databank Gross Domestic Product figures.) Tj
+ET
+`,
+        [0, 0, 420, 180],
+      ),
+    );
+    expect(md).toContain('land.¹');
+    expect(md).toMatch(/representative\.\n\n1 The surveyed jurisdictions/);
+    expect(md).toMatch(/appendix text\.\n\n2 World Bank Databank/);
+    expect(md).not.toMatch(/representative\. 1 The surveyed/);
+  });
+
+  it('keeps a raised note marker at the end of the sentence, not prepended', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 160 Tm
+(Now, how do we solve for the analytical equilibrium?) Tj
+/F1 7 Tf
+4 Ts
+(12) Tj
+0 Ts
+/F1 12 Tf
+1 0 0 1 20 140 Tm
+(Player two applies backward induction to find the equilibrium.) Tj
+/F1 8 Tf
+1 0 0 1 20 40 Tm
+(12. This equilibrium is known as a Perfect Bayesian Equilibrium.) Tj
+ET
+`,
+        [0, 0, 420, 220],
+      ),
+    );
+    expect(md).toContain('equilibrium?¹²');
+    expect(md).not.toMatch(/^12 Now,/m);
+    expect(md).toMatch(/equilibrium\.\n\n12\. This equilibrium/);
+  });
+});

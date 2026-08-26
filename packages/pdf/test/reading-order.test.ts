@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupIntoLines, orderBoxes } from '../src/layout.js';
+import { groupIntoLines, orderBoxes, peelFootnoteLines } from '../src/layout.js';
 
 function word(
   text: string,
@@ -224,5 +224,79 @@ describe('orderBoxes', () => {
       { x: 310, y: 250, x2: 510, y2: 238, id: 'R2' },
     ]);
     expect(ordered.map((b) => b.id)).toEqual(['L1', 'IMG', 'L2', 'R1', 'R2']);
+  });
+});
+
+describe('peelFootnoteLines', () => {
+  it('keeps two-column notes after both columns of body', () => {
+    const lines = [
+      [word('Left body one', 20, 200, 120)],
+      [word('Left body two', 20, 180, 120)],
+      [word('Right body one', 200, 200, 120)],
+      [word('Right body two', 200, 180, 120)],
+      [word('25 Left note one continues here.', 20, 50, 120, { fontSize: 8 })],
+      [word('26 Left note two continues here.', 20, 35, 120, { fontSize: 8 })],
+      [word('30 Right note one continues here.', 200, 50, 120, { fontSize: 8 })],
+      [word('31 Right note two continues here.', 200, 35, 120, { fontSize: 8 })],
+    ];
+    const { body, notes, footer } = peelFootnoteLines(lines);
+    expect(body.map((line) => line[0]!.text)).toEqual([
+      'Left body one',
+      'Left body two',
+      'Right body one',
+      'Right body two',
+    ]);
+    expect(notes.map((line) => line[0]!.text)).toEqual([
+      '25 Left note one continues here.',
+      '26 Left note two continues here.',
+      '30 Right note one continues here.',
+      '31 Right note two continues here.',
+    ]);
+    expect(footer).toHaveLength(0);
+  });
+
+  it('matches a bottom note to a body superscript and peels a page number', () => {
+    const lines = [
+      [word('from FY2019.⁴ The data collected after implementation', 20, 200, 300)],
+      [word('of the FIT scheme revealed the costs.', 20, 180, 280)],
+      [word('4 Biomass of waste is not eligible from FY2021.', 20, 40, 280, { fontSize: 9 })],
+      [word('31', 300, 18, 12, { fontSize: 9 })],
+    ];
+    const { body, notes, footer } = peelFootnoteLines(lines);
+    expect(body.map((line) => line[0]!.text)).toEqual([
+      'from FY2019.⁴ The data collected after implementation',
+      'of the FIT scheme revealed the costs.',
+    ]);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]![0]!.text).toContain('Biomass of waste');
+    expect(footer.map((line) => line[0]!.text)).toEqual(['31']);
+  });
+
+  it('drops a stray marker line that already appears as a body superscript', () => {
+    const lines = [
+      [word('Coffee is called the wine of Islam.²⁶', 20, 200, 260)],
+      [word('26', 80, 204, 8, { fontSize: 7 })],
+      [word('Body continues after the marker.', 20, 180, 240)],
+      [word('26 For the association between coffee and wine.', 20, 40, 240, { fontSize: 8 })],
+    ];
+    const { body, notes } = peelFootnoteLines(lines);
+    expect(body.map((line) => line[0]!.text)).toEqual([
+      'Coffee is called the wine of Islam.²⁶',
+      'Body continues after the marker.',
+    ]);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]![0]!.text).toContain('For the association');
+  });
+
+  it('does not peel a top heading or a same-size numbered list', () => {
+    const lines = [
+      [word('1. Introduction to land ownership', 20, 200, 260)],
+      [word('Body paragraph about the survey results.', 20, 160, 260)],
+      [word('1. First list item stays in the body.', 20, 40, 260)],
+      [word('2. Second list item stays in the body.', 20, 24, 260)],
+    ];
+    const { body, notes } = peelFootnoteLines(lines);
+    expect(notes).toHaveLength(0);
+    expect(body).toHaveLength(4);
   });
 });
