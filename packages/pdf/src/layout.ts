@@ -628,6 +628,7 @@ function splitPageFootnotes<T extends LineItem>(
   for (const line of lines) {
     if (line[0]!.y > floor) continue;
     const text = linePlain(line);
+    if (isFooterText(text)) continue;
     const n = noteStartNumber(text);
     if (n !== undefined) {
       if (markers.has(n) || isSmallNoteLine(line, bodyFont)) starts.push(line);
@@ -663,12 +664,15 @@ function splitPageFootnotes<T extends LineItem>(
   const drop: T[][] = [];
   for (const line of rest) {
     const text = linePlain(line);
+    if (line[0]!.y < noteBottom && isFooterText(text)) {
+      footer.push(line);
+      continue;
+    }
     if (isOrphanMarkerLine(text, noteNums) || isOrphanMarkerLine(text, markers)) {
       drop.push(line);
       continue;
     }
-    if (line[0]!.y < noteBottom && isFooterText(text)) footer.push(line);
-    else body.push(line);
+    body.push(line);
   }
   return { body, notes, footer, drop };
 }
@@ -700,7 +704,7 @@ function bodyFontSize<T extends LineItem>(lines: T[][]): number {
 
 function collectTrailingMarkers<T extends LineItem>(lines: T[][]): Set<string> {
   const nums = new Set<string>();
-  const glued = /(?<=[\p{L}.!?”"'”'])(\d{1,3})(?!\d)/gu;
+  const glued = /(?<=\p{L}{2,})(\d{1,3})(?=$|[^\d\p{L}])/gu;
   for (const line of lines) {
     const text = linePlain(line);
     for (const m of text.matchAll(glued)) nums.add(m[1]!);
@@ -743,7 +747,7 @@ function noteStartNumber(text: string): string | undefined {
   if (!m) return undefined;
   const after = ascii.slice(m[0].length).trim();
   if (after.length < 6) return undefined;
-  if (/^(figure|table|fig\.?)\b/i.test(ascii)) return undefined;
+  if (/^(figure|table|fig\.?)\b/i.test(after)) return undefined;
   return m[1];
 }
 

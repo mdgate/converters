@@ -515,6 +515,62 @@ ET
     expect(md).not.toMatch(/representative\. 1 The surveyed/);
   });
 
+  it('does not glue footer notes onto the last list item', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 200 Tm
+(Coverage is selected to stay representative.) Tj
+/F1 7 Tf
+4 Ts
+(1) Tj
+0 Ts
+/F1 12 Tf
+1 0 0 1 20 90 Tm
+(- First list item on this page.) Tj
+1 0 0 1 20 72 Tm
+(- Second list item on this page.) Tj
+/F1 8 Tf
+1 0 0 1 20 54 Tm
+(1 The surveyed jurisdictions are listed in the appendix text.) Tj
+ET
+`,
+        [0, 0, 420, 240],
+      ),
+    );
+    expect(md).toMatch(/Second list item on this page\.\n\n1 The surveyed jurisdictions/);
+    expect(md).not.toMatch(/Second list item on this page\. 1 The surveyed/);
+  });
+
+  it('does not treat a following note as the next list item', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 20 200 Tm
+(Coverage is selected to stay representative.) Tj
+/F1 7 Tf
+4 Ts
+(1) Tj
+0 Ts
+/F1 12 Tf
+1 0 0 1 20 160 Tm
+(1. First list item stays in the body.) Tj
+1 0 0 1 20 140 Tm
+(2. Second list item stays in the body.) Tj
+/F1 8 Tf
+1 0 0 1 20 40 Tm
+(1. The surveyed jurisdictions are listed in the appendix text.) Tj
+ET
+`,
+        [0, 0, 420, 240],
+      ),
+    );
+    expect(md).toMatch(/stays in the body\.\n\n1\. The surveyed jurisdictions/);
+    expect(md).not.toMatch(/stays in the body\.\n1\. The surveyed/);
+  });
+
   it('keeps a raised note marker at the end of the sentence, not prepended', () => {
     const md = toMarkdownFromPdf(
       pagePdf(

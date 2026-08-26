@@ -288,6 +288,43 @@ describe('peelFootnoteLines', () => {
     expect(notes[0]![0]!.text).toContain('For the association');
   });
 
+  it('keeps a page number that matches a footnote number', () => {
+    const lines = [
+      [word('Body with a citation.¹ More text follows after that.', 20, 200, 300)],
+      [word('1 The first note explains the method used here.', 20, 40, 280, { fontSize: 8 })],
+      [word('1', 300, 18, 12, { fontSize: 9 })],
+    ];
+    const { body, notes, footer, drop } = peelFootnoteLines(lines);
+    expect(body.map((line) => line[0]!.text)).toEqual([
+      'Body with a citation.¹ More text follows after that.',
+    ]);
+    expect(notes).toHaveLength(1);
+    expect(footer.map((line) => line[0]!.text)).toEqual(['1']);
+    expect(drop).toHaveLength(0);
+  });
+
+  it('does not treat a numbered figure caption as a footnote', () => {
+    const lines = [
+      [word('The results appear below the fold on this page.', 20, 200, 280)],
+      [word('1 Figure of the experimental setup on page two.', 20, 40, 280, { fontSize: 8 })],
+    ];
+    const { body, notes } = peelFootnoteLines(lines);
+    expect(notes).toHaveLength(0);
+    expect(body).toHaveLength(2);
+  });
+
+  it('does not peel a numbered list when the body has figure and version digits', () => {
+    const lines = [
+      [word('See Fig.1 and p.45 and v2 and 3.14 in the text.', 20, 200, 300)],
+      [word('Body paragraph about the survey results here.', 20, 160, 260)],
+      [word('1. First list item stays in the body.', 20, 40, 260)],
+      [word('2. Second list item stays in the body.', 20, 24, 260)],
+    ];
+    const { body, notes } = peelFootnoteLines(lines);
+    expect(notes).toHaveLength(0);
+    expect(body).toHaveLength(4);
+  });
+
   it('does not peel a top heading or a same-size numbered list', () => {
     const lines = [
       [word('1. Introduction to land ownership', 20, 200, 260)],

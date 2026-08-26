@@ -3362,7 +3362,13 @@ function itemsToMarkdown(
     const noteStart =
       block.role === 'note' && /^(?:\d{1,3}|[⁰¹²³⁴⁵⁶⁷⁸⁹]{1,3})[.)]?(?:\s+|[A-Z])/.test(plain);
     const roleChange = block.role !== prevRole && block.role !== undefined;
-    if (inPara && (yGap > paraTh || yGap < -base * 0.8 || indented || roleChange || noteStart)) {
+    if (roleChange || noteStart) {
+      if (inList) closeList();
+      else if (inPara) {
+        out += '\n\n';
+        inPara = false;
+      }
+    } else if (inPara && (yGap > paraTh || yGap < -base * 0.8 || indented)) {
       out += '\n\n';
       inPara = false;
     }
