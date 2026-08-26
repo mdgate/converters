@@ -30,6 +30,11 @@ const MIN_CENTER_GAP = 20;
 const MIN_COL_WIDTH = 50;
 const MERGE_TOL = 0.5;
 const MAX_DEPTH = 16;
+const GUTTER_HIT = 4;
+const GUTTER_MIN_GAP = 8;
+const NARROW_WIDTH_RATIO = 0.1;
+const MARGIN_WIDTH = 2;
+const COLUMN_OVERLAP = 0.2;
 
 export function groupIntoLines<T extends LineItem>(items: T[]): T[][] {
   const upright: T[] = [];
@@ -51,6 +56,7 @@ function isUpright(item: LineItem): boolean {
 }
 
 function groupAxisAligned<T extends LineItem>(items: T[]): T[][] {
+  const gutters = detectGutters(items);
   const sorted = items.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
   const rows: T[][] = [];
   for (const item of sorted) {
@@ -65,23 +71,62 @@ function groupAxisAligned<T extends LineItem>(items: T[]): T[][] {
   const lines: T[][] = [];
   for (const row of rows) {
     row.sort((a, b) => a.x - b.x);
-    lines.push(...splitRowByGap(row));
+    const pageGutters = gutters.get(row[0]!.page) ?? [];
+    lines.push(...splitRowByGap(row, pageGutters));
   }
   return lines;
 }
 
-function splitRowByGap<T extends LineItem>(row: T[]): T[][] {
+function splitRowByGap<T extends LineItem>(row: T[], gutters: number[]): T[][] {
   if (row.length === 0) return [];
   const segs: T[][] = [[row[0]!]];
   for (let i = 1; i < row.length; i += 1) {
     const prev = segs[segs.length - 1]![segs[segs.length - 1]!.length - 1]!;
     const curr = row[i]!;
-    const gap = curr.x - (prev.x + Math.max(prev.width, 0));
+    const prevRight = prev.x + Math.max(prev.width, 0);
+    const gap = curr.x - prevRight;
     const fs = Math.max(prev.fontSize, curr.fontSize, 8);
-    if (gap > Math.max(fs * 1.2, 10)) segs.push([curr]);
+    const atGutter = gutters.some((g) => prevRight <= g + GUTTER_HIT && curr.x >= g - GUTTER_HIT);
+    const th = atGutter ? Math.max(fs * 0.45, GUTTER_MIN_GAP) : Math.max(fs * 1.2, 10);
+    if (gap > th) segs.push([curr]);
     else segs[segs.length - 1]!.push(curr);
   }
   return segs;
+}
+
+function detectGutters<T extends LineItem>(items: T[]): Map<number, number[]> {
+  const byPage = new Map<number, T[]>();
+  for (const item of items) {
+    const list = byPage.get(item.page) ?? [];
+    list.push(item);
+    byPage.set(item.page, list);
+  }
+  const out = new Map<number, number[]>();
+  for (const [page, pageItems] of byPage) {
+    const boxes = pageItems.filter((it) => it.width >= 1).map(itemBox);
+    out.set(page, collectGutters(boxes, 0));
+  }
+  return out;
+}
+
+function itemBox(item: LineItem): LayoutBox {
+  const h = Math.max(item.height, item.fontSize, 8);
+  return {
+    x: item.x,
+    y: item.y + h * 0.8,
+    x2: item.x + Math.max(item.width, 0),
+    y2: item.y - h * 0.2,
+  };
+}
+
+function collectGutters(boxes: LayoutBox[], depth: number): number[] {
+  if (boxes.length < 4 || depth >= 4) return [];
+  const gap = findVerticalGap(boxes);
+  if (!gap) return [];
+  const left = boxes.filter((b) => (b.x + b.x2) / 2 < gap.split);
+  const right = boxes.filter((b) => (b.x + b.x2) / 2 >= gap.split);
+  if (left.length < 2 || right.length < 2) return [];
+  return [gap.split, ...collectGutters(left, depth + 1), ...collectGutters(right, depth + 1)];
 }
 
 function groupRotated<T extends LineItem>(items: T[]): T[][] {
@@ -150,7 +195,41 @@ export function lineBox<T extends LineItem>(line: T[]): LayoutBox {
 
 export function orderBoxes<T extends LayoutBox>(boxes: T[]): T[] {
   if (boxes.length <= 1) return boxes.slice();
-  return xycut(boxes.slice(), 0);
+  const { margin, main } = peelMargin(boxes);
+  const sorted = main.length <= 1 ? main.slice() : xycut(main, 0);
+  return mergeMargin(sorted, margin);
+}
+
+function peelMargin<T extends LayoutBox>(boxes: T[]): { margin: T[]; main: T[] } {
+  const wide = boxes.filter((b) => b.x2 - b.x >= MARGIN_WIDTH);
+  if (wide.length === 0) return { margin: [], main: boxes.slice() };
+  const minX = Math.min(...wide.map((b) => b.x));
+  const maxX = Math.max(...wide.map((b) => b.x2));
+  const margin: T[] = [];
+  const main: T[] = [];
+  for (const b of boxes) {
+    const leftMargin = b.x2 < minX - 1;
+    const rightMargin = b.x > maxX + 1;
+    if (leftMargin || rightMargin) margin.push(b);
+    else main.push(b);
+  }
+  if (main.length === 0) return { margin: [], main: boxes.slice() };
+  return { margin, main };
+}
+
+function mergeMargin<T extends LayoutBox>(main: T[], margin: T[]): T[] {
+  if (margin.length === 0) return main;
+  const all = main.length > 0 ? main : margin;
+  const pageTop = Math.max(...all.map((b) => b.y), ...margin.map((b) => b.y));
+  const pageBottom = Math.min(...all.map((b) => b.y2), ...margin.map((b) => b.y2));
+  const floor = pageBottom + Math.max(pageTop - pageBottom, 1) * 0.15;
+  const headers: T[] = [];
+  const footers: T[] = [];
+  for (const b of margin) {
+    if (b.y > floor) headers.push(b);
+    else footers.push(b);
+  }
+  return [...rowSort(headers), ...main, ...rowSort(footers)];
 }
 
 function xycut<T extends LayoutBox>(boxes: T[], depth: number): T[] {
@@ -158,9 +237,7 @@ function xycut<T extends LayoutBox>(boxes: T[], depth: number): T[] {
 
   const hGap = findHorizontalGap(boxes);
   const vGap = findVerticalGap(boxes);
-  const analysis = vGap
-    ? analyzeVerticalCut(boxes, vGap.split, hGap?.gap ?? 0, vGap.gap)
-    : undefined;
+  const analysis = vGap ? analyzeVerticalCut(boxes, vGap.split) : undefined;
 
   if (analysis && vGap) {
     const bands = splitVerticalBands(boxes, vGap.split, analysis);
@@ -171,6 +248,23 @@ function xycut<T extends LayoutBox>(boxes: T[], depth: number): T[] {
         ...xycut(bands.right, depth + 1),
         ...xycut(bands.bottom, depth + 1),
       ];
+    }
+    const parts = partitionX(boxes, vGap.split);
+    if (parts) return [...xycut(parts[0], depth + 1), ...xycut(parts[1], depth + 1)];
+  }
+
+  if (vGap && columnOverlap(boxes, vGap.split)) {
+    const loose = columnBand(boxes, vGap.split);
+    if (loose) {
+      const bands = splitVerticalBands(boxes, vGap.split, loose);
+      if (bands) {
+        return [
+          ...xycut(bands.top, depth + 1),
+          ...xycut(bands.left, depth + 1),
+          ...xycut(bands.right, depth + 1),
+          ...xycut(bands.bottom, depth + 1),
+        ];
+      }
     }
     const parts = partitionX(boxes, vGap.split);
     if (parts) return [...xycut(parts[0], depth + 1), ...xycut(parts[1], depth + 1)];
@@ -188,6 +282,17 @@ function xycut<T extends LayoutBox>(boxes: T[], depth: number): T[] {
 }
 
 function fallbackSort<T extends LayoutBox>(boxes: T[]): T[] {
+  if (boxes.length >= 3) {
+    const vGap = findVerticalGap(boxes);
+    if (vGap && columnOverlap(boxes, vGap.split)) {
+      const parts = partitionX(boxes, vGap.split);
+      if (parts) return [...rowSort(parts[0]), ...rowSort(parts[1])];
+    }
+  }
+  return rowSort(boxes);
+}
+
+function rowSort<T extends LayoutBox>(boxes: T[]): T[] {
   return boxes.slice().sort((a, b) => {
     const ya = Math.round(a.y / Y_BUCKET);
     const yb = Math.round(b.y / Y_BUCKET);
@@ -227,14 +332,34 @@ function findHorizontalGap(boxes: LayoutBox[]): Gap | undefined {
 
 function findVerticalGap(boxes: LayoutBox[]): Gap | undefined {
   if (boxes.length < 2) return undefined;
+  const fromEdges = verticalGapFromEdges(boxes);
+  if (fromEdges && fromEdges.gap >= MIN_GAP) return fromEdges;
+
+  const minX = Math.min(...boxes.map((b) => b.x));
+  const maxX = Math.max(...boxes.map((b) => b.x2));
+  const regionWidth = Math.max(maxX - minX, 1);
+  const narrow = regionWidth * NARROW_WIDTH_RATIO;
+  const filtered = boxes.filter((b) => b.x2 - b.x >= narrow);
+  if (filtered.length >= 2 && filtered.length < boxes.length) {
+    const retry = verticalGapFromEdges(filtered);
+    if (retry && retry.gap >= MIN_GAP && (!fromEdges || retry.gap > fromEdges.gap)) return retry;
+  }
+
+  return verticalGapFromCenters(boxes);
+}
+
+function verticalGapFromEdges(boxes: LayoutBox[]): Gap | undefined {
   const minX = Math.min(...boxes.map((b) => b.x));
   const maxX = Math.max(...boxes.map((b) => b.x2));
   const contentWidth = Math.max(maxX - minX, 1);
   const spanThreshold = contentWidth * SPAN_RATIO;
+  const mid = (minX + maxX) / 2;
+  const half = contentWidth * 0.5;
 
   let intervals = boxes.flatMap((b) => {
     const w = b.x2 - b.x;
     if (w > spanThreshold) return [];
+    if (w < half && b.x < mid && b.x2 > mid) return [];
     const left = b.x + BBOX_SHRINK;
     const right = b.x2 - BBOX_SHRINK;
     return right > left ? [{ left, right }] : [];
@@ -264,45 +389,39 @@ function findVerticalGap(boxes: LayoutBox[]): Gap | undefined {
       bestX = (merged[i - 1]!.right + merged[i]!.left) / 2;
     }
   }
-
-  if (bestX === undefined) {
-    const centers = boxes
-      .filter((b) => {
-        const w = b.x2 - b.x;
-        return w >= MIN_COL_WIDTH && w <= spanThreshold;
-      })
-      .map((b) => (b.x + b.x2) / 2)
-      .sort((a, b) => a - b);
-    let candidateX: number | undefined;
-    let candidateGap = 0;
-    for (let i = 1; i < centers.length; i += 1) {
-      const gap = centers[i]! - centers[i - 1]!;
-      if (gap > candidateGap && gap >= MIN_CENTER_GAP) {
-        candidateGap = gap;
-        candidateX = (centers[i - 1]! + centers[i]!) / 2;
-      }
-    }
-    if (candidateX !== undefined) {
-      const rightMinLeft = Math.min(
-        ...boxes.filter((b) => (b.x + b.x2) / 2 >= candidateX).map((b) => b.x),
-      );
-      if (rightMinLeft >= candidateX * 0.85) {
-        bestX = candidateX;
-        bestGap = candidateGap;
-      }
-    }
-  }
-
   return bestX === undefined ? undefined : { split: bestX, gap: bestGap };
 }
 
-function analyzeVerticalCut(
-  boxes: LayoutBox[],
-  splitX: number,
-  horizontalGap: number,
-  verticalGap: number,
-): VerticalCut | undefined {
-  if (boxes.length < 4) return undefined;
+function verticalGapFromCenters(boxes: LayoutBox[]): Gap | undefined {
+  const minX = Math.min(...boxes.map((b) => b.x));
+  const maxX = Math.max(...boxes.map((b) => b.x2));
+  const spanThreshold = Math.max(maxX - minX, 1) * SPAN_RATIO;
+  const centers = boxes
+    .filter((b) => {
+      const w = b.x2 - b.x;
+      return w >= MIN_COL_WIDTH && w <= spanThreshold;
+    })
+    .map((b) => (b.x + b.x2) / 2)
+    .sort((a, b) => a - b);
+  let candidateX: number | undefined;
+  let candidateGap = 0;
+  for (let i = 1; i < centers.length; i += 1) {
+    const gap = centers[i]! - centers[i - 1]!;
+    if (gap > candidateGap && gap >= MIN_CENTER_GAP) {
+      candidateGap = gap;
+      candidateX = (centers[i - 1]! + centers[i]!) / 2;
+    }
+  }
+  if (candidateX === undefined) return undefined;
+  const rightMinLeft = Math.min(
+    ...boxes.filter((b) => (b.x + b.x2) / 2 >= candidateX).map((b) => b.x),
+  );
+  if (rightMinLeft < candidateX * 0.85) return undefined;
+  return { split: candidateX, gap: candidateGap };
+}
+
+function analyzeVerticalCut(boxes: LayoutBox[], splitX: number): VerticalCut | undefined {
+  if (boxes.length < 3) return undefined;
   const minX = Math.min(...boxes.map((b) => b.x));
   const maxX = Math.max(...boxes.map((b) => b.x2));
   const spanningWidth = Math.max(maxX - minX, 1) * SPANNING_WIDTH;
@@ -333,13 +452,13 @@ function analyzeVerticalCut(
     }
   }
 
-  if (leftCount < 2 || rightCount < 2) return undefined;
+  if (leftCount < 1 || rightCount < 1) return undefined;
   const leftHeight = Math.max(leftTop - leftBottom, 0);
   const rightHeight = Math.max(rightTop - rightBottom, 0);
   if (leftHeight <= 0 || rightHeight <= 0) return undefined;
   const overlap = Math.max(Math.min(leftTop, rightTop) - Math.max(leftBottom, rightBottom), 0);
   const overlapRatio = overlap / Math.min(leftHeight, rightHeight);
-  if (overlapRatio < 0.35 || verticalGap < horizontalGap * 0.5) return undefined;
+  if (overlapRatio < 0.35) return undefined;
 
   const sharedTop = Math.min(leftTop, rightTop);
   const sharedBottom = Math.max(leftBottom, rightBottom);
@@ -350,6 +469,58 @@ function analyzeVerticalCut(
   );
   if (ambiguous) return undefined;
   return { sharedTop, sharedBottom };
+}
+
+function columnBand(boxes: LayoutBox[], splitX: number): VerticalCut | undefined {
+  let leftTop = Number.NEGATIVE_INFINITY;
+  let leftBottom = Number.POSITIVE_INFINITY;
+  let rightTop = Number.NEGATIVE_INFINITY;
+  let rightBottom = Number.POSITIVE_INFINITY;
+  let leftCount = 0;
+  let rightCount = 0;
+  for (const b of boxes) {
+    const crosses = b.x < splitX - SPLIT_MARGIN && b.x2 > splitX + SPLIT_MARGIN;
+    if (crosses) continue;
+    if ((b.x + b.x2) / 2 < splitX) {
+      leftCount += 1;
+      leftTop = Math.max(leftTop, b.y);
+      leftBottom = Math.min(leftBottom, b.y2);
+    } else {
+      rightCount += 1;
+      rightTop = Math.max(rightTop, b.y);
+      rightBottom = Math.min(rightBottom, b.y2);
+    }
+  }
+  if (leftCount === 0 || rightCount === 0) return undefined;
+  const sharedTop = Math.min(leftTop, rightTop);
+  const sharedBottom = Math.max(leftBottom, rightBottom);
+  if (sharedTop <= sharedBottom) return undefined;
+  return { sharedTop, sharedBottom };
+}
+
+function columnOverlap(boxes: LayoutBox[], splitX: number): boolean {
+  let leftTop = Number.NEGATIVE_INFINITY;
+  let leftBottom = Number.POSITIVE_INFINITY;
+  let rightTop = Number.NEGATIVE_INFINITY;
+  let rightBottom = Number.POSITIVE_INFINITY;
+  let leftCount = 0;
+  let rightCount = 0;
+  for (const b of boxes) {
+    if ((b.x + b.x2) / 2 < splitX) {
+      leftCount += 1;
+      leftTop = Math.max(leftTop, b.y);
+      leftBottom = Math.min(leftBottom, b.y2);
+    } else {
+      rightCount += 1;
+      rightTop = Math.max(rightTop, b.y);
+      rightBottom = Math.min(rightBottom, b.y2);
+    }
+  }
+  if (leftCount === 0 || rightCount === 0) return false;
+  const leftHeight = Math.max(leftTop - leftBottom, 1);
+  const rightHeight = Math.max(rightTop - rightBottom, 1);
+  const overlap = Math.max(Math.min(leftTop, rightTop) - Math.max(leftBottom, rightBottom), 0);
+  return overlap / Math.min(leftHeight, rightHeight) >= COLUMN_OVERLAP;
 }
 
 function splitVerticalBands<T extends LayoutBox>(
@@ -377,7 +548,7 @@ function splitVerticalBands<T extends LayoutBox>(
     if ((b.x + b.x2) / 2 < splitX) left.push(b);
     else right.push(b);
   }
-  if (left.length === 0 || right.length === 0) return undefined;
+  if (left.length < 2 || right.length < 2) return undefined;
   return { top, left, right, bottom };
 }
 
