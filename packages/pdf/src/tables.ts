@@ -710,6 +710,7 @@ function looksLikeDateFragments(grid: string[][]): boolean {
   if (cells.length < 8) return false;
   if (grid[0]!.length < 6) return false;
   if (cells.some((c) => [...c].length > 5)) return false;
+  if (!cells.some((c) => c.includes('/'))) return false;
   const frag = cells.filter((c) => /^(?:\d{1,4}\/?|\/?\d{1,4})$/.test(c.trim())).length;
   return frag / cells.length >= 0.6;
 }
@@ -767,16 +768,14 @@ function looksLikeNumericScatter(grid: string[][]): boolean {
 
 function looksLikeLabeledTicks(grid: string[][]): boolean {
   const filled = grid.map((row) => row.filter((c) => c.length > 0)).filter((r) => r.length >= 2);
-  const percentRow = filled.some(
-    (r) =>
-      r.filter((c) => /%/.test(c) || /^-?[\d.,]+$/.test(c.trim())).length >=
-        Math.ceil(r.length * 0.7) && r.every((c) => wordCount(c) <= 2),
-  );
-  const labelRow = filled.some(
-    (r) =>
-      r.length >= 3 && r.every((c) => wordCount(c) <= 2 && /[\p{L}]/u.test(c) && !/\d/.test(c)),
-  );
-  return percentRow && labelRow;
+  const isPercentRow = (r: string[]): boolean =>
+    r.filter((c) => /%/.test(c) || /^-?[\d.,]+$/.test(c.trim())).length >=
+      Math.ceil(r.length * 0.7) && r.every((c) => wordCount(c) <= 2);
+  const isLabelRow = (r: string[]): boolean =>
+    r.length >= 3 && r.every((c) => wordCount(c) <= 2 && /[\p{L}]/u.test(c) && !/\d/.test(c));
+  const percentAt = filled.findIndex(isPercentRow);
+  const labelAt = filled.findIndex(isLabelRow);
+  return percentAt >= 0 && labelAt >= 0 && percentAt < labelAt;
 }
 
 function looksLikeHeaderlessJunk(grid: string[][]): boolean {
@@ -792,6 +791,7 @@ function looksLikeHeaderlessJunk(grid: string[][]): boolean {
   const labels = r0.filter((c) => /[\p{L}]/u.test(c) && !isNumericToken(c)).length;
   const years = r0.filter((c) => isNumericToken(c)).length;
   if (labels >= 1 && years >= 2) return false;
+  if (labels >= Math.ceil(r0.length * 0.6)) return false;
   return true;
 }
 

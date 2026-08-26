@@ -424,6 +424,62 @@ describe('ruled table detection', () => {
     expect(detectTables(items, [], [])).toHaveLength(0);
   });
 
+  it('keeps a borderless percent summary with category headers', () => {
+    const items = [
+      { text: 'North', x: 20, y: 80, width: 30, page: 1 },
+      { text: 'South', x: 80, y: 80, width: 30, page: 1 },
+      { text: 'East', x: 140, y: 80, width: 24, page: 1 },
+      { text: 'West', x: 200, y: 80, width: 24, page: 1 },
+      { text: '12%', x: 22, y: 60, width: 18, page: 1 },
+      { text: '18%', x: 82, y: 60, width: 18, page: 1 },
+      { text: '9%', x: 142, y: 60, width: 14, page: 1 },
+      { text: '21%', x: 202, y: 60, width: 18, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|North|South|East|West|');
+    expect(tables[0]!.markdown).toContain('|12%|18%|9%|21%|');
+  });
+
+  it('keeps a two-row table with quarter or ordinal headers', () => {
+    const items = [
+      { text: 'Q1', x: 20, y: 80, width: 14, page: 1 },
+      { text: 'Q2', x: 80, y: 80, width: 14, page: 1 },
+      { text: 'Q3', x: 140, y: 80, width: 14, page: 1 },
+      { text: '10', x: 22, y: 60, width: 14, page: 1 },
+      { text: '20', x: 82, y: 60, width: 14, page: 1 },
+      { text: '30', x: 142, y: 60, width: 14, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|Q1|Q2|Q3|');
+    expect(tables[0]!.markdown).toContain('|10|20|30|');
+  });
+
+  it('keeps a ruled numeric matrix', () => {
+    const xs = [20, 50, 80, 110, 140, 170, 200];
+    const items = [
+      ...xs.slice(0, 6).map((x, i) => ({ text: String(i), x: x + 4, y: 82, width: 10, page: 1 })),
+      ...xs.slice(0, 6).map((x, i) => ({
+        text: String(10 + i),
+        x: x + 4,
+        y: 52,
+        width: 14,
+        page: 1,
+      })),
+    ];
+    const rects = [
+      { x: 20, y: 90, width: 180, height: 1, page: 1 },
+      { x: 20, y: 70, width: 180, height: 1, page: 1 },
+      { x: 20, y: 40, width: 180, height: 1, page: 1 },
+      ...xs.map((x) => ({ x, y: 40, width: 1, height: 50, page: 1 })),
+    ];
+    const tables = detectTables(items, [], rects);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|0|1|2|3|4|5|');
+    expect(tables[0]!.markdown).toContain('|10|11|12|13|14|15|');
+  });
+
   it('does not treat rotated axis labels as table cells', () => {
     const items = [
       { text: '0', x: 40, y: 50, width: 0, page: 1, dx: 0, dy: 1 },
