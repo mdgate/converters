@@ -555,13 +555,13 @@ function splitVerticalBands<T extends LayoutBox>(
 }
 
 function isColumnGutter(left: LayoutBox[], right: LayoutBox[], all: LayoutBox[]): boolean {
-  const leftRight = Math.max(...left.map((b) => b.x2));
-  const rightLeft = Math.min(...right.map((b) => b.x));
+  const leftRight = Math.max(...left.map((b) => b.x2)) - BBOX_SHRINK;
+  const rightLeft = Math.min(...right.map((b) => b.x)) + BBOX_SHRINK;
   const gap = rightLeft - leftRight;
   if (gap <= MIN_GAP) return false;
   const minX = Math.min(...all.map((b) => b.x));
   const maxX = Math.max(...all.map((b) => b.x2));
-  const maxGutter = Math.max(36, Math.max(maxX - minX, 1) * 0.15);
+  const maxGutter = Math.max(72, Math.max(maxX - minX, 1) * 0.3);
   return gap <= maxGutter;
 }
 

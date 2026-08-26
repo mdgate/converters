@@ -130,6 +130,30 @@ describe('orderBoxes', () => {
     expect(ordered.map((b) => b.id)).toEqual(['T', 'L1', 'L2', 'L3', 'C1', 'L4']);
   });
 
+  it('reads wrap text then a one-line caption when one wrap line is longer', () => {
+    const ordered = orderBoxes([
+      { x: 20, y: 200, x2: 240, y2: 186, id: 'T' },
+      { x: 20, y: 170, x2: 110, y2: 158, id: 'L1' },
+      { x: 20, y: 150, x2: 125, y2: 138, id: 'L2' },
+      { x: 20, y: 130, x2: 110, y2: 118, id: 'L3' },
+      { x: 130, y: 150, x2: 230, y2: 138, id: 'C1' },
+      { x: 20, y: 100, x2: 240, y2: 86, id: 'L4' },
+    ]);
+    expect(ordered.map((b) => b.id)).toEqual(['T', 'L1', 'L2', 'L3', 'C1', 'L4']);
+  });
+
+  it('reads wrap text then a one-line caption seated farther under a figure', () => {
+    const ordered = orderBoxes([
+      { x: 20, y: 200, x2: 240, y2: 186, id: 'T' },
+      { x: 20, y: 170, x2: 110, y2: 158, id: 'L1' },
+      { x: 20, y: 150, x2: 110, y2: 138, id: 'L2' },
+      { x: 20, y: 130, x2: 110, y2: 118, id: 'L3' },
+      { x: 160, y: 150, x2: 230, y2: 138, id: 'C1' },
+      { x: 20, y: 100, x2: 240, y2: 86, id: 'L4' },
+    ]);
+    expect(ordered.map((b) => b.id)).toEqual(['T', 'L1', 'L2', 'L3', 'C1', 'L4']);
+  });
+
   it('keeps a same-baseline label and continuation across a wide hole', () => {
     const ordered = orderBoxes([
       { x: 56, y: 280, x2: 160, y2: 268, id: 'ABOVE' },
