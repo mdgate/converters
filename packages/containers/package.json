@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/containers",
-  "version": "0.6.24",
+  "version": "0.6.25",
   "description": "mdgate container parsing: ZIP/OPC packages, OLE compound files, XML",
   "type": "module",
   "license": "MIT",
@@ -28,8 +28,8 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/core": "0.6.24",
-    "@mdgate/utils": "0.6.24"
+    "@mdgate/core": "0.6.25",
+    "@mdgate/utils": "0.6.25"
   },
   "publishConfig": {
     "access": "public"

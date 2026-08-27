@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/visio",
-  "version": "0.6.24",
+  "version": "0.6.25",
   "description": "mdgate Visio converter (vsd/vsdx)",
   "type": "module",
   "license": "MIT",
@@ -28,11 +28,11 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.24",
-    "@mdgate/core": "0.6.24",
-    "@mdgate/document": "0.6.24",
-    "@mdgate/office-common": "0.6.24",
-    "@mdgate/utils": "0.6.24"
+    "@mdgate/containers": "0.6.25",
+    "@mdgate/core": "0.6.25",
+    "@mdgate/document": "0.6.25",
+    "@mdgate/office-common": "0.6.25",
+    "@mdgate/utils": "0.6.25"
   },
   "publishConfig": {
     "access": "public"
