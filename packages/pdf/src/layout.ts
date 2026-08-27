@@ -55,13 +55,104 @@ export function isUpright(item: { dx?: number; dy?: number }): boolean {
   return Math.abs(dy) <= Math.abs(dx) * 0.35;
 }
 
+function lineLetters(text: string): string {
+  return [...text].filter((c) => /\p{L}/u.test(c)).join('');
+}
+
+function isDropCapItem<T extends LineItem>(item: T, body: number, items: T[]): boolean {
+  const letters = lineLetters(item.text);
+  if (letters.length !== 1) return false;
+  if (item.text.trim().length > 1) return false;
+  if (item.fontSize < Math.max(body * 1.8, 18)) return false;
+  const em = item.fontSize;
+  for (const other of items) {
+    if (other === item || other.page !== item.page) continue;
+    if (Math.abs(other.fontSize - item.fontSize) > em * 0.25) continue;
+    if (Math.abs(other.y - item.y) > em * 0.3) continue;
+    if (lineLetters(other.text).length === 0) continue;
+    if (Math.abs(other.x - item.x) < em * 2.5) return false;
+  }
+  return true;
+}
+
+function pageBodyFontSize<T extends LineItem>(lines: T[][]): number {
+  const sizes: number[] = [];
+  for (const line of lines) {
+    for (const it of line) {
+      if (it.fontSize >= 8) sizes.push(it.fontSize);
+    }
+  }
+  if (sizes.length === 0) return 12;
+  sizes.sort((a, b) => a - b);
+  return sizes[Math.floor(sizes.length / 2)]!;
+}
+
+function findDropCapTarget<T extends LineItem>(
+  lines: T[][],
+  drop: T,
+  body: number,
+): T[] | undefined {
+  const capTop = drop.y + Math.max(drop.height, drop.fontSize) * 0.9;
+  let best: T[] | undefined;
+  let bestY = Number.NEGATIVE_INFINITY;
+  for (const line of lines) {
+    if (line[0]!.page !== drop.page) continue;
+    const others = line.filter((it) => it !== drop);
+    if (others.length === 0) continue;
+    const bodyish = others.filter((it) => it.fontSize <= body * 1.2);
+    if (bodyish.length === 0) continue;
+    const y = Math.max(...bodyish.map((it) => it.y));
+    if (y < drop.y - 4 || y > capTop + 2) continue;
+    const right = Math.min(...bodyish.map((it) => it.x));
+    if (right <= drop.x + Math.max(drop.fontSize * 0.15, 2)) continue;
+    if (y > bestY) {
+      bestY = y;
+      best = line;
+    }
+  }
+  return best;
+}
+
+function mergeDropCap<T extends LineItem>(drop: T, first: T): void {
+  const letter = drop.text.trim();
+  first.text = `${letter}${first.text.replace(/^\s+/, '')}`;
+  const right = Math.max(first.x + Math.max(first.width, 0), drop.x + Math.max(drop.width, 0));
+  first.x = Math.min(first.x, drop.x);
+  first.width = right - first.x;
+}
+
+/** Move a large first letter onto the top overlapping body line and glue it. */
+export function reattachDropCaps<T extends LineItem>(lines: T[][]): T[][] {
+  if (lines.length < 2) return lines;
+  const body = pageBodyFontSize(lines);
+  const all: T[] = [];
+  for (const line of lines) all.push(...line);
+  const drops: T[] = [];
+  for (const item of all) {
+    if (isDropCapItem(item, body, all)) drops.push(item);
+  }
+  if (drops.length === 0) return lines;
+  const taken = new Set<T>();
+  for (const drop of drops) {
+    if (taken.has(drop)) continue;
+    const target = findDropCapTarget(lines, drop, body);
+    if (!target) continue;
+    const first = target.find((it) => it !== drop);
+    if (!first) continue;
+    mergeDropCap(drop, first);
+    taken.add(drop);
+  }
+  if (taken.size === 0) return lines;
+  return lines.map((line) => line.filter((it) => !taken.has(it))).filter((line) => line.length > 0);
+}
+
 function groupAxisAligned<T extends LineItem>(items: T[]): T[][] {
   const gutters = detectGutters(items);
   const sorted = items.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
   const rows: T[][] = [];
   for (const item of sorted) {
     const last = rows[rows.length - 1];
-    const yTol = Math.max(3, item.fontSize * 0.25);
+    const yTol = Math.max(3, Math.min(last?.[0]?.fontSize ?? item.fontSize, item.fontSize) * 0.35);
     if (last && last[0]!.page === item.page && Math.abs(last[0]!.y - item.y) < yTol) {
       last.push(item);
     } else {

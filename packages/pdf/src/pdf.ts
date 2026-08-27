@@ -24,6 +24,7 @@ import {
   lineBox,
   orderBoxes,
   peelFootnoteLines,
+  reattachDropCaps,
 } from './layout.js';
 import { detectTables } from './tables.js';
 import { cmapFromTrueType } from './truetype.js';
@@ -1794,6 +1795,14 @@ function latin1Decode(data: Uint8Array): string {
   return s;
 }
 
+const LATIN_LIGATURES: Record<string, string> = {
+  '\uFB00': 'ff',
+  '\uFB01': 'fi',
+  '\uFB02': 'fl',
+  '\uFB03': 'ffi',
+  '\uFB04': 'ffl',
+};
+
 function stripInvisibles(text: string): string {
   let out = '';
   for (const ch of text) {
@@ -1807,7 +1816,11 @@ function stripInvisibles(text: string): string {
     ) {
       continue;
     }
-    out += ch;
+    if (ch === '\u00a0' || ch === '\u202f' || ch === '\u205f' || ch === '\u3000') {
+      out += ' ';
+      continue;
+    }
+    out += LATIN_LIGATURES[ch] ?? ch;
   }
   return normalizeCjkText(out);
 }
@@ -2229,6 +2242,12 @@ function extractPage(
   const applyTjAdjust = (n: number): void => {
     if (!font) return;
     const dx = (-n / 1000) * fontSize * hscale;
+    if (n <= -120) {
+      const last = items[items.length - 1];
+      if (last && last.page === pageNo && last.text.length > 0 && !last.text.endsWith(' ')) {
+        last.text += ' ';
+      }
+    }
     tm = translateTextMatrix(tm, dx, 0);
   };
 
@@ -3345,9 +3364,16 @@ function isMathHeading(text: string): boolean {
 function isFalseIsolatedHeading(text: string): boolean {
   const t = text.trim();
   if (/^[\p{Ll}]/u.test(t)) return true;
-  if (/[:,]$/.test(t)) return true;
+  if (/[:,-]$/.test(t)) return true;
   if (/\band$/i.test(t)) return true;
   return isMathHeading(t);
+}
+
+function lineBodyFontSize(line: TextItem[]): number {
+  const sizes = line.map((it) => it.fontSize).sort((a, b) => a - b);
+  const mid = sizes[Math.floor(sizes.length / 2)] ?? 12;
+  const body = sizes.filter((s) => s <= mid * 1.35);
+  return body[Math.floor(body.length / 2)] ?? mid;
 }
 
 function isListItem(text: string): boolean {
@@ -3416,7 +3442,7 @@ function itemsToMarkdown(
     for (const idx of table.itemIndices) claimed.add(idx);
   }
   const remaining = bodyItems.filter((_, i) => !claimed.has(i));
-  const rawLines = groupIntoLines(remaining);
+  const rawLines = reattachDropCaps(groupIntoLines(remaining));
   const flow: FlowBlock[] = [
     ...rawLines.map((line) => lineFlow(line)),
     ...tables.map((t) => ({
@@ -3478,35 +3504,42 @@ function itemsToMarkdown(
   }
 
   const sizeCounts = new Map<number, number>();
+  const charCounts = new Map<number, number>();
   for (const line of lines) {
-    const fs = line[0]!.fontSize;
-    if (fs >= 9) {
-      const key = Math.round(fs * 10);
-      sizeCounts.set(key, (sizeCounts.get(key) ?? 0) + 1);
-    }
+    const fs = lineBodyFontSize(line);
+    if (fs < 9) continue;
+    const key = Math.round(fs * 10);
+    sizeCounts.set(key, (sizeCounts.get(key) ?? 0) + 1);
+    const n = line.map((it) => it.text).join('').length;
+    charCounts.set(key, (charCounts.get(key) ?? 0) + n);
   }
+  const counts = charCounts.size > 0 ? charCounts : sizeCounts;
   let base = 12;
-  if (sizeCounts.size > 0) {
+  if (counts.size > 0) {
     let bestKey = 120;
     let bestCount = -1;
-    for (const [key, count] of sizeCounts) {
+    for (const [key, count] of counts) {
       if (count > bestCount || (count === bestCount && key < bestKey)) {
         bestCount = count;
         bestKey = key;
       }
     }
-    base = bestKey / 10;
+    let chosen = bestKey;
+    for (const [key, count] of counts) {
+      if (key > chosen && key <= bestKey * 1.4 && count >= bestCount * 0.25) chosen = key;
+    }
+    base = chosen / 10;
   }
 
   const tiers: number[] = [];
   for (const line of lines) {
-    const fs = line[0]!.fontSize;
+    const fs = lineBodyFontSize(line);
     if (fs / base < 1.2) continue;
     const text = line
       .map((it) => it.text)
       .join('')
       .trim();
-    if (!text || ![...text].some((c) => /\p{L}/u.test(c))) continue;
+    if (text.length <= 3 || ![...text].some((c) => /\p{L}/u.test(c))) continue;
     if (!tiers.some((t) => Math.abs(t - fs) < 0.5)) tiers.push(fs);
   }
   tiers.sort((a, b) => b - a);
@@ -3537,7 +3570,7 @@ function itemsToMarkdown(
       .trim();
     const wc = plain.split(/\s+/).filter(Boolean).length;
     if (wc < 1 || wc > 6 || plain.length <= 3) continue;
-    if (line[0]!.fontSize < base * 0.95) continue;
+    if (lineBodyFontSize(line) < base * 0.95) continue;
     if (isFalseIsolatedHeading(plain)) continue;
     const prev = lines[i - 1];
     const next = lines[i + 1];
@@ -3549,7 +3582,7 @@ function itemsToMarkdown(
   const headerLevel = (i: number, line: TextItem[], plain: string): number | undefined => {
     if (plain.length <= 3 || plain.split(/\s+/).filter(Boolean).length > 15) return undefined;
     if (isMathHeading(plain) || /^[\p{Ll}]/u.test(plain)) return undefined;
-    const fs = line[0]!.fontSize;
+    const fs = lineBodyFontSize(line);
     const ratio = fs / base;
     if (ratio >= 1.2) {
       for (let t = 0; t < tiers.length; t += 1) {
