@@ -2205,7 +2205,7 @@ function openMarkedFrame(
   const mcid = asNumber(dictGet(doc, props, '/MCID'));
   if (mcid === undefined) return { artifact };
   const fromStruct = structActual.get(mcid);
-  if (fromStruct) return { artifact, actualText: fromStruct };
+  if (fromStruct !== undefined) return { artifact, actualText: fromStruct };
   return { artifact };
 }
 
@@ -2227,6 +2227,22 @@ function loadStructActualText(doc: PdfDocument, page: PdfDict): Map<number, stri
   return out;
 }
 
+function bindStructActual(
+  out: Map<number, string>,
+  mcid: number,
+  actual: string | undefined,
+  matchesPage: boolean,
+  consumed?: { used: boolean },
+): void {
+  if (!actual || !matchesPage) return;
+  if (consumed?.used) {
+    if (!out.has(mcid)) out.set(mcid, '');
+    return;
+  }
+  out.set(mcid, actual);
+  if (consumed) consumed.used = true;
+}
+
 function walkStructActual(
   doc: PdfDocument,
   node: PdfValue | undefined,
@@ -2235,17 +2251,22 @@ function walkStructActual(
   inheritedActual: string | undefined,
   out: Map<number, string>,
   seen: Set<PdfDict>,
+  consumed?: { used: boolean },
 ): void {
   if (node === undefined) return;
   if (typeof node === 'number' && Number.isFinite(node)) {
-    if (inheritedActual && (inheritedPage === undefined || inheritedPage === page)) {
-      out.set(Math.trunc(node), inheritedActual);
-    }
+    bindStructActual(
+      out,
+      Math.trunc(node),
+      inheritedActual,
+      inheritedPage === undefined || inheritedPage === page,
+      consumed,
+    );
     return;
   }
   if (Array.isArray(node)) {
     for (const item of node) {
-      walkStructActual(doc, item, page, inheritedPage, inheritedActual, out, seen);
+      walkStructActual(doc, item, page, inheritedPage, inheritedActual, out, seen, consumed);
     }
     return;
   }
@@ -2256,14 +2277,21 @@ function walkStructActual(
   const thisPage = isDict(pg) ? pg : inheritedPage;
   const own = markedString(dictGet(doc, dict, '/ActualText'));
   const actual = own ?? inheritedActual;
+  const nextConsumed = own ? { used: false } : consumed;
   if (nameOf(dictGet(doc, dict, '/Type')) === '/MCR') {
     const mcid = asNumber(dictGet(doc, dict, '/MCID'));
-    if (mcid !== undefined && actual && (thisPage === undefined || thisPage === page)) {
-      out.set(mcid, actual);
+    if (mcid !== undefined) {
+      bindStructActual(
+        out,
+        mcid,
+        actual,
+        thisPage === undefined || thisPage === page,
+        nextConsumed,
+      );
     }
     return;
   }
-  walkStructActual(doc, dictGet(doc, dict, '/K'), page, thisPage, actual, out, seen);
+  walkStructActual(doc, dictGet(doc, dict, '/K'), page, thisPage, actual, out, seen, nextConsumed);
 }
 
 type ClipState =

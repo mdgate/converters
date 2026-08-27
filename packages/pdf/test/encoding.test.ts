@@ -439,6 +439,37 @@ ET
     expect(md).toContain('314');
   });
 
+  it('uses parent StructTreeRoot ActualText once across child MCIDs', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(3) Tj
+/Span << /MCID 0 >> BDC
+(x) Tj
+EMC
+/Span << /MCID 1 >> BDC
+(y) Tj
+EMC
+(4) Tj
+ET
+`;
+    const md = toMarkdownFromPdf(
+      objectsPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 6 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n',
+        '6 0 obj\n<< /Type /StructTreeRoot /K [7 0 R] >>\nendobj\n',
+        '7 0 obj\n<< /Type /StructElem /S /Span /P 6 0 R /Pg 3 0 R /K [0 1] /ActualText <FEFF0031> >>\nendobj\n',
+      ]),
+    );
+    expect(md).toContain('314');
+    expect(md).not.toContain('311');
+    expect(md).not.toContain('x');
+    expect(md).not.toContain('y');
+  });
+
   it('maps small-cap Differences names to the printed letters', () => {
     const content = `BT
 /F1 12 Tf
