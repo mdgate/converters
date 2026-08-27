@@ -2134,6 +2134,96 @@ function trackMarkedArtifact(stack: boolean[], op: string, args: PdfValue[]): vo
   }
 }
 
+type ClipState =
+  | { t: 'all' }
+  | { t: 'empty' }
+  | { t: 'rect'; x0: number; y0: number; x1: number; y1: number };
+
+function clipRect(x0: number, y0: number, x1: number, y1: number): ClipState {
+  const a = Math.min(x0, x1);
+  const b = Math.min(y0, y1);
+  const c = Math.max(x0, x1);
+  const d = Math.max(y0, y1);
+  if (c <= a || d <= b) return { t: 'empty' };
+  return { t: 'rect', x0: a, y0: b, x1: c, y1: d };
+}
+
+function clipFromPdfBox(box: PdfValue | undefined, ctm?: number[]): ClipState | undefined {
+  if (!Array.isArray(box) || box.length < 4) return undefined;
+  const x0 = asNumber(box[0]);
+  const y0 = asNumber(box[1]);
+  const x1 = asNumber(box[2]);
+  const y1 = asNumber(box[3]);
+  if (x0 === undefined || y0 === undefined || x1 === undefined || y1 === undefined) {
+    return undefined;
+  }
+  if (!ctm) return clipRect(x0, y0, x1, y1);
+  const p0 = applyMat(ctm, x0, y0);
+  const p1 = applyMat(ctm, x1, y0);
+  const p2 = applyMat(ctm, x1, y1);
+  const p3 = applyMat(ctm, x0, y1);
+  const xs = [p0[0], p1[0], p2[0], p3[0]];
+  const ys = [p0[1], p1[1], p2[1], p3[1]];
+  return clipRect(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+}
+
+function inheritedBox(doc: PdfDocument, page: PdfDict, key: string): PdfValue | undefined {
+  let node: PdfValue | undefined = page;
+  const seen = new Set<PdfDict>();
+  while (isDict(node) && !seen.has(node)) {
+    seen.add(node);
+    const v = dictGet(doc, node, key);
+    if (Array.isArray(v) && v.length >= 4) return v;
+    node = dictGet(doc, node, '/Parent');
+  }
+  return undefined;
+}
+
+function pageClip(doc: PdfDocument, page: PdfDict): ClipState {
+  return (
+    clipFromPdfBox(inheritedBox(doc, page, '/CropBox')) ??
+    clipFromPdfBox(inheritedBox(doc, page, '/MediaBox')) ?? { t: 'all' }
+  );
+}
+
+function intersectClip(a: ClipState, b: ClipState): ClipState {
+  if (a.t === 'empty' || b.t === 'empty') return { t: 'empty' };
+  if (a.t === 'all') return b;
+  if (b.t === 'all') return a;
+  return clipRect(
+    Math.max(a.x0, b.x0),
+    Math.max(a.y0, b.y0),
+    Math.min(a.x1, b.x1),
+    Math.min(a.y1, b.y1),
+  );
+}
+
+function pathClip(path: [number, number][]): ClipState | undefined {
+  if (path.length < 2) return undefined;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const [x, y] of path) {
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x);
+    y1 = Math.max(y1, y);
+  }
+  const box = clipRect(x0, y0, x1, y1);
+  return box.t === 'rect' ? box : undefined;
+}
+
+function overlapsClip(clip: ClipState, x0: number, y0: number, x1: number, y1: number): boolean {
+  if (clip.t === 'empty') return false;
+  if (clip.t === 'all') return true;
+  const ax0 = Math.min(x0, x1);
+  const ax1 = Math.max(x0, x1);
+  const ay0 = Math.min(y0, y1);
+  const ay1 = Math.max(y0, y1);
+  return ax1 > clip.x0 && ax0 < clip.x1 && ay1 > clip.y0 && ay0 < clip.y1;
+}
+
 function extractPage(
   doc: PdfDocument,
   page: PdfDict,
@@ -2143,6 +2233,7 @@ function extractPage(
   startCtm: number[] = [1, 0, 0, 1, 0, 0],
   depth = 0,
   annotSeen: Set<PdfDict> = new Set(),
+  startClip?: ClipState,
 ): PageExtract {
   const fonts = loadPageFonts(doc, page);
   const contents = dictGet(doc, page, '/Contents');
@@ -2165,8 +2256,10 @@ function extractPage(
   const items: TextItem[] = [];
   const lines: StrokeLine[] = [];
   const rects: PdfRect[] = [];
-  const gs: { ctm: number[]; lw: number }[] = [];
+  const pageVisible = startClip ?? pageClip(doc, page);
+  const gs: { ctm: number[]; lw: number; clip: ClipState }[] = [];
   let ctm = startCtm.slice();
+  let clip = pageVisible;
   let lineWidth = 1;
   let tm = [1, 0, 0, 1, 0, 0];
   let tlm = [1, 0, 0, 1, 0, 0];
@@ -2202,11 +2295,19 @@ function extractPage(
         widthAcc = 0;
         return;
       }
+      const width = pageAdvanceX(widthAcc, tm, ctm);
+      const h = rendered || 1;
+      if (!overlapsClip(clip, startX, startY - h, startX + width, startY + h)) {
+        buf = '';
+        widthAcc = 0;
+        startX = undefined;
+        return;
+      }
       items.push({
         text: buf,
         x: startX,
         y: startY,
-        width: pageAdvanceX(widthAcc, tm, ctm),
+        width,
         height: rendered,
         font: font!.name,
         fontSize: rendered,
@@ -2243,9 +2344,12 @@ function extractPage(
     if (!font) return;
     const dx = (-n / 1000) * fontSize * hscale;
     if (n <= -120) {
-      const last = items[items.length - 1];
-      if (last && last.page === pageNo && last.text.length > 0 && !last.text.endsWith(' ')) {
-        last.text += ' ';
+      const [x, y] = applyMat(mulMat(tm, ctm), 0, rise);
+      if (overlapsClip(clip, x, y, x, y)) {
+        const last = items[items.length - 1];
+        if (last && last.page === pageNo && last.text.length > 0 && !last.text.endsWith(' ')) {
+          last.text += ' ';
+        }
       }
     }
     tm = translateTextMatrix(tm, dx, 0);
@@ -2263,12 +2367,13 @@ function extractPage(
     }
     const op = tok.v;
     if (op === 'q') {
-      gs.push({ ctm: ctm.slice(), lw: lineWidth });
+      gs.push({ ctm: ctm.slice(), lw: lineWidth, clip });
     } else if (op === 'Q') {
       const prev = gs.pop();
       if (prev) {
         ctm = prev.ctm;
         lineWidth = prev.lw;
+        clip = prev.clip;
       }
     } else if (op === 'cm' && args.length >= 6) {
       ctm = mulMat(
@@ -2349,26 +2454,40 @@ function extractPage(
         const ys = [p0[1], p1[1], p2[1], p3[1]];
         const minX = Math.min(...xs);
         const minY = Math.min(...ys);
-        rects.push({
-          x: minX,
-          y: minY,
-          width: Math.max(...xs) - minX,
-          height: Math.max(...ys) - minY,
-          page: pageNo,
-        });
+        const maxX = Math.max(...xs);
+        const maxY = Math.max(...ys);
+        if (overlapsClip(clip, minX, minY, maxX, maxY)) {
+          rects.push({
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY,
+            page: pageNo,
+          });
+        }
       }
     } else if (op === 'h') {
       if (pathStart) path.push(pathStart);
+    } else if (op === 'W' || op === 'W*') {
+      const box = pathClip(path);
+      if (box) clip = intersectClip(clip, box);
     } else if (op === 'S' || op === 's') {
       if (op === 's' && pathStart) path.push(pathStart);
       if (!marked.includes(true)) {
         for (let i = 1; i < path.length; i += 1) {
           const a = path[i - 1]!;
           const b = path[i]!;
-          lines.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], page: pageNo });
+          if (overlapsClip(clip, a[0], a[1], b[0], b[1])) {
+            lines.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], page: pageNo });
+          }
         }
         const filled = pathAsRect(path, pageNo);
-        if (filled) rects.push(filled);
+        if (
+          filled &&
+          overlapsClip(clip, filled.x, filled.y, filled.x + filled.width, filled.y + filled.height)
+        ) {
+          rects.push(filled);
+        }
       }
       path = [];
     } else if (op === 'Do') {
@@ -2388,6 +2507,7 @@ function extractPage(
           inArtifact ? [] : rects,
           stats,
           depth,
+          clip,
         );
       }
     } else if (
@@ -2405,12 +2525,19 @@ function extractPage(
           if (pathStart) path.push(pathStart);
         }
         const filled = pathAsRect(path, pageNo);
-        if (filled) rects.push(filled);
+        if (
+          filled &&
+          overlapsClip(clip, filled.x, filled.y, filled.x + filled.width, filled.y + filled.height)
+        ) {
+          rects.push(filled);
+        }
         if (op === 'B' || op === 'B*' || op === 'b' || op === 'b*') {
           for (let i = 1; i < path.length; i += 1) {
             const a = path[i - 1]!;
             const b = path[i]!;
-            lines.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], page: pageNo });
+            if (overlapsClip(clip, a[0], a[1], b[0], b[1])) {
+              lines.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], page: pageNo });
+            }
           }
         }
       }
@@ -2434,8 +2561,23 @@ function extractPage(
   }
 
   markDecorations(items, lines, collectHttpLinkRects(doc, page));
-  extractAnnotationAppearances(doc, page, pageResources, pageNo, items, lines, rects, stats, depth);
-  items.push(...collectAnnotationItems(doc, page, pageNo, annotSeen, depth === 0));
+  extractAnnotationAppearances(
+    doc,
+    page,
+    pageResources,
+    pageNo,
+    items,
+    lines,
+    rects,
+    stats,
+    depth,
+    pageVisible,
+  );
+  for (const it of collectAnnotationItems(doc, page, pageNo, annotSeen, depth === 0)) {
+    if (overlapsClip(pageVisible, it.x, it.y, it.x + it.width, it.y + it.height)) {
+      items.push(it);
+    }
+  }
   return { items, lines, rects, images, stats };
 }
 
@@ -2449,12 +2591,22 @@ function extractAnnotationAppearances(
   rects: PdfRect[],
   stats: DecodeStats,
   depth: number,
+  clip: ClipState,
 ): void {
   const annots = dictGet(doc, page, '/Annots');
   if (!Array.isArray(annots)) return;
   for (const a of annots) {
     const ad = deref(doc, a);
     if (!isDict(ad)) continue;
+    const rectClip = clipFromPdfBox(dictGet(doc, ad, '/Rect'));
+    if (
+      rectClip &&
+      (rectClip.t === 'empty' ||
+        (rectClip.t === 'rect' &&
+          !overlapsClip(clip, rectClip.x0, rectClip.y0, rectClip.x1, rectClip.y1)))
+    ) {
+      continue;
+    }
     const ap = dictGet(doc, ad, '/AP');
     if (!isDict(ap)) continue;
     const n = dictGet(doc, ap, '/N');
@@ -2479,6 +2631,7 @@ function extractAnnotationAppearances(
         rects,
         stats,
         depth,
+        { t: 'all' },
       );
     }
   }
@@ -2627,6 +2780,7 @@ function extractFormText(
   rects: PdfRect[],
   stats: DecodeStats,
   depth: number,
+  clip: ClipState,
 ): void {
   if (depth >= 8) return;
   if (nameOf(dictGet(doc, form, '/Subtype')) !== '/Form') return;
@@ -2639,11 +2793,23 @@ function extractFormText(
       ctm,
     );
   }
+  const bboxClip = clipFromPdfBox(dictGet(doc, form, '/BBox'), nextCtm);
+  const formClip = bboxClip ? intersectClip(clip, bboxClip) : clip;
   const fake: PdfDict = { d: true, map: new Map() };
   fake.map.set('/Type', '/Page');
   fake.map.set('/Contents', form);
   if (formRes !== undefined) fake.map.set('/Resources', formRes);
-  const extracted = extractPage(doc, fake, pageNo, false, new Map(), nextCtm, depth + 1);
+  const extracted = extractPage(
+    doc,
+    fake,
+    pageNo,
+    false,
+    new Map(),
+    nextCtm,
+    depth + 1,
+    new Set(),
+    formClip,
+  );
   items.push(...extracted.items);
   lines.push(...extracted.lines);
   rects.push(...extracted.rects);
