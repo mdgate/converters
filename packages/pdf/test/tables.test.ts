@@ -500,6 +500,76 @@ describe('ruled table detection', () => {
       expect(t.markdown).not.toMatch(/0.*1.*\//);
     }
   });
+
+  it('keeps a compact numeric table with minus and plus-minus cells', () => {
+    const items = [
+      { text: 'Yr', x: 20, y: 80, width: 14, page: 1 },
+      { text: 'Δ', x: 80, y: 80, width: 12, page: 1 },
+      { text: 'SD', x: 140, y: 80, width: 14, page: 1 },
+      { text: '19', x: 20, y: 60, width: 14, page: 1 },
+      { text: '−2.1', x: 80, y: 60, width: 22, page: 1 },
+      { text: '1.2±0.3', x: 140, y: 60, width: 36, page: 1 },
+      { text: '20', x: 20, y: 40, width: 14, page: 1 },
+      { text: '−', x: 80, y: 40, width: 8, page: 1 },
+      { text: '1.4±0.2', x: 140, y: 40, width: 36, page: 1 },
+      { text: '21', x: 20, y: 20, width: 14, page: 1 },
+      { text: '0.4', x: 80, y: 20, width: 16, page: 1 },
+      { text: '1.1±0.1', x: 140, y: 20, width: 36, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|Yr|Δ|SD|');
+    expect(tables[0]!.markdown).toContain('|−2.1|1.2±0.3|');
+    expect(tables[0]!.markdown).toContain('|−|1.4±0.2|');
+  });
+
+  it('does not treat a stacked Lagrange formula as a table', () => {
+    const items = [
+      { text: 'd', x: 147, y: 470, width: 6, page: 1, fontSize: 10 },
+      { text: '∂L', x: 157, y: 470, width: 14, page: 1, fontSize: 10 },
+      { text: '∂L', x: 187, y: 470, width: 14, page: 1, fontSize: 10 },
+      { text: '−', x: 175, y: 460, width: 8, page: 1, fontSize: 10 },
+      { text: '=', x: 205, y: 458, width: 8, page: 1, fontSize: 10 },
+      { text: '0.', x: 216, y: 458, width: 10, page: 1, fontSize: 10 },
+      { text: 'dt', x: 145, y: 455, width: 10, page: 1, fontSize: 10 },
+      { text: '∂', x: 158, y: 455, width: 6, page: 1, fontSize: 10 },
+      { text: 'q̇', x: 165, y: 455, width: 6, page: 1, fontSize: 10 },
+      { text: '∂q', x: 188, y: 455, width: 12, page: 1, fontSize: 10 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('does not treat numbered display equations as a table', () => {
+    const items = [
+      { text: 'M', x: 227, y: 462, width: 9, page: 1, fontSize: 10 },
+      { text: '−', x: 238, y: 461, width: 8, page: 1, fontSize: 10 },
+      { text: 'Q(h)', x: 249, y: 462, width: 22, page: 1, fontSize: 10 },
+      { text: '=', x: 278, y: 461, width: 8, page: 1, fontSize: 10 },
+      { text: 'c', x: 289, y: 462, width: 5, page: 1, fontSize: 8 },
+      { text: 'p', x: 294, y: 465, width: 4, page: 1, fontSize: 7 },
+      { text: '(3.15a)', x: 484, y: 462, width: 30, page: 1, fontSize: 10 },
+      { text: 'M', x: 227, y: 479, width: 9, page: 1, fontSize: 10 },
+      { text: '−', x: 238, y: 478, width: 8, page: 1, fontSize: 10 },
+      { text: 'Q(2h)', x: 249, y: 479, width: 26, page: 1, fontSize: 10 },
+      { text: '=', x: 278, y: 478, width: 8, page: 1, fontSize: 10 },
+      { text: '(3.15b)', x: 484, y: 479, width: 30, page: 1, fontSize: 10 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('does not treat numbered minus-only equations as a table', () => {
+    const items = [
+      { text: 'U', x: 40, y: 80, width: 8, page: 1, fontSize: 10 },
+      { text: '−', x: 80, y: 80, width: 8, page: 1, fontSize: 10 },
+      { text: 'V', x: 120, y: 80, width: 8, page: 1, fontSize: 10 },
+      { text: '(2.1a)', x: 180, y: 80, width: 28, page: 1, fontSize: 10 },
+      { text: 'A', x: 40, y: 60, width: 8, page: 1, fontSize: 10 },
+      { text: '±', x: 80, y: 60, width: 8, page: 1, fontSize: 10 },
+      { text: 'B', x: 120, y: 60, width: 8, page: 1, fontSize: 10 },
+      { text: '(2.1b)', x: 180, y: 60, width: 28, page: 1, fontSize: 10 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
 });
 
 function filledPathGridPdf(): Uint8Array {

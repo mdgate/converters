@@ -688,7 +688,8 @@ function acceptBorderless(
     looksLikeChartValues(grid, run) ||
     looksLikeNumericScatter(grid) ||
     looksLikeLabeledTicks(grid) ||
-    looksLikeHeaderlessJunk(grid)
+    looksLikeHeaderlessJunk(grid) ||
+    looksLikeMathLayout(grid)
   ) {
     return false;
   }
@@ -776,6 +777,24 @@ function looksLikeLabeledTicks(grid: string[][]): boolean {
   const percentAt = filled.findIndex(isPercentRow);
   const labelAt = filled.findIndex(isLabelRow);
   return percentAt >= 0 && labelAt >= 0 && percentAt < labelAt;
+}
+
+function looksLikeMathLayout(grid: string[][]): boolean {
+  const cells = grid.flat().filter((c) => c.length > 0);
+  if (cells.length < 3) return false;
+  const eqNums = cells.filter((c) => /\(\d+(?:\.\d+)*[a-z]?\)/.test(c)).length;
+  const ops = cells.filter((c) => /[=≠≈≤≥∂∑∫√∞×·]/.test(c)).length;
+  const mathGlyphs = cells.filter((c) => /[∂∑∫√∞]/.test(c)).length;
+  const short = cells.filter((c) => [...c].length <= 10).length;
+  const tiny = cells.filter((c) => [...c].length <= 3).length;
+  const prose = cells.filter(
+    (c) => (wordCount(c) >= 3 || /\p{L}{5,}/u.test(c)) && !/[=∂∑∫]/.test(c),
+  ).length;
+  if (prose >= 2) return false;
+  if (eqNums >= 1 && (ops >= 1 || cells.some((c) => /[±−]/.test(c)))) return true;
+  if (mathGlyphs >= 2) return true;
+  if (ops >= 2 && short / cells.length >= 0.65 && grid.length >= 3) return true;
+  return ops >= 1 && tiny >= 4 && short / cells.length >= 0.65;
 }
 
 function looksLikeHeaderlessJunk(grid: string[][]): boolean {
