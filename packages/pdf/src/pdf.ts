@@ -2598,6 +2598,15 @@ function extractAnnotationAppearances(
   for (const a of annots) {
     const ad = deref(doc, a);
     if (!isDict(ad)) continue;
+    const rectClip = clipFromPdfBox(dictGet(doc, ad, '/Rect'));
+    if (
+      rectClip &&
+      (rectClip.t === 'empty' ||
+        (rectClip.t === 'rect' &&
+          !overlapsClip(clip, rectClip.x0, rectClip.y0, rectClip.x1, rectClip.y1)))
+    ) {
+      continue;
+    }
     const ap = dictGet(doc, ad, '/AP');
     if (!isDict(ap)) continue;
     const n = dictGet(doc, ap, '/N');
@@ -2622,7 +2631,7 @@ function extractAnnotationAppearances(
         rects,
         stats,
         depth,
-        clip,
+        { t: 'all' },
       );
     }
   }

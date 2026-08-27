@@ -208,4 +208,50 @@ ET
     expect(md).toContain('FormIn');
     expect(md).not.toContain('FormOut');
   });
+
+  it('keeps on-page appearance text when CropBox does not overlap the form BBox', () => {
+    const formContent = `BT
+/F1 12 Tf
+1 0 0 1 10 20 Tm
+(WidgetLabel) Tj
+ET
+`;
+    const pageContent = 'BT /F1 12 Tf 1 0 0 1 220 360 Tm (PageText) Tj ET\n';
+    const md = toMarkdownFromPdf(
+      buildPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 400] /CropBox [200 200 400 400] /Contents 4 0 R /Annots [6 0 R] /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${pageContent.length} >>\nstream\n${pageContent}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+        '6 0 obj\n<< /Type /Annot /Subtype /Widget /Rect [220 220 300 280] /AP << /N 7 0 R >> >>\nendobj\n',
+        `7 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 80 60] /Resources << /Font << /F1 5 0 R >> >> /Length ${formContent.length} >>\nstream\n${formContent}endstream\nendobj\n`,
+      ]),
+    );
+    expect(md).toContain('PageText');
+    expect(md).toContain('WidgetLabel');
+  });
+
+  it('drops off-page appearance text even when form-space coords sit inside the page box', () => {
+    const formContent = `BT
+/F1 12 Tf
+1 0 0 1 10 20 Tm
+(OffpageAnnot) Tj
+ET
+`;
+    const pageContent = 'BT /F1 12 Tf 1 0 0 1 20 50 Tm (PageText) Tj ET\n';
+    const md = toMarkdownFromPdf(
+      buildPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Annots [6 0 R] /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${pageContent.length} >>\nstream\n${pageContent}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+        '6 0 obj\n<< /Type /Annot /Subtype /Widget /Rect [250 20 330 50] /AP << /N 7 0 R >> >>\nendobj\n',
+        `7 0 obj\n<< /Type /XObject /Subtype /Form /BBox [0 0 80 40] /Resources << /Font << /F1 5 0 R >> >> /Length ${formContent.length} >>\nstream\n${formContent}endstream\nendobj\n`,
+      ]),
+    );
+    expect(md).toContain('PageText');
+    expect(md).not.toContain('OffpageAnnot');
+  });
 });
