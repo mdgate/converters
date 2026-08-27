@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/iwork-common",
-  "version": "0.6.20",
+  "version": "0.6.21",
   "description": "mdgate shared Apple iWork (Pages/Numbers/Keynote) IWA parsing",
   "type": "module",
   "license": "MIT",
@@ -28,10 +28,10 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.20",
-    "@mdgate/core": "0.6.20",
-    "@mdgate/document": "0.6.20",
-    "@mdgate/utils": "0.6.20"
+    "@mdgate/containers": "0.6.21",
+    "@mdgate/core": "0.6.21",
+    "@mdgate/document": "0.6.21",
+    "@mdgate/utils": "0.6.21"
   },
   "publishConfig": {
     "access": "public"
