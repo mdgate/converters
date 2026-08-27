@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/doc",
-  "version": "0.6.22",
+  "version": "0.6.23",
   "description": "mdgate legacy Word converter (binary .doc)",
   "type": "module",
   "license": "MIT",
@@ -28,11 +28,11 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.22",
-    "@mdgate/core": "0.6.22",
-    "@mdgate/document": "0.6.22",
-    "@mdgate/office-common": "0.6.22",
-    "@mdgate/utils": "0.6.22"
+    "@mdgate/containers": "0.6.23",
+    "@mdgate/core": "0.6.23",
+    "@mdgate/document": "0.6.23",
+    "@mdgate/office-common": "0.6.23",
+    "@mdgate/utils": "0.6.23"
   },
   "publishConfig": {
     "access": "public"

@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/epub",
-  "version": "0.6.22",
+  "version": "0.6.23",
   "description": "mdgate EPUB converter",
   "type": "module",
   "license": "MIT",
@@ -28,12 +28,12 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.22",
-    "@mdgate/core": "0.6.22",
-    "@mdgate/document": "0.6.22",
-    "@mdgate/html": "0.6.22",
-    "@mdgate/office-common": "0.6.22",
-    "@mdgate/utils": "0.6.22"
+    "@mdgate/containers": "0.6.23",
+    "@mdgate/core": "0.6.23",
+    "@mdgate/document": "0.6.23",
+    "@mdgate/html": "0.6.23",
+    "@mdgate/office-common": "0.6.23",
+    "@mdgate/utils": "0.6.23"
   },
   "publishConfig": {
     "access": "public"
