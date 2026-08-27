@@ -500,6 +500,40 @@ describe('ruled table detection', () => {
       expect(t.markdown).not.toMatch(/0.*1.*\//);
     }
   });
+
+  it('does not treat a stacked Lagrange formula as a table', () => {
+    const items = [
+      { text: 'd', x: 147, y: 470, width: 6, page: 1, fontSize: 10 },
+      { text: '∂L', x: 157, y: 470, width: 14, page: 1, fontSize: 10 },
+      { text: '∂L', x: 187, y: 470, width: 14, page: 1, fontSize: 10 },
+      { text: '−', x: 175, y: 460, width: 8, page: 1, fontSize: 10 },
+      { text: '=', x: 205, y: 458, width: 8, page: 1, fontSize: 10 },
+      { text: '0.', x: 216, y: 458, width: 10, page: 1, fontSize: 10 },
+      { text: 'dt', x: 145, y: 455, width: 10, page: 1, fontSize: 10 },
+      { text: '∂', x: 158, y: 455, width: 6, page: 1, fontSize: 10 },
+      { text: 'q̇', x: 165, y: 455, width: 6, page: 1, fontSize: 10 },
+      { text: '∂q', x: 188, y: 455, width: 12, page: 1, fontSize: 10 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
+
+  it('does not treat numbered display equations as a table', () => {
+    const items = [
+      { text: 'M', x: 227, y: 462, width: 9, page: 1, fontSize: 10 },
+      { text: '−', x: 238, y: 461, width: 8, page: 1, fontSize: 10 },
+      { text: 'Q(h)', x: 249, y: 462, width: 22, page: 1, fontSize: 10 },
+      { text: '=', x: 278, y: 461, width: 8, page: 1, fontSize: 10 },
+      { text: 'c', x: 289, y: 462, width: 5, page: 1, fontSize: 8 },
+      { text: 'p', x: 294, y: 465, width: 4, page: 1, fontSize: 7 },
+      { text: '(3.15a)', x: 484, y: 462, width: 30, page: 1, fontSize: 10 },
+      { text: 'M', x: 227, y: 479, width: 9, page: 1, fontSize: 10 },
+      { text: '−', x: 238, y: 478, width: 8, page: 1, fontSize: 10 },
+      { text: 'Q(2h)', x: 249, y: 479, width: 26, page: 1, fontSize: 10 },
+      { text: '=', x: 278, y: 478, width: 8, page: 1, fontSize: 10 },
+      { text: '(3.15b)', x: 484, y: 479, width: 30, page: 1, fontSize: 10 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
 });
 
 function filledPathGridPdf(): Uint8Array {

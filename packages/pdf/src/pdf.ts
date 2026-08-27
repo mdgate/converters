@@ -143,7 +143,9 @@ async function convertUniqueImages(
 
 function finishPdf(extracted: ExtractedPdf, imageBlocks: MarkdownBlock[]): string {
   const markdown = itemsToMarkdown(
-    mergeNumericFragments(mergeScriptItems(dedupeOverlappingItems(extracted.items))),
+    mergeNumericFragments(
+      mergeStackedMath(mergeScriptItems(dedupeOverlappingItems(extracted.items))),
+    ),
     extracted.strokeLines,
     extracted.pageRects,
     imageBlocks,
@@ -2939,6 +2941,105 @@ function dedupeOverlappingItems(items: TextItem[]): TextItem[] {
 const SUP = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
 const SUB = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
 
+const SUP_CHARS: Record<string, string> = {
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+  '+': '⁺',
+  '-': '⁻',
+  '−': '⁻',
+  '=': '⁼',
+  '(': '⁽',
+  ')': '⁾',
+  a: 'ᵃ',
+  b: 'ᵇ',
+  c: 'ᶜ',
+  d: 'ᵈ',
+  e: 'ᵉ',
+  f: 'ᶠ',
+  g: 'ᵍ',
+  h: 'ʰ',
+  i: 'ⁱ',
+  j: 'ʲ',
+  k: 'ᵏ',
+  l: 'ˡ',
+  m: 'ᵐ',
+  n: 'ⁿ',
+  o: 'ᵒ',
+  p: 'ᵖ',
+  r: 'ʳ',
+  s: 'ˢ',
+  t: 'ᵗ',
+  u: 'ᵘ',
+  v: 'ᵛ',
+  w: 'ʷ',
+  x: 'ˣ',
+  y: 'ʸ',
+  z: 'ᶻ',
+  A: 'ᴬ',
+  B: 'ᴮ',
+  D: 'ᴰ',
+  E: 'ᴱ',
+  G: 'ᴳ',
+  H: 'ᴴ',
+  I: 'ᴵ',
+  J: 'ᴶ',
+  K: 'ᴷ',
+  L: 'ᴸ',
+  M: 'ᴹ',
+  N: 'ᴺ',
+  O: 'ᴼ',
+  P: 'ᴾ',
+  R: 'ᴿ',
+  T: 'ᵀ',
+  U: 'ᵁ',
+  V: 'ⱽ',
+  W: 'ᵂ',
+};
+
+const SUB_CHARS: Record<string, string> = {
+  '0': '₀',
+  '1': '₁',
+  '2': '₂',
+  '3': '₃',
+  '4': '₄',
+  '5': '₅',
+  '6': '₆',
+  '7': '₇',
+  '8': '₈',
+  '9': '₉',
+  '+': '₊',
+  '-': '₋',
+  '−': '₋',
+  '=': '₌',
+  '(': '₍',
+  ')': '₎',
+  a: 'ₐ',
+  e: 'ₑ',
+  h: 'ₕ',
+  i: 'ᵢ',
+  j: 'ⱼ',
+  k: 'ₖ',
+  l: 'ₗ',
+  m: 'ₘ',
+  n: 'ₙ',
+  o: 'ₒ',
+  p: 'ₚ',
+  r: 'ᵣ',
+  s: 'ₛ',
+  t: 'ₜ',
+  u: 'ᵤ',
+  v: 'ᵥ',
+  x: 'ₓ',
+};
+
 function scriptDigits(text: string): string | undefined {
   const t = text.trim();
   if (t.length === 0 || t.length > 4) return undefined;
@@ -2955,18 +3056,46 @@ function scriptDigits(text: string): string | undefined {
   return out;
 }
 
+function isScriptCandidate(text: string): boolean {
+  const t = text.trim();
+  if (t.length === 0 || t.length > 4) return false;
+  if (scriptDigits(t) !== undefined) return true;
+  if (/^[+\-−+=()]$/.test(t)) return true;
+  return /^[\p{L}]$/u.test(t);
+}
+
+function toScript(text: string, sub: boolean): string {
+  const map = sub ? SUB_CHARS : SUP_CHARS;
+  let out = '';
+  for (const c of text.trim()) out += map[c] ?? c;
+  return out;
+}
+
 function canAttachScript(parent: TextItem, item: TextItem): boolean {
   if (parent.page !== item.page) return false;
   if (item.fontSize <= 0) return false;
-  if (scriptDigits(item.text) === undefined) return false;
-  if (parent.fontSize < item.fontSize * 1.15) return false;
+  if (!isScriptCandidate(item.text)) return false;
+  const t = item.text.trim();
+  const digits = scriptDigits(t) !== undefined;
   const last = [...parent.text.trimEnd()].at(-1);
   if (last === undefined) return false;
-  if (!/[\p{L}\p{N}\p{P}]/u.test(last)) return false;
+  const ratio = item.fontSize > 0 ? parent.fontSize / item.fontSize : 1;
+  if (ratio < 1.2) return false;
+  if (!digits && ratio > 1.9) return false;
+  const scripted =
+    Object.values(SUP_CHARS).includes(last) ||
+    Object.values(SUB_CHARS).includes(last) ||
+    SUP.includes(last) ||
+    SUB.includes(last);
+  if (!scripted && !/[\p{L}\p{N}\p{P}]/u.test(last)) return false;
   const fs = Math.max(parent.fontSize, 8);
   const gap = item.x - (parent.x + parent.width);
-  if (gap >= fs * 0.35 || gap <= -fs * 0.5) return false;
-  if (Math.abs(item.y - parent.y) > Math.max(fs * 0.8, 8)) return false;
+  const gapMax = digits ? fs * 0.35 : fs * 0.4;
+  if (gap >= gapMax || gap <= -fs * 0.5) return false;
+  const yOff = Math.abs(item.y - parent.y);
+  const yMax = digits ? Math.max(fs * 0.8, 8) : fs * 0.55;
+  if (yOff > yMax) return false;
+  if (yOff < fs * 0.12 && !digits) return false;
   return true;
 }
 
@@ -3019,16 +3148,16 @@ function mergeScriptItems(items: TextItem[]): TextItem[] {
     const merged: TextItem[] = [];
     for (const item of pageItems) {
       let attached = false;
-      if (scriptDigits(item.text) !== undefined) {
+      if (isScriptCandidate(item.text)) {
         for (let i = merged.length - 1; i >= 0; i -= 1) {
           const parent = merged[i]!;
           if (parent.x > item.x) continue;
           if (!canAttachScript(parent, item)) continue;
-          const digits = scriptDigits(item.text)!;
           const lowered = item.y < parent.y - parent.fontSize * 0.12;
-          const table = lowered ? SUB : SUP;
-          parent.text += [...digits].map((c) => table[Number(c)]!).join('');
+          parent.text += toScript(item.text, lowered);
           parent.width = Math.max(parent.width, item.x + item.width - parent.x);
+          const span = Math.abs(item.y - parent.y) + item.height;
+          parent.height = Math.max(parent.height, item.height, span);
           attached = true;
           break;
         }
@@ -3038,6 +3167,73 @@ function mergeScriptItems(items: TextItem[]): TextItem[] {
     result.push(...merged);
   }
   return result;
+}
+
+function isFractionNumerator(text: string): boolean {
+  const t = text.trim();
+  if (t.length === 0 || t.length > 6) return false;
+  if (/[∂∑∫√∞]/.test(t)) return true;
+  return t === 'd';
+}
+
+function isFractionDenominator(text: string): boolean {
+  const t = text.trim();
+  if (t.length === 0 || t.length > 6) return false;
+  if (/[∂∑∫√∞]/.test(t)) return true;
+  return /^(?:dt|dx|dy|dq)$/.test(t);
+}
+
+function mergeStackedMath(items: TextItem[]): TextItem[] {
+  if (items.length < 2) return items;
+  const sorted = items.slice().sort((a, b) => a.page - b.page || b.y - a.y || a.x - b.x);
+  const used = new Set<number>();
+  const out: TextItem[] = [];
+  for (let i = 0; i < sorted.length; i += 1) {
+    if (used.has(i)) continue;
+    const top = sorted[i]!;
+    if (!isFractionNumerator(top.text)) {
+      out.push(top);
+      continue;
+    }
+    const fsTop = Math.max(top.fontSize, 8);
+    let best = -1;
+    let bestScore = 0;
+    for (let j = i + 1; j < sorted.length; j += 1) {
+      if (used.has(j)) continue;
+      const bot = sorted[j]!;
+      if (bot.page !== top.page) break;
+      if (!isFractionDenominator(bot.text)) continue;
+      const gap = top.y - bot.y;
+      const fs = Math.max(fsTop, bot.fontSize, 8);
+      if (gap < fs * 0.45 || gap > fs * 1.7) continue;
+      const overlap =
+        Math.min(top.x + Math.max(top.width, 1), bot.x + Math.max(bot.width, 1)) -
+        Math.max(top.x, bot.x);
+      const minW = Math.min(Math.max(top.width, 4), Math.max(bot.width, 4));
+      if (overlap < minW * 0.35) continue;
+      const score = overlap / Math.max(gap, 1);
+      if (score > bestScore) {
+        bestScore = score;
+        best = j;
+      }
+    }
+    if (best < 0) {
+      out.push(top);
+      continue;
+    }
+    const bot = sorted[best]!;
+    used.add(best);
+    const x = Math.min(top.x, bot.x);
+    out.push({
+      ...top,
+      text: `${top.text.trim()}/${bot.text.trim()}`,
+      x,
+      y: (top.y + bot.y) / 2,
+      width: Math.max(top.x + Math.max(top.width, 0), bot.x + Math.max(bot.width, 0)) - x,
+      height: Math.max(top.height, top.y - bot.y + bot.height),
+    });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -3131,6 +3327,26 @@ function formatLine(items: TextItem[], bold: boolean, italic: boolean, deco: boo
   if (curUnder) result += '</u>';
   if (curStrike) result += '</s>';
   return result;
+}
+
+function isEquationNumberLine(text: string): boolean {
+  return /^\(?\d+(?:\.\d+)*[a-z]?\)?$/.test(text.trim());
+}
+
+function isMathHeading(text: string): boolean {
+  const t = text.trim();
+  if (isEquationNumberLine(t)) return true;
+  const ops = t.match(/[=≠≈≤≥±∂∑∫√∞×·−]/g)?.length ?? 0;
+  const words = t.split(/\s+/).filter((w) => /\p{L}{3,}/u.test(w)).length;
+  return ops >= 1 && words <= 1;
+}
+
+function isFalseIsolatedHeading(text: string): boolean {
+  const t = text.trim();
+  if (/^[\p{Ll}]/u.test(t)) return true;
+  if (/[:,]$/.test(t)) return true;
+  if (/\band$/i.test(t)) return true;
+  return isMathHeading(t);
 }
 
 function isListItem(text: string): boolean {
@@ -3321,6 +3537,7 @@ function itemsToMarkdown(
     const wc = plain.split(/\s+/).filter(Boolean).length;
     if (wc < 1 || wc > 6 || plain.length <= 3) continue;
     if (line[0]!.fontSize < base * 0.95) continue;
+    if (isFalseIsolatedHeading(plain)) continue;
     const prev = lines[i - 1];
     const next = lines[i + 1];
     const before = !prev || prev[0]!.page !== line[0]!.page || prev[0]!.y - line[0]!.y > paraTh;
@@ -3330,6 +3547,7 @@ function itemsToMarkdown(
 
   const headerLevel = (i: number, line: TextItem[], plain: string): number | undefined => {
     if (plain.length <= 3 || plain.split(/\s+/).filter(Boolean).length > 15) return undefined;
+    if (isMathHeading(plain) || /^[\p{Ll}]/u.test(plain)) return undefined;
     const fs = line[0]!.fontSize;
     const ratio = fs / base;
     if (ratio >= 1.2) {
