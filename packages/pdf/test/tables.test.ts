@@ -556,6 +556,20 @@ describe('ruled table detection', () => {
     ];
     expect(detectTables(items, [], [])).toHaveLength(0);
   });
+
+  it('does not treat numbered minus-only equations as a table', () => {
+    const items = [
+      { text: 'U', x: 40, y: 80, width: 8, page: 1, fontSize: 10 },
+      { text: '−', x: 80, y: 80, width: 8, page: 1, fontSize: 10 },
+      { text: 'V', x: 120, y: 80, width: 8, page: 1, fontSize: 10 },
+      { text: '(2.1a)', x: 180, y: 80, width: 28, page: 1, fontSize: 10 },
+      { text: 'A', x: 40, y: 60, width: 8, page: 1, fontSize: 10 },
+      { text: '±', x: 80, y: 60, width: 8, page: 1, fontSize: 10 },
+      { text: 'B', x: 120, y: 60, width: 8, page: 1, fontSize: 10 },
+      { text: '(2.1b)', x: 180, y: 60, width: 28, page: 1, fontSize: 10 },
+    ];
+    expect(detectTables(items, [], [])).toHaveLength(0);
+  });
 });
 
 function filledPathGridPdf(): Uint8Array {

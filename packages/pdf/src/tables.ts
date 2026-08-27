@@ -791,7 +791,7 @@ function looksLikeMathLayout(grid: string[][]): boolean {
     (c) => (wordCount(c) >= 3 || /\p{L}{5,}/u.test(c)) && !/[=∂∑∫]/.test(c),
   ).length;
   if (prose >= 2) return false;
-  if (eqNums >= 1 && ops >= 1) return true;
+  if (eqNums >= 1 && (ops >= 1 || cells.some((c) => /[±−]/.test(c)))) return true;
   if (mathGlyphs >= 2) return true;
   if (ops >= 2 && short / cells.length >= 0.65 && grid.length >= 3) return true;
   return ops >= 1 && tiny >= 4 && short / cells.length >= 0.65;
