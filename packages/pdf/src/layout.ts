@@ -92,8 +92,12 @@ function findDropCapTarget<T extends LineItem>(
   drop: T,
   body: number,
 ): T[] | undefined {
-  const capTop = drop.y + Math.max(drop.height, drop.fontSize) * 0.9;
+  const capH = Math.max(drop.height, drop.fontSize);
+  const capTop = drop.y + capH * 0.9;
+  const minRight = drop.x + Math.max(drop.fontSize * 0.15, 2);
+  const maxRight = drop.x + Math.max(capH * 2, drop.width + body * 4, 48);
   let best: T[] | undefined;
+  let bestDx = Number.POSITIVE_INFINITY;
   let bestY = Number.NEGATIVE_INFINITY;
   for (const line of lines) {
     if (line[0]!.page !== drop.page) continue;
@@ -104,8 +108,10 @@ function findDropCapTarget<T extends LineItem>(
     const y = Math.max(...bodyish.map((it) => it.y));
     if (y < drop.y - 4 || y > capTop + 2) continue;
     const right = Math.min(...bodyish.map((it) => it.x));
-    if (right <= drop.x + Math.max(drop.fontSize * 0.15, 2)) continue;
-    if (y > bestY) {
+    if (right <= minRight || right > maxRight) continue;
+    const dx = right - drop.x;
+    if (dx < bestDx || (dx === bestDx && y > bestY)) {
+      bestDx = dx;
       bestY = y;
       best = line;
     }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { reattachDropCaps } from '../src/layout.js';
 import { toMarkdownFromPdf } from '../src/pdf.js';
 
 function pagePdf(content: string, mediaBox = [0, 0, 200, 100]): Uint8Array {
@@ -624,6 +625,80 @@ ET
     expect(md).not.toMatch(/^#{1,6} This report/m);
     expect(md).not.toMatch(/^#{1,6} cholesterol/m);
     expect(md).not.toMatch(/\bhis report defines/);
+  });
+
+  it('does not glue a drop-cap onto a higher right-column line', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 48 Tf
+1 0 0 1 20 50 Tm
+(T) Tj
+/F1 12 Tf
+1 0 0 1 55 82 Tm
+(his report defines the scope of this study.) Tj
+1 0 0 1 55 66 Tm
+(cholesterol that is getting in the way.) Tj
+1 0 0 1 55 50 Tm
+(the way of doing business continues here.) Tj
+1 0 0 1 240 90 Tm
+(Right column starts at the top of the page.) Tj
+1 0 0 1 240 74 Tm
+(It must not receive the drop-cap letter.) Tj
+ET
+`,
+        [0, 0, 420, 140],
+      ),
+    );
+    expect(md).toContain('This report defines the scope of this study.');
+    expect(md).toContain('Right column starts at the top of the page.');
+    expect(md).not.toMatch(/TRight column/);
+    expect(md).not.toMatch(/\bhis report defines/);
+  });
+
+  it('does not glue a drop-cap onto a higher line that starts farther right', () => {
+    const drop = {
+      text: 'T',
+      x: 20,
+      y: 50,
+      width: 28,
+      height: 48,
+      fontSize: 48,
+      page: 1,
+    };
+    const farther = {
+      text: 'Earlier paragraph still overlaps the cap.',
+      x: 80,
+      y: 90,
+      width: 200,
+      height: 12,
+      fontSize: 12,
+      page: 1,
+    };
+    const first = {
+      text: 'his report defines the scope of this study.',
+      x: 55,
+      y: 82,
+      width: 200,
+      height: 12,
+      fontSize: 12,
+      page: 1,
+    };
+    const wrap = {
+      text: 'cholesterol that is getting in the way.',
+      x: 55,
+      y: 66,
+      width: 180,
+      height: 12,
+      fontSize: 12,
+      page: 1,
+    };
+    const texts = reattachDropCaps([[farther], [drop], [first], [wrap]]).map((line) =>
+      line.map((t) => t.text).join(''),
+    );
+    expect(texts.some((t) => t.startsWith('This report'))).toBe(true);
+    expect(texts).toContain('Earlier paragraph still overlaps the cap.');
+    expect(texts.some((t) => t.startsWith('TEarlier'))).toBe(false);
   });
 
   it('still emits a larger title as a heading', () => {
