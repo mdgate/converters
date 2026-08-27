@@ -2164,12 +2164,12 @@ interface MarkedCapture {
 interface StructActual {
   text: string;
   emitted: boolean;
+  capture?: MarkedCapture;
 }
 
 interface MarkedFrame {
   artifact: boolean;
   actual?: StructActual;
-  capture?: MarkedCapture;
 }
 
 function markedString(v: PdfValue | undefined): string | undefined {
@@ -2444,12 +2444,12 @@ function extractPage(
     const decoded = decodeFontBytes(font, raw);
     const dirMat = mulMat(tm, ctm);
     const rendered = Math.abs(fontSize) * matrixScale(dirMat);
-    const actualFrame = findActualFrame(marked);
-    if (actualFrame) {
-      if (actualFrame.actual) stats.mapped += 1;
+    const actual = findActualFrame(marked)?.actual;
+    if (actual) {
+      stats.mapped += 1;
       const take = (x: number, y: number, w: number): void => {
-        if (!actualFrame.capture) {
-          actualFrame.capture = {
+        if (!actual.capture) {
+          actual.capture = {
             x,
             y,
             widthAcc: 0,
@@ -2462,7 +2462,7 @@ function extractPage(
             dy: dirMat[1]!,
           };
         }
-        actualFrame.capture.widthAcc += w;
+        actual.capture.widthAcc += w;
       };
       if (decoded.length === 0) {
         const [x, y] = applyMat(dirMat, 0, rise);
@@ -2629,14 +2629,20 @@ function extractPage(
     } else if (op === 'BMC' || op === 'BDC' || op === 'EMC') {
       if (op === 'EMC') {
         const frame = marked.pop();
-        if (frame?.actual && !frame.actual.emitted && frame.capture) {
-          const cap = frame.capture;
+        const actual = frame?.actual;
+        if (
+          actual &&
+          !actual.emitted &&
+          actual.capture &&
+          !marked.some((open) => open.actual === actual)
+        ) {
+          const cap = actual.capture;
           const width = pageAdvanceX(cap.widthAcc, tm, ctm);
           const h = cap.height || 1;
           if (overlapsClip(clip, cap.x, cap.y - h, cap.x + width, cap.y + h)) {
-            frame.actual.emitted = true;
+            actual.emitted = true;
             items.push({
-              text: frame.actual.text,
+              text: actual.text,
               x: cap.x,
               y: cap.y,
               width,
