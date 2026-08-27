@@ -2161,9 +2161,14 @@ interface MarkedCapture {
   dy: number;
 }
 
+interface StructActual {
+  text: string;
+  emitted: boolean;
+}
+
 interface MarkedFrame {
   artifact: boolean;
-  actualText?: string;
+  actual?: StructActual;
   capture?: MarkedCapture;
 }
 
@@ -2192,7 +2197,7 @@ function resolveBdcDict(
 function openMarkedFrame(
   doc: PdfDocument,
   resources: PdfValue | undefined,
-  structActual: Map<number, string>,
+  structActual: Map<number, StructActual>,
   op: string,
   args: PdfValue[],
 ): MarkedFrame {
@@ -2201,23 +2206,23 @@ function openMarkedFrame(
   const props = resolveBdcDict(doc, resources, args);
   if (!props) return { artifact };
   const direct = markedString(dictGet(doc, props, '/ActualText'));
-  if (direct) return { artifact, actualText: direct };
+  if (direct) return { artifact, actual: { text: direct, emitted: false } };
   const mcid = asNumber(dictGet(doc, props, '/MCID'));
   if (mcid === undefined) return { artifact };
   const fromStruct = structActual.get(mcid);
-  if (fromStruct !== undefined) return { artifact, actualText: fromStruct };
+  if (fromStruct) return { artifact, actual: fromStruct };
   return { artifact };
 }
 
 function findActualFrame(stack: MarkedFrame[]): MarkedFrame | undefined {
   for (let i = stack.length - 1; i >= 0; i -= 1) {
-    if (stack[i]!.actualText !== undefined) return stack[i];
+    if (stack[i]!.actual) return stack[i];
   }
   return undefined;
 }
 
-function loadStructActualText(doc: PdfDocument, page: PdfDict): Map<number, string> {
-  const out = new Map<number, string>();
+function loadStructActualText(doc: PdfDocument, page: PdfDict): Map<number, StructActual> {
+  const out = new Map<number, StructActual>();
   const root = deref(doc, doc.trailer.map.get('/Root'));
   if (!isDict(root)) return out;
   const structRoot = dictGet(doc, root, '/StructTreeRoot');
@@ -2228,19 +2233,18 @@ function loadStructActualText(doc: PdfDocument, page: PdfDict): Map<number, stri
 }
 
 function bindStructActual(
-  out: Map<number, string>,
+  out: Map<number, StructActual>,
   mcid: number,
   actual: string | undefined,
   matchesPage: boolean,
-  consumed?: { used: boolean },
+  group?: { bind: StructActual },
 ): void {
   if (!actual || !matchesPage) return;
-  if (consumed?.used) {
-    if (!out.has(mcid)) out.set(mcid, '');
+  if (group) {
+    out.set(mcid, group.bind);
     return;
   }
-  out.set(mcid, actual);
-  if (consumed) consumed.used = true;
+  out.set(mcid, { text: actual, emitted: false });
 }
 
 function walkStructActual(
@@ -2249,9 +2253,9 @@ function walkStructActual(
   page: PdfDict,
   inheritedPage: PdfDict | undefined,
   inheritedActual: string | undefined,
-  out: Map<number, string>,
+  out: Map<number, StructActual>,
   seen: Set<PdfDict>,
-  consumed?: { used: boolean },
+  group?: { bind: StructActual },
 ): void {
   if (node === undefined) return;
   if (typeof node === 'number' && Number.isFinite(node)) {
@@ -2260,13 +2264,13 @@ function walkStructActual(
       Math.trunc(node),
       inheritedActual,
       inheritedPage === undefined || inheritedPage === page,
-      consumed,
+      group,
     );
     return;
   }
   if (Array.isArray(node)) {
     for (const item of node) {
-      walkStructActual(doc, item, page, inheritedPage, inheritedActual, out, seen, consumed);
+      walkStructActual(doc, item, page, inheritedPage, inheritedActual, out, seen, group);
     }
     return;
   }
@@ -2277,21 +2281,15 @@ function walkStructActual(
   const thisPage = isDict(pg) ? pg : inheritedPage;
   const own = markedString(dictGet(doc, dict, '/ActualText'));
   const actual = own ?? inheritedActual;
-  const nextConsumed = own ? { used: false } : consumed;
+  const nextGroup = own ? { bind: { text: own, emitted: false } } : group;
   if (nameOf(dictGet(doc, dict, '/Type')) === '/MCR') {
     const mcid = asNumber(dictGet(doc, dict, '/MCID'));
     if (mcid !== undefined) {
-      bindStructActual(
-        out,
-        mcid,
-        actual,
-        thisPage === undefined || thisPage === page,
-        nextConsumed,
-      );
+      bindStructActual(out, mcid, actual, thisPage === undefined || thisPage === page, nextGroup);
     }
     return;
   }
-  walkStructActual(doc, dictGet(doc, dict, '/K'), page, thisPage, actual, out, seen, nextConsumed);
+  walkStructActual(doc, dictGet(doc, dict, '/K'), page, thisPage, actual, out, seen, nextGroup);
 }
 
 type ClipState =
@@ -2448,7 +2446,7 @@ function extractPage(
     const rendered = Math.abs(fontSize) * matrixScale(dirMat);
     const actualFrame = findActualFrame(marked);
     if (actualFrame) {
-      if (actualFrame.actualText) stats.mapped += 1;
+      if (actualFrame.actual) stats.mapped += 1;
       const take = (x: number, y: number, w: number): void => {
         if (!actualFrame.capture) {
           actualFrame.capture = {
@@ -2631,13 +2629,14 @@ function extractPage(
     } else if (op === 'BMC' || op === 'BDC' || op === 'EMC') {
       if (op === 'EMC') {
         const frame = marked.pop();
-        if (frame?.actualText && frame.capture) {
+        if (frame?.actual && !frame.actual.emitted && frame.capture) {
           const cap = frame.capture;
           const width = pageAdvanceX(cap.widthAcc, tm, ctm);
           const h = cap.height || 1;
           if (overlapsClip(clip, cap.x, cap.y - h, cap.x + width, cap.y + h)) {
+            frame.actual.emitted = true;
             items.push({
-              text: frame.actualText,
+              text: frame.actual.text,
               x: cap.x,
               y: cap.y,
               width,
