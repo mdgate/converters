@@ -501,6 +501,28 @@ describe('ruled table detection', () => {
     }
   });
 
+  it('keeps a compact numeric table with minus and plus-minus cells', () => {
+    const items = [
+      { text: 'Yr', x: 20, y: 80, width: 14, page: 1 },
+      { text: 'Δ', x: 80, y: 80, width: 12, page: 1 },
+      { text: 'SD', x: 140, y: 80, width: 14, page: 1 },
+      { text: '19', x: 20, y: 60, width: 14, page: 1 },
+      { text: '−2.1', x: 80, y: 60, width: 22, page: 1 },
+      { text: '1.2±0.3', x: 140, y: 60, width: 36, page: 1 },
+      { text: '20', x: 20, y: 40, width: 14, page: 1 },
+      { text: '−', x: 80, y: 40, width: 8, page: 1 },
+      { text: '1.4±0.2', x: 140, y: 40, width: 36, page: 1 },
+      { text: '21', x: 20, y: 20, width: 14, page: 1 },
+      { text: '0.4', x: 80, y: 20, width: 16, page: 1 },
+      { text: '1.1±0.1', x: 140, y: 20, width: 36, page: 1 },
+    ];
+    const tables = detectTables(items, [], []);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.markdown).toContain('|Yr|Δ|SD|');
+    expect(tables[0]!.markdown).toContain('|−2.1|1.2±0.3|');
+    expect(tables[0]!.markdown).toContain('|−|1.4±0.2|');
+  });
+
   it('does not treat a stacked Lagrange formula as a table', () => {
     const items = [
       { text: 'd', x: 147, y: 470, width: 6, page: 1, fontSize: 10 },

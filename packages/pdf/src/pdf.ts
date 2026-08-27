@@ -3066,8 +3066,9 @@ function isScriptCandidate(text: string): boolean {
 
 function toScript(text: string, sub: boolean): string {
   const map = sub ? SUB_CHARS : SUP_CHARS;
+  const digits = scriptDigits(text);
   let out = '';
-  for (const c of text.trim()) out += map[c] ?? c;
+  for (const c of digits ?? text.trim()) out += map[c] ?? c;
   return out;
 }
 

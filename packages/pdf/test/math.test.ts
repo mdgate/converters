@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { toMarkdownFromPdf } from '../src/pdf.js';
 
-function pagePdf(content: string, mediaBox = [0, 0, 300, 200]): Uint8Array {
+function pagePdf(content: string, mediaBox = [0, 0, 300, 200], encoding = ''): Uint8Array {
   const objects = [
     '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
     '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
     `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [${mediaBox.join(' ')}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n`,
     `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
-    '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    `5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica${encoding} >>\nendobj\n`,
   ];
   let body = '%PDF-1.4\n';
   const offsets = [0];
@@ -72,6 +72,24 @@ ET
     );
     expect(md).toContain('hᵖ');
     expect(md).not.toMatch(/\|---\|/);
+  });
+
+  it('remaps a superior digit to subscript when the run sits below the baseline', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 12 Tf
+1 0 0 1 40 80 Tm (H) Tj
+/F1 8 Tf
+1 0 0 1 48 74 Tm (\\262) Tj
+ET
+`,
+        [0, 0, 300, 200],
+        ' /Encoding /WinAnsiEncoding',
+      ),
+    );
+    expect(md).toContain('H₂');
+    expect(md).not.toContain('H²');
   });
 
   it('attaches p+1 as a superscript run', () => {

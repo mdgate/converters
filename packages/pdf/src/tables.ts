@@ -783,7 +783,7 @@ function looksLikeMathLayout(grid: string[][]): boolean {
   const cells = grid.flat().filter((c) => c.length > 0);
   if (cells.length < 3) return false;
   const eqNums = cells.filter((c) => /\(\d+(?:\.\d+)*[a-z]?\)/.test(c)).length;
-  const ops = cells.filter((c) => /[=≠≈≤≥±∂∑∫√∞×·]|−/.test(c)).length;
+  const ops = cells.filter((c) => /[=≠≈≤≥∂∑∫√∞×·]/.test(c)).length;
   const mathGlyphs = cells.filter((c) => /[∂∑∫√∞]/.test(c)).length;
   const short = cells.filter((c) => [...c].length <= 10).length;
   const tiny = cells.filter((c) => [...c].length <= 3).length;
