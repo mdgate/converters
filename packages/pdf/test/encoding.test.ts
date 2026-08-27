@@ -301,3 +301,161 @@ ET
     expect(md).not.toContain('ayoung');
   });
 });
+
+describe('ActualText and ToUnicode FFFD fallback', () => {
+  function objectsPdf(objects: string[]): Uint8Array {
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    for (let i = 1; i <= objects.length; i += 1) {
+      xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    }
+    body += `${xref}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    return new TextEncoder().encode(body);
+  }
+
+  const fffdToUnicode = `%!PS-Adobe-3.0 Resource-CMap
+/CIDInit /ProcSet findresource begin
+12 dict begin
+begincmap
+/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def
+/CMapName /Adobe-Identity-UCS def
+/CMapType 2 def
+1 begincodespacerange
+<00> <FF>
+endcodespacerange
+3 beginbfchar
+<0d> <0033>
+<13> <FFFD>
+<0a> <0034>
+endbfchar
+endcmap
+CMapName currentdict /CMap defineresource pop
+end
+end
+`;
+
+  it('falls back to Differences names when ToUnicode is U+FFFD', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(\r\x13\n) Tj
+ET
+`;
+    const md = toMarkdownFromPdf(
+      objectsPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /GKDCHH+Brill-Roman /Encoding 6 0 R /ToUnicode 7 0 R >>\nendobj\n',
+        '6 0 obj\n<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [10 /four.SP 13 /three.SP 19 /one.SP] >>\nendobj\n',
+        `7 0 obj\n<< /Length ${fffdToUnicode.length} >>\nstream\n${fffdToUnicode}endstream\nendobj\n`,
+      ]),
+    );
+    expect(md).toContain('314');
+    expect(md).not.toContain('\uFFFD');
+  });
+
+  it('uses inline ActualText when ToUnicode is U+FFFD', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(\r) Tj
+/Span << /ActualText <FEFF0031> >> BDC
+(\x13) Tj
+EMC
+(\n) Tj
+ET
+`;
+    const md = toMarkdownFromPdf(
+      objectsPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /GKDCHH+Brill-Roman /Encoding /WinAnsiEncoding /ToUnicode 6 0 R >>\nendobj\n',
+        `6 0 obj\n<< /Length ${fffdToUnicode.length} >>\nstream\n${fffdToUnicode}endstream\nendobj\n`,
+      ]),
+    );
+    expect(md).toContain('314');
+    expect(md).not.toContain('\uFFFD');
+  });
+
+  it('uses named Properties ActualText', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(\r) Tj
+/Span /AT1 BDC
+(\x13) Tj
+EMC
+(\n) Tj
+ET
+`;
+    const md = toMarkdownFromPdf(
+      objectsPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /Properties << /AT1 7 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /GKDCHH+Brill-Roman /Encoding /WinAnsiEncoding /ToUnicode 6 0 R >>\nendobj\n',
+        `6 0 obj\n<< /Length ${fffdToUnicode.length} >>\nstream\n${fffdToUnicode}endstream\nendobj\n`,
+        '7 0 obj\n<< /ActualText <FEFF0031> >>\nendobj\n',
+      ]),
+    );
+    expect(md).toContain('314');
+  });
+
+  it('uses StructTreeRoot ActualText for an MCID', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(\r) Tj
+/Span << /MCID 0 >> BDC
+(\x13) Tj
+EMC
+(\n) Tj
+ET
+`;
+    const md = toMarkdownFromPdf(
+      objectsPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 8 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /GKDCHH+Brill-Roman /Encoding /WinAnsiEncoding /ToUnicode 6 0 R >>\nendobj\n',
+        `6 0 obj\n<< /Length ${fffdToUnicode.length} >>\nstream\n${fffdToUnicode}endstream\nendobj\n`,
+        '7 0 obj\n<< >>\nendobj\n',
+        '8 0 obj\n<< /Type /StructTreeRoot /K [9 0 R] >>\nendobj\n',
+        '9 0 obj\n<< /Type /StructElem /S /Span /P 8 0 R /Pg 3 0 R /K 0 /ActualText <FEFF0031> >>\nendobj\n',
+      ]),
+    );
+    expect(md).toContain('314');
+  });
+
+  it('maps small-cap Differences names to the printed letters', () => {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(Yarrow) Tj
+ET
+`;
+    const md = toMarkdownFromPdf(
+      objectsPdf([
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+        `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+        '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /GKDCHH+Brill-Roman /Encoding 6 0 R >>\nendobj\n',
+        '6 0 obj\n<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [89 /Y.c2sc 97 /a.smcp 111 /o.smcp 114 /r.smcp 119 /w.smcp] >>\nendobj\n',
+      ]),
+    );
+    expect(md).toContain('YARROW');
+  });
+});

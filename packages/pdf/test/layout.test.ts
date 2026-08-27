@@ -311,6 +311,23 @@ EMC
     expect(md).toContain('a b c d e f g');
     expect(md).not.toMatch(/\|---\|/);
   });
+
+  it('uses marked-content ActualText instead of the shown glyphs', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`BT
+/F1 12 Tf
+1 0 0 1 20 90 Tm
+(3) Tj
+/Span << /ActualText <FEFF0031> >> BDC
+(x) Tj
+EMC
+(4) Tj
+ET
+`),
+    );
+    expect(md).toContain('314');
+    expect(md).not.toContain('3x4');
+  });
 });
 
 describe('paragraph breaks', () => {

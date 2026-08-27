@@ -1397,7 +1397,10 @@ function loadFont(doc: PdfDocument, obj: PdfValue | undefined): FontInfo {
   const tu = d.map.get('/ToUnicode');
   if (tu !== undefined) {
     const parsed = parseToUnicode(decodeStream(doc, tu));
-    for (const [k, v] of parsed.map) cmap.set(k, v);
+    for (const [k, v] of parsed.map) {
+      if (!cmapValueUsable(v)) continue;
+      cmap.set(k, v);
+    }
     if (!encCmap && !uni) codeByteLength = parsed.codeByteLength;
     hasToUnicode = parsed.map.size > 0;
   }
@@ -2002,6 +2005,14 @@ function loadPageFonts(doc: PdfDocument, page: PdfDict): Map<string, FontInfo> {
   return fonts;
 }
 
+function cmapValueUsable(text: string): boolean {
+  if (text.length === 0) return false;
+  for (const ch of text) {
+    if (ch !== '\uFFFD') return true;
+  }
+  return false;
+}
+
 function mapDecoded(
   font: FontInfo,
   code: number,
@@ -2009,7 +2020,7 @@ function mapDecoded(
   unicodePassthrough: boolean,
 ): DecodedChar {
   const fromCode = font.cmap.get(code);
-  if (fromCode !== undefined) {
+  if (fromCode !== undefined && cmapValueUsable(fromCode)) {
     return { ch: stripInvisibles(fromCode), code: cid || code, mapped: true };
   }
   // Uni* encodings put Unicode in the content stream. That number is not a CID.
@@ -2025,12 +2036,12 @@ function mapDecoded(
   }
   if (cid !== code) {
     const fromCidAsToUnicode = font.cmap.get(cid);
-    if (fromCidAsToUnicode !== undefined) {
+    if (fromCidAsToUnicode !== undefined && cmapValueUsable(fromCidAsToUnicode)) {
       return { ch: stripInvisibles(fromCidAsToUnicode), code: cid, mapped: true };
     }
   }
   const fromAdobe = font.cidToUnicode.get(cid);
-  if (fromAdobe !== undefined) {
+  if (fromAdobe !== undefined && cmapValueUsable(fromAdobe)) {
     return { ch: stripInvisibles(fromAdobe), code: cid, mapped: true };
   }
   if (code >= 32 && code < 127 && !font.isCid) {
@@ -2123,15 +2134,136 @@ function decodeFontBytes(font: FontInfo, raw: Uint8Array): DecodedChar[] {
   return out;
 }
 
+function markedIsArtifact(op: string, args: PdfValue[]): boolean {
+  if (op === 'BMC') return nameOf(args[args.length - 1]) === '/Artifact';
+  const tag = args.length >= 2 ? args[args.length - 2] : args[args.length - 1];
+  return nameOf(tag) === '/Artifact';
+}
+
 function trackMarkedArtifact(stack: boolean[], op: string, args: PdfValue[]): void {
-  if (op === 'BMC') {
-    stack.push(nameOf(args[args.length - 1]) === '/Artifact');
-  } else if (op === 'BDC') {
-    const tag = args.length >= 2 ? args[args.length - 2] : args[args.length - 1];
-    stack.push(nameOf(tag) === '/Artifact');
-  } else if (op === 'EMC') {
+  if (op === 'EMC') {
     stack.pop();
+  } else if (op === 'BMC' || op === 'BDC') {
+    stack.push(markedIsArtifact(op, args));
   }
+}
+
+interface MarkedCapture {
+  x: number;
+  y: number;
+  widthAcc: number;
+  height: number;
+  font: string;
+  fontSize: number;
+  isBold: boolean;
+  isItalic: boolean;
+  dx: number;
+  dy: number;
+}
+
+interface MarkedFrame {
+  artifact: boolean;
+  actualText?: string;
+  capture?: MarkedCapture;
+}
+
+function markedString(v: PdfValue | undefined): string | undefined {
+  const text = stripInvisibles(pdfText(v) ?? '');
+  return text.length > 0 ? text : undefined;
+}
+
+function resolveBdcDict(
+  doc: PdfDocument,
+  resources: PdfValue | undefined,
+  args: PdfValue[],
+): PdfDict | undefined {
+  if (args.length < 2) return undefined;
+  const props = args[args.length - 1];
+  if (isDict(props)) return props;
+  const key = nameOf(props);
+  if (!key) return undefined;
+  const res = isDict(resources) ? resources : undefined;
+  const propRes = dictGet(doc, res, '/Properties');
+  if (!isDict(propRes)) return undefined;
+  const got = dictGet(doc, propRes, key);
+  return isDict(got) ? got : undefined;
+}
+
+function openMarkedFrame(
+  doc: PdfDocument,
+  resources: PdfValue | undefined,
+  structActual: Map<number, string>,
+  op: string,
+  args: PdfValue[],
+): MarkedFrame {
+  const artifact = markedIsArtifact(op, args);
+  if (op !== 'BDC') return { artifact };
+  const props = resolveBdcDict(doc, resources, args);
+  if (!props) return { artifact };
+  const direct = markedString(dictGet(doc, props, '/ActualText'));
+  if (direct) return { artifact, actualText: direct };
+  const mcid = asNumber(dictGet(doc, props, '/MCID'));
+  if (mcid === undefined) return { artifact };
+  const fromStruct = structActual.get(mcid);
+  if (fromStruct) return { artifact, actualText: fromStruct };
+  return { artifact };
+}
+
+function findActualFrame(stack: MarkedFrame[]): MarkedFrame | undefined {
+  for (let i = stack.length - 1; i >= 0; i -= 1) {
+    if (stack[i]!.actualText !== undefined) return stack[i];
+  }
+  return undefined;
+}
+
+function loadStructActualText(doc: PdfDocument, page: PdfDict): Map<number, string> {
+  const out = new Map<number, string>();
+  const root = deref(doc, doc.trailer.map.get('/Root'));
+  if (!isDict(root)) return out;
+  const structRoot = dictGet(doc, root, '/StructTreeRoot');
+  if (!isDict(structRoot)) return out;
+  const seen = new Set<PdfDict>();
+  walkStructActual(doc, dictGet(doc, structRoot, '/K'), page, undefined, undefined, out, seen);
+  return out;
+}
+
+function walkStructActual(
+  doc: PdfDocument,
+  node: PdfValue | undefined,
+  page: PdfDict,
+  inheritedPage: PdfDict | undefined,
+  inheritedActual: string | undefined,
+  out: Map<number, string>,
+  seen: Set<PdfDict>,
+): void {
+  if (node === undefined) return;
+  if (typeof node === 'number' && Number.isFinite(node)) {
+    if (inheritedActual && (inheritedPage === undefined || inheritedPage === page)) {
+      out.set(Math.trunc(node), inheritedActual);
+    }
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      walkStructActual(doc, item, page, inheritedPage, inheritedActual, out, seen);
+    }
+    return;
+  }
+  const dict = isDict(node) ? node : deref(doc, node);
+  if (!isDict(dict) || seen.has(dict)) return;
+  seen.add(dict);
+  const pg = dictGet(doc, dict, '/Pg');
+  const thisPage = isDict(pg) ? pg : inheritedPage;
+  const own = markedString(dictGet(doc, dict, '/ActualText'));
+  const actual = own ?? inheritedActual;
+  if (nameOf(dictGet(doc, dict, '/Type')) === '/MCR') {
+    const mcid = asNumber(dictGet(doc, dict, '/MCID'));
+    if (mcid !== undefined && actual && (thisPage === undefined || thisPage === page)) {
+      out.set(mcid, actual);
+    }
+    return;
+  }
+  walkStructActual(doc, dictGet(doc, dict, '/K'), page, thisPage, actual, out, seen);
 }
 
 type ClipState =
@@ -2272,19 +2404,57 @@ function extractPage(
   let rise = 0;
   let path: [number, number][] = [];
   let pathStart: [number, number] | undefined;
-  const marked: boolean[] = [];
+  const marked: MarkedFrame[] = [];
   const stats: DecodeStats = { mapped: 0, unmapped: 0 };
   const args: PdfValue[] = [];
   const pageResources = dictGet(doc, page, '/Resources');
   const xobjects = loadXObjects(doc, isDict(pageResources) ? pageResources : undefined);
   const formFonts = fonts;
+  const structActual = loadStructActualText(doc, page);
+  const inArtifact = (): boolean => marked.some((frame) => frame.artifact);
 
   const emitText = (raw: Uint8Array): void => {
     if (!font) return;
     const decoded = decodeFontBytes(font, raw);
-    countDecoded(stats, decoded);
     const dirMat = mulMat(tm, ctm);
     const rendered = Math.abs(fontSize) * matrixScale(dirMat);
+    const actualFrame = findActualFrame(marked);
+    if (actualFrame) {
+      if (actualFrame.actualText) stats.mapped += 1;
+      const take = (x: number, y: number, w: number): void => {
+        if (!actualFrame.capture) {
+          actualFrame.capture = {
+            x,
+            y,
+            widthAcc: 0,
+            height: rendered,
+            font: font!.name,
+            fontSize: rendered,
+            isBold: font!.bold,
+            isItalic: font!.italic,
+            dx: dirMat[0]!,
+            dy: dirMat[1]!,
+          };
+        }
+        actualFrame.capture.widthAcc += w;
+      };
+      if (decoded.length === 0) {
+        const [x, y] = applyMat(dirMat, 0, rise);
+        take(x, y, 0);
+        return;
+      }
+      for (const { ch, code } of decoded) {
+        let w = (font.widths.get(code) ?? font.defaultWidth) * font.unitsScale * fontSize;
+        if (ch === ' ') w += wordSpace;
+        w = (w + charSpace) * hscale;
+        const trm = mulMat(tm, ctm);
+        const [x, y] = applyMat(trm, 0, rise);
+        take(x, y, w);
+        tm = translateTextMatrix(tm, w, 0);
+      }
+      return;
+    }
+    countDecoded(stats, decoded);
     let buf = '';
     let startX: number | undefined;
     let startY = 0;
@@ -2431,7 +2601,34 @@ function extractPage(
         }
       }
     } else if (op === 'BMC' || op === 'BDC' || op === 'EMC') {
-      trackMarkedArtifact(marked, op, args);
+      if (op === 'EMC') {
+        const frame = marked.pop();
+        if (frame?.actualText && frame.capture) {
+          const cap = frame.capture;
+          const width = pageAdvanceX(cap.widthAcc, tm, ctm);
+          const h = cap.height || 1;
+          if (overlapsClip(clip, cap.x, cap.y - h, cap.x + width, cap.y + h)) {
+            items.push({
+              text: frame.actualText,
+              x: cap.x,
+              y: cap.y,
+              width,
+              height: cap.height,
+              font: cap.font,
+              fontSize: cap.fontSize,
+              page: pageNo,
+              isBold: cap.isBold,
+              isItalic: cap.isItalic,
+              isUnderline: false,
+              isStrikeout: false,
+              dx: cap.dx,
+              dy: cap.dy,
+            });
+          }
+        }
+      } else {
+        marked.push(openMarkedFrame(doc, pageResources, structActual, op, args));
+      }
     } else if (op === 'm' && args.length >= 2) {
       const p = applyMat(ctm, lastNum(2), lastNum(1));
       path = [p];
@@ -2449,7 +2646,7 @@ function extractPage(
       const p3 = applyMat(ctm, x, y + h);
       path = [p0, p1, p2, p3, p0];
       pathStart = p0;
-      if (!marked.includes(true)) {
+      if (!inArtifact()) {
         const xs = [p0[0], p1[0], p2[0], p3[0]];
         const ys = [p0[1], p1[1], p2[1], p3[1]];
         const minX = Math.min(...xs);
@@ -2473,7 +2670,7 @@ function extractPage(
       if (box) clip = intersectClip(clip, box);
     } else if (op === 'S' || op === 's') {
       if (op === 's' && pathStart) path.push(pathStart);
-      if (!marked.includes(true)) {
+      if (!inArtifact()) {
         for (let i = 1; i < path.length; i += 1) {
           const a = path[i - 1]!;
           const b = path[i]!;
@@ -2495,7 +2692,7 @@ function extractPage(
         typeof args[args.length - 1] === 'string' ? (args[args.length - 1] as string) : '';
       const xobj = xobjects.get(name);
       if (xobj !== undefined) {
-        const inArtifact = marked.includes(true);
+        const skipRules = inArtifact();
         extractFormText(
           doc,
           xobj.dict,
@@ -2503,8 +2700,8 @@ function extractPage(
           ctm,
           pageNo,
           items,
-          inArtifact ? [] : lines,
-          inArtifact ? [] : rects,
+          skipRules ? [] : lines,
+          skipRules ? [] : rects,
           stats,
           depth,
           clip,
@@ -2520,7 +2717,7 @@ function extractPage(
       op === 'b' ||
       op === 'b*'
     ) {
-      if (op !== 'n' && !marked.includes(true)) {
+      if (op !== 'n' && !inArtifact()) {
         if (op === 'b' || op === 'b*') {
           if (pathStart) path.push(pathStart);
         }
