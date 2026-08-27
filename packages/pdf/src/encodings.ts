@@ -23,9 +23,68 @@ function loadGlyphList(): Map<string, string> {
   return map;
 }
 
+const LATIN_LIGATURES: Record<string, string> = {
+  '\uFB00': 'ff',
+  '\uFB01': 'fi',
+  '\uFB02': 'fl',
+  '\uFB03': 'ffi',
+  '\uFB04': 'ffl',
+};
+
+function expandLatinLigatures(text: string): string {
+  let out = '';
+  for (const ch of text) out += LATIN_LIGATURES[ch] ?? ch;
+  return out;
+}
+
+function mapUniComponent(part: string): string | undefined {
+  if (part.startsWith('uni') && part.length > 3 && (part.length - 3) % 4 === 0) {
+    if (![...part.slice(3)].every((c) => /[0-9A-Fa-f]/.test(c))) return undefined;
+    let out = '';
+    for (let i = 3; i < part.length; i += 4) {
+      const cp = Number.parseInt(part.slice(i, i + 4), 16);
+      if (cp >= 0xd800 && cp <= 0xdfff) return undefined;
+      out += String.fromCharCode(cp);
+    }
+    return out;
+  }
+  if (/^u[0-9A-Fa-f]{4,6}$/.test(part)) {
+    const cp = Number.parseInt(part.slice(1), 16);
+    if (cp <= 0xd7ff || (cp >= 0xe000 && cp <= 0x10ffff)) return String.fromCodePoint(cp);
+  }
+  return undefined;
+}
+
+function mapAglComponent(part: string, agl: Map<string, string>): string | undefined {
+  if (part.length === 0) return undefined;
+  const direct = agl.get(part);
+  if (direct !== undefined) return direct;
+  return mapUniComponent(part);
+}
+
+/**
+ * Adobe Glyph List name mapping: drop a period suffix, split on `_`, then
+ * look up each piece (AGL, `uniXXXX`, `uXXXX`). Small-cap suffixes map to
+ * uppercase so `t.sc` / `a.smcp` match the printed letter.
+ */
 export function glyphNameToUnicode(name: string): string | undefined {
   const bare = name.startsWith('/') ? name.slice(1) : name;
-  return loadGlyphList().get(bare);
+  if (bare.length === 0) return undefined;
+  const agl = loadGlyphList();
+  const direct = agl.get(bare);
+  if (direct !== undefined) return expandLatinLigatures(direct);
+  const small = /\.(?:sc|smcp|c2sc|small)(?:\.|$)/i.test(bare);
+  const base = bare.split('.')[0]!;
+  if (base.length === 0) return undefined;
+  let out = '';
+  for (const part of base.split('_')) {
+    const ch = mapAglComponent(part, agl);
+    if (ch !== undefined) out += ch;
+  }
+  if (out.length === 0) return undefined;
+  const expanded = expandLatinLigatures(out);
+  if (small && expanded === expanded.toLowerCase()) return expanded.toUpperCase();
+  return expanded;
 }
 
 export function encodingTable(name: string): string | undefined {

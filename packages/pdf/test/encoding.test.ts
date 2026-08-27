@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { glyphNameToUnicode } from '../src/encodings.js';
 import { toMarkdownFromPdf } from '../src/pdf.js';
 
 function simpleTextPdf(opts: {
@@ -235,5 +236,68 @@ ET
     body += `${xref}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
     const md = toMarkdownFromPdf(new TextEncoder().encode(body));
     expect(md).toContain('™ok€');
+  });
+});
+
+describe('glyph name mapping', () => {
+  it('expands ligature names and presentation forms', () => {
+    expect(glyphNameToUnicode('fi')).toBe('fi');
+    expect(glyphNameToUnicode('/f_i')).toBe('fi');
+    expect(glyphNameToUnicode('f_l')).toBe('fl');
+    expect(glyphNameToUnicode('f_f_i')).toBe('ffi');
+    expect(glyphNameToUnicode('T_h')).toBe('Th');
+  });
+
+  it('maps oldstyle, small-cap, and uniXXXX suffixes', () => {
+    expect(glyphNameToUnicode('eight.oldstyle')).toBe('8');
+    expect(glyphNameToUnicode('t.sc')).toBe('T');
+    expect(glyphNameToUnicode('a.smcp')).toBe('A');
+    expect(glyphNameToUnicode('Y.c2sc')).toBe('Y');
+    expect(glyphNameToUnicode('uni00A0')).toBe('\u00a0');
+    expect(glyphNameToUnicode('one.SP')).toBe('1');
+  });
+});
+
+describe('custom encoding ligatures and word spaces', () => {
+  function differencesPdf(shown: string, diffs: string): Uint8Array {
+    const content = `BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(${shown}) Tj
+ET
+`;
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+      `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding 6 0 R >>\nendobj\n',
+      `6 0 obj\n<< /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences ${diffs} >>\nendobj\n`,
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(body.length);
+      body += obj;
+    }
+    const xrefAt = body.length;
+    let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    for (let i = 1; i <= objects.length; i += 1) {
+      xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    }
+    body += `${xref}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`;
+    return new TextEncoder().encode(body);
+  }
+
+  it('decodes f_i and T_h Differences names', () => {
+    const md = toMarkdownFromPdf(differencesPdf('\x01eld \x02e other', '[1 /f_i /T_h]'));
+    expect(md).toContain('field');
+    expect(md).toContain('The other');
+  });
+
+  it('keeps a nbsp as a word space', () => {
+    const md = toMarkdownFromPdf(differencesPdf('a\x1fyoung', '[31 /uni00A0]'));
+    expect(md).toContain('a young');
+    expect(md).not.toContain('ayoung');
   });
 });

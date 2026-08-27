@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { reattachDropCaps } from '../src/layout.js';
 import { toMarkdownFromPdf } from '../src/pdf.js';
 
 function pagePdf(content: string, mediaBox = [0, 0, 200, 100]): Uint8Array {
@@ -596,5 +597,186 @@ ET
     expect(md).toContain('equilibrium?¹²');
     expect(md).not.toMatch(/^12 Now,/m);
     expect(md).toMatch(/equilibrium\.\n\n12\. This equilibrium/);
+  });
+});
+
+describe('drop-caps, ligatures, and false headings', () => {
+  it('glues a drop-cap onto the first body line and does not emit it as a heading', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 48 Tf
+1 0 0 1 20 50 Tm
+(T) Tj
+/F1 12 Tf
+1 0 0 1 55 82 Tm
+(his report defines the scope of this study.) Tj
+1 0 0 1 55 66 Tm
+(cholesterol that is getting in the way.) Tj
+1 0 0 1 55 50 Tm
+(the way of doing business continues here.) Tj
+ET
+`,
+        [0, 0, 400, 140],
+      ),
+    );
+    expect(md).toContain('This report defines the scope of this study.');
+    expect(md).not.toMatch(/^#{1,6} T\b/m);
+    expect(md).not.toMatch(/^#{1,6} This report/m);
+    expect(md).not.toMatch(/^#{1,6} cholesterol/m);
+    expect(md).not.toMatch(/\bhis report defines/);
+  });
+
+  it('does not glue a drop-cap onto a higher right-column line', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 48 Tf
+1 0 0 1 20 50 Tm
+(T) Tj
+/F1 12 Tf
+1 0 0 1 55 82 Tm
+(his report defines the scope of this study.) Tj
+1 0 0 1 55 66 Tm
+(cholesterol that is getting in the way.) Tj
+1 0 0 1 55 50 Tm
+(the way of doing business continues here.) Tj
+1 0 0 1 240 90 Tm
+(Right column starts at the top of the page.) Tj
+1 0 0 1 240 74 Tm
+(It must not receive the drop-cap letter.) Tj
+ET
+`,
+        [0, 0, 420, 140],
+      ),
+    );
+    expect(md).toContain('This report defines the scope of this study.');
+    expect(md).toContain('Right column starts at the top of the page.');
+    expect(md).not.toMatch(/TRight column/);
+    expect(md).not.toMatch(/\bhis report defines/);
+  });
+
+  it('does not glue a drop-cap onto a higher line that starts farther right', () => {
+    const drop = {
+      text: 'T',
+      x: 20,
+      y: 50,
+      width: 28,
+      height: 48,
+      fontSize: 48,
+      page: 1,
+    };
+    const farther = {
+      text: 'Earlier paragraph still overlaps the cap.',
+      x: 80,
+      y: 90,
+      width: 200,
+      height: 12,
+      fontSize: 12,
+      page: 1,
+    };
+    const first = {
+      text: 'his report defines the scope of this study.',
+      x: 55,
+      y: 82,
+      width: 200,
+      height: 12,
+      fontSize: 12,
+      page: 1,
+    };
+    const wrap = {
+      text: 'cholesterol that is getting in the way.',
+      x: 55,
+      y: 66,
+      width: 180,
+      height: 12,
+      fontSize: 12,
+      page: 1,
+    };
+    const texts = reattachDropCaps([[farther], [drop], [first], [wrap]]).map((line) =>
+      line.map((t) => t.text).join(''),
+    );
+    expect(texts.some((t) => t.startsWith('This report'))).toBe(true);
+    expect(texts).toContain('Earlier paragraph still overlaps the cap.');
+    expect(texts.some((t) => t.startsWith('TEarlier'))).toBe(false);
+  });
+
+  it('still emits a larger title as a heading', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 24 Tf
+1 0 0 1 20 160 Tm
+(Executive Summary) Tj
+/F1 12 Tf
+1 0 0 1 20 120 Tm
+(India suffers from regulatory cholesterol that is getting in the way of doing business across the union.) Tj
+1 0 0 1 20 100 Tm
+(The presence of hostile clauses in these laws has grown since independence and still shapes the rules.) Tj
+1 0 0 1 20 80 Tm
+(These changes in compliance requirements occur constantly and add to business uncertainty every year.) Tj
+ET
+`,
+        [0, 0, 500, 200],
+      ),
+    );
+    expect(md).toMatch(/^#{1,6} Executive Summary/m);
+    expect(md).toContain('India suffers from regulatory cholesterol');
+  });
+
+  it('inserts a word space from a large negative TJ adjustment', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`BT
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+[(SOLAR) -250 (10.7B:) -250 (Scaling) -250 (Language)] TJ
+ET
+`),
+    );
+    expect(md).toContain('SOLAR 10.7B: Scaling Language');
+    expect(md).not.toContain('SOLAR10.7B');
+  });
+
+  it('does not promote wrapped body to a heading when notes use a smaller font', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(
+        `BT
+/F1 11 Tf
+1 0 0 1 200 160 Tm
+(Peninsula to Europe, where they were customarily) Tj
+1 0 0 1 200 140 Tm
+(used in tinctures, purges, and other more or less) Tj
+1 0 0 1 200 120 Tm
+(effective elixirs after the plants reached the west.) Tj
+/F1 9 Tf
+1 0 0 1 20 80 Tm
+(34 Richard Walker, Memoirs of Medicine including a sketch of medical history from the earliest accounts.) Tj
+1 0 0 1 20 64 Tm
+(35 For the influence of the Arabian medicine on Western Europe, see volume three of the treatise.) Tj
+1 0 0 1 20 48 Tm
+(36 Incense was used for its love-inducing and rejuvenating properties in later etchings.) Tj
+ET
+`,
+        [0, 0, 420, 200],
+      ),
+    );
+    expect(md).not.toMatch(/^#{1,6} Peninsula/m);
+    expect(md).toContain('Peninsula to Europe, where they were customarily');
+  });
+
+  it('inserts a space between a section number and title in TJ', () => {
+    const md = toMarkdownFromPdf(
+      pagePdf(`BT
+/F1 14 Tf
+1 0 0 1 20 80 Tm
+[(1) -1000 (Introduction)] TJ
+/F1 12 Tf
+1 0 0 1 20 50 Tm
+(The field of natural language processing has been transformed.) Tj
+ET
+`),
+    );
+    expect(md).toContain('1 Introduction');
+    expect(md).not.toContain('1Introduction');
   });
 });
