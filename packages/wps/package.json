@@ -1,6 +1,6 @@
 {
   "name": "@mdgate/wps",
-  "version": "0.6.25",
+  "version": "0.6.26",
   "description": "mdgate Kingsoft WPS converter (wps/et/dps)",
   "type": "module",
   "license": "MIT",
@@ -28,15 +28,15 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@mdgate/containers": "0.6.25",
-    "@mdgate/core": "0.6.25",
-    "@mdgate/doc": "0.6.25",
-    "@mdgate/document": "0.6.25",
-    "@mdgate/docx": "0.6.25",
-    "@mdgate/ppt": "0.6.25",
-    "@mdgate/pptx": "0.6.25",
-    "@mdgate/utils": "0.6.25",
-    "@mdgate/xlsx": "0.6.25"
+    "@mdgate/containers": "0.6.26",
+    "@mdgate/core": "0.6.26",
+    "@mdgate/doc": "0.6.26",
+    "@mdgate/document": "0.6.26",
+    "@mdgate/docx": "0.6.26",
+    "@mdgate/ppt": "0.6.26",
+    "@mdgate/pptx": "0.6.26",
+    "@mdgate/utils": "0.6.26",
+    "@mdgate/xlsx": "0.6.26"
   },
   "publishConfig": {
     "access": "public"
