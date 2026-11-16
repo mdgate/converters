@@ -444,6 +444,12 @@ function parseKeyword(c: Cursor): string {
     }
     c.i += 1;
   }
+  // A delimiter no caller can parse here (a stray `]`, `}`, `)` or lone `>`) would otherwise be
+  // left unconsumed, and the dict, array and content-stream loops would spin on it forever.
+  if (c.i === start && c.i < c.n) {
+    c.i += 1;
+    return '';
+  }
   return asciiSlice(c.data, start, c.i);
 }
 
